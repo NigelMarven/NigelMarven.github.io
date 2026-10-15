@@ -5966,7 +5966,7 @@ function SettingsScreen({
     onClick: clearAll
   }, "\u041E\u0447\u0438\u0441\u0442\u0438\u0442\u044C \u0432\u0441\u0435 \u0434\u0430\u043D\u043D\u044B\u0435"))), React.createElement("div", {
     className: "micro text-center mt-6 mb-2"
-  }, "CYBER//JOURNAL 2077 \xB7 v", APP_VERSION, " \xB7 ", cloudOn ? 'LOCAL + CLOUD SYNC' : 'LOCAL STORAGE')), avEdit && React.createElement(AvatarEditor, {
+  }, "CYBER//JOURNAL 2077 \xB7 v", APP_VERSION, " \xB7 BUILD ", window.CJ_BUILD || 'DEV', " \xB7 ", cloudOn ? 'LOCAL + CLOUD SYNC' : 'LOCAL STORAGE')), avEdit && React.createElement(AvatarEditor, {
     onClose: () => setAvEdit(false)
   }));
 }

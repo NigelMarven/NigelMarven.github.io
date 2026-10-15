@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "io.github.nigelmarven.twa",
+        "sha256_cert_fingerprints": ["66:12:3C:4A:F1:EE:94:BE:6D:70:2C:B4:08:45:44:81:25:6E:ED:BA:4B:1C:B5:4A:E4:D1:68:44:E2:DA:9A:DA"]
+      }
+    }]

@@ -1,4 +1,4 @@
-/* CJ_BUILD 20261015-202804 */
+/* CJ_BUILD 20261016-022547 */
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
 const {
   useState,
@@ -45,7 +45,8 @@ const {
   Eraser,
   Layers,
   CalendarDays,
-  Tag
+  Tag,
+  Undo2
 } = LucideReact;
 const LS_KEY = 'cyberjournal2077.v1';
 const APP_VERSION = '1.0.0';
@@ -204,7 +205,8 @@ const DEFAULT_SETTINGS = {
   glitch: true,
   sound: true,
   avatar: 'preset:m',
-  avatarHolo: false
+  avatarHolo: false,
+  backupDays: 7
 };
 const SFX = {
   on: true,
@@ -347,7 +349,10 @@ const emptyState = () => ({
     }
   },
   meta: {
-    retroIgnored: []
+    retroIgnored: [],
+    since: new Date().toISOString(),
+    lastBackupAt: '',
+    backupAskedOn: ''
   }
 });
 function normalize(d) {
@@ -812,6 +817,27 @@ async function saveFile(filename, text) {
     return 'error';
   }
 }
+const exportBackup = data => saveFile(`cyberjournal-backup-${dKey(new Date())}.json`, JSON.stringify({
+  app: 'cyberjournal2077',
+  version: APP_VERSION,
+  exportedAt: new Date().toISOString(),
+  data
+}, null, 2));
+const hasContent = d => d.missions.length + d.shards.length + d.timers.length + Object.keys(d.ratings).length > 0;
+const daysSince = iso => {
+  const t = Date.parse(iso);
+  return isNaN(t) ? Infinity : Math.floor((Date.now() - t) / 864e5);
+};
+async function storagePersisted(request) {
+  try {
+    const s = navigator.storage;
+    if (!s || !s.persisted) return null;
+    if (await s.persisted()) return true;
+    return request && s.persist ? await s.persist() : false;
+  } catch (e) {
+    return null;
+  }
+}
 const CLOUD_CHUNK = 90000;
 async function cloudPull(c) {
   const meta = await c.db.doc(`${c.base}/meta`).get();
@@ -895,6 +921,9 @@ textarea.inp{resize:vertical;line-height:1.5;}
 .sheet-item.danger{color:#FF5A5A;}
 .sheet-item:disabled{opacity:.3}
 .toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:300;max-width:92vw;padding:10px 16px;--cut:8px;background:rgba(6,6,10,.95);color:var(--alt);box-shadow:inset 0 0 0 1px var(--alt),0 0 20px rgba(var(--alt-rgb),.3);font-weight:700;letter-spacing:.1em;font-size:13px;text-transform:uppercase;animation:toastin .25s ease-out;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.toast-act{display:flex;align-items:center;gap:12px;padding:6px 6px 6px 14px;}
+.toast-msg{min-width:0;overflow:hidden;text-overflow:ellipsis;}
+.toast-btn{flex-shrink:0;display:inline-flex;align-items:center;gap:5px;--cut:6px;padding:7px 10px;background:var(--warn);color:#0a0a0f;font:inherit;font-size:12px;letter-spacing:.08em;text-transform:uppercase;}
 @keyframes toastin{0%{opacity:0;transform:translate(-50%,10px)}30%{opacity:1;transform:translate(calc(-50% + 3px),0)}45%{transform:translate(calc(-50% - 3px),0)}60%{transform:translate(-50%,0)}}
 /* сканлайны / ЭЛТ */
 .scan{position:fixed;inset:0;pointer-events:none;z-index:250;background:repeating-linear-gradient(0deg,rgba(0,0,0,.2) 0,rgba(0,0,0,.2) 1px,transparent 1px,transparent 3px);animation:flick 7s infinite steps(1);}
@@ -2371,7 +2400,8 @@ function useDirOps() {
     data,
     up,
     ask,
-    toast
+    toast,
+    undoable
   } = useApp();
   const addSection = async () => {
     const name = await ask({
@@ -2427,15 +2457,16 @@ function useDirOps() {
       danger: true
     });
     if (ok !== true) return;
-    if (other) up('missions', ms => ms.map(m => m.sectionId === id ? {
-      ...m,
-      sectionId: other.id
-    } : m));else {
-      up('missions', ms => ms.filter(m => m.sectionId !== id));
-      up('timers', ts => ts.filter(t => !ids.includes(t.missionId)));
-    }
-    up('sections', ss => ss.filter(x => x.id !== id));
-    toast('Раздел удалён');
+    undoable('Раздел удалён', ['sections', 'missions', 'timers'], () => {
+      if (other) up('missions', ms => ms.map(m => m.sectionId === id ? {
+        ...m,
+        sectionId: other.id
+      } : m));else {
+        up('missions', ms => ms.filter(m => m.sectionId !== id));
+        up('timers', ts => ts.filter(t => !ids.includes(t.missionId)));
+      }
+      up('sections', ss => ss.filter(x => x.id !== id));
+    });
   };
   const addTag = async () => {
     const name = await ask({
@@ -2485,11 +2516,13 @@ function useDirOps() {
       danger: true
     });
     if (ok !== true) return;
-    up('shards', ss => ss.map(s => ({
-      ...s,
-      tags: s.tags.filter(x => x !== id)
-    })));
-    up('tags', ts => ts.filter(x => x.id !== id));
+    undoable('Тег удалён', ['shards', 'tags'], () => {
+      up('shards', ss => ss.map(s => ({
+        ...s,
+        tags: s.tags.filter(x => x !== id)
+      })));
+      up('tags', ts => ts.filter(x => x.id !== id));
+    });
   };
   return {
     addSection,
@@ -3345,7 +3378,8 @@ function MissionsScreen() {
     data,
     up,
     ask,
-    toast
+    toast,
+    undoable
   } = useApp();
   const ops = useDirOps();
   const [mode, setModeRaw] = useState(() => {
@@ -3413,15 +3447,16 @@ function MissionsScreen() {
     const ok = await ask({
       title: 'Удалить миссию?',
       code: 'JOURNAL // DELETE',
-      text: `«${m.title}» будет удалена без возможности восстановления.`,
+      text: `«${m.title}» будет удалена вместе с привязанным таймером.`,
       ok: 'Удалить',
       danger: true
     });
     if (ok !== true) return;
-    up('missions', ms => ms.filter(x => x.id !== m.id));
-    up('timers', ts => ts.filter(t => t.missionId !== m.id));
+    undoable('Миссия удалена', ['missions', 'timers'], () => {
+      up('missions', ms => ms.filter(x => x.id !== m.id));
+      up('timers', ts => ts.filter(t => t.missionId !== m.id));
+    });
     setOpenId(null);
-    toast('Миссия удалена');
   };
   const toggleStep = (m, sid, v) => {
     sfx(v ? 'check' : 'uncheck');
@@ -3469,15 +3504,16 @@ function MissionsScreen() {
     const ok = await ask({
       title: 'Удалить навсегда?',
       code: 'ARCHIVE // PURGE',
-      text: `Запись о контракте «${m.title}» будет стёрта из архива без возможности восстановления.`,
+      text: `Запись о контракте «${m.title}» будет стёрта из архива.`,
       ok: 'Удалить навсегда',
       danger: true
     });
     if (ok !== true) return;
-    up('missions', ms => ms.filter(x => x.id !== m.id));
-    up('timers', ts => ts.filter(t => t.missionId !== m.id));
+    undoable('Запись стёрта из архива', ['missions', 'timers'], () => {
+      up('missions', ms => ms.filter(x => x.id !== m.id));
+      up('timers', ts => ts.filter(t => t.missionId !== m.id));
+    });
     setOpenId(null);
-    toast('Запись стёрта из архива');
   };
   const saveShard = s => {
     up('shards', ss => ss.some(x => x.id === s.id) ? ss.map(x => x.id === s.id ? s : x) : [s, ...ss]);
@@ -3495,9 +3531,8 @@ function MissionsScreen() {
       danger: true
     });
     if (ok !== true) return;
-    up('shards', ss => ss.filter(x => x.id !== s.id));
+    undoable('Чип стёрт', ['shards'], () => up('shards', ss => ss.filter(x => x.id !== s.id)));
     setReadId(null);
-    toast('Чип стёрт');
   };
   const shards = data.shards.filter(matchS).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
   const reading = readId && data.shards.find(x => x.id === readId);
@@ -4455,7 +4490,8 @@ function CardCatalog({
     data,
     up,
     ask,
-    toast
+    toast,
+    undoable
   } = useApp();
   const [edit, setEdit] = useState(null);
   const [idx, setIdx] = useState(0);
@@ -4490,8 +4526,7 @@ function CardCatalog({
       danger: true
     });
     if (ok !== true) return;
-    up('cards', cs => cs.filter(x => x.id !== c.id));
-    toast('Карточка удалена');
+    undoable('Карточка удалена', ['cards'], () => up('cards', cs => cs.filter(x => x.id !== c.id)));
   };
   return React.createElement("div", {
     className: "pt-4"
@@ -5385,7 +5420,8 @@ function CountdownScreen() {
     data,
     up,
     ask,
-    toast
+    toast,
+    undoable
   } = useApp();
   const now = useNow(1000);
   const [edit, setEdit] = useState(null);
@@ -5425,13 +5461,14 @@ function CountdownScreen() {
       danger: true
     });
     if (ok !== true) return;
-    up('timers', ts => ts.filter(x => x.id !== t.id));
-    if (t.missionId) up('missions', ms => ms.map(m => m.id === t.missionId ? {
-      ...m,
-      countdown: false
-    } : m));
+    undoable('Таймер удалён', ['timers', 'missions'], () => {
+      up('timers', ts => ts.filter(x => x.id !== t.id));
+      if (t.missionId) up('missions', ms => ms.map(m => m.id === t.missionId ? {
+        ...m,
+        countdown: false
+      } : m));
+    });
     setEdit(null);
-    toast('Таймер удалён');
   };
   return React.createElement("div", {
     className: "relative h-full"
@@ -5515,10 +5552,16 @@ function SettingsScreen({
     ask,
     toast,
     replaceAll,
+    undoable,
+    markBackup,
     cloudOn
   } = useApp();
   const ops = useDirOps();
   const [avEdit, setAvEdit] = useState(false);
+  const [persisted, setPersisted] = useState(null);
+  useEffect(() => {
+    storagePersisted(false).then(setPersisted);
+  }, []);
   const s = data.settings;
   const set = p => up('settings', x => ({
     ...x,
@@ -5548,14 +5591,9 @@ function SettingsScreen({
     return o;
   }, [data.shards]);
   const exportJSON = async () => {
-    const payload = {
-      app: 'cyberjournal2077',
-      version: APP_VERSION,
-      exportedAt: new Date().toISOString(),
-      data
-    };
-    const res = await saveFile(`cyberjournal-backup-${dKey(new Date())}.json`, JSON.stringify(payload, null, 2));
+    const res = await exportBackup(data);
     if (res === 'saved') {
+      markBackup();
       sfx('save');
       toast('Бэкап выгружен в .json');
     } else if (res === 'declined') toast('Сохранение отменено');else {
@@ -5577,9 +5615,8 @@ function SettingsScreen({
         danger: true
       });
       if (ok === true) {
-        replaceAll(nd);
+        undoable('Данные восстановлены', null, () => replaceAll(nd));
         sfx('save');
-        toast('Данные восстановлены');
       }
     } catch (e) {
       sfx('error');
@@ -5594,13 +5631,16 @@ function SettingsScreen({
       ok: 'Сбросить',
       danger: true
     });
-    if (ok === true) {
-      replaceAll({
-        ...makeDemo(),
-        settings: s
-      });
-      toast('Демо-данные восстановлены');
-    }
+    if (ok !== true) return;
+    const demo = makeDemo();
+    undoable('Демо-данные восстановлены', null, () => replaceAll({
+      ...demo,
+      settings: s,
+      meta: {
+        ...demo.meta,
+        lastBackupAt: data.meta.lastBackupAt
+      }
+    }));
   };
   const clearAll = async () => {
     const ok = await ask({
@@ -5610,13 +5650,14 @@ function SettingsScreen({
       ok: 'Стереть всё',
       danger: true
     });
-    if (ok === true) {
-      replaceAll({
-        ...emptyState(),
-        settings: s
-      });
-      toast('Память очищена · чистый лист');
-    }
+    if (ok === true) undoable('Память очищена · чистый лист', null, () => replaceAll({
+      ...emptyState(),
+      settings: s,
+      meta: {
+        ...emptyState().meta,
+        lastBackupAt: data.meta.lastBackupAt
+      }
+    }));
   };
   return React.createElement("div", {
     className: "pb-8"
@@ -5937,7 +5978,54 @@ function SettingsScreen({
     }
   }, "\u25CF ", cloudOn ? 'ОБЛАЧНАЯ КОПИЯ: ВКЛЮЧЕНА' : 'ХРАНИЛИЩЕ: ТОЛЬКО ЭТОТ БРАУЗЕР'), React.createElement("div", {
     className: "text-[12px] text-white/45 f-read mb-3 leading-snug"
-  }, cloudOn ? 'Данные хранятся в этом браузере и в твоём личном разделе Claude: их видишь только ты, они синхронизируются между устройствами.' : 'Данные хранятся только в памяти этого браузера (localStorage). Регулярно делай экспорт, чтобы не потерять записи при очистке браузера.'), React.createElement("div", {
+  }, cloudOn ? 'Данные хранятся в этом браузере и в твоём личном разделе Claude: их видишь только ты, они синхронизируются между устройствами.' : 'Данные хранятся только в памяти этого браузера (localStorage). Регулярно делай экспорт, чтобы не потерять записи при очистке браузера.'), persisted !== null && React.createElement("div", {
+    className: "f-mono text-[11px] tracking-wider mb-1",
+    style: {
+      color: persisted ? '#59FF00' : 'var(--warn)'
+    }
+  }, "\u25CF \u0417\u0410\u0429\u0418\u0422\u0410 \u041E\u0422 \u0410\u0412\u0422\u041E\u041E\u0427\u0418\u0421\u0422\u041A\u0418: ", persisted ? 'ВКЛЮЧЕНА' : 'НЕ ВКЛЮЧЕНА'), persisted === false && React.createElement("div", {
+    className: "text-[12px] text-white/45 f-read mb-2 leading-snug"
+  }, "\u0411\u0440\u0430\u0443\u0437\u0435\u0440 \u043C\u043E\u0436\u0435\u0442 \u0441\u0442\u0435\u0440\u0435\u0442\u044C \u0434\u0430\u043D\u043D\u044B\u0435, \u0435\u0441\u043B\u0438 \u043D\u0430 \u0443\u0441\u0442\u0440\u043E\u0439\u0441\u0442\u0432\u0435 \u043A\u043E\u043D\u0447\u0438\u0442\u0441\u044F \u043C\u0435\u0441\u0442\u043E. Chrome \u0432\u043A\u043B\u044E\u0447\u0430\u0435\u0442 \u0437\u0430\u0449\u0438\u0442\u0443 \u0441\u0430\u043C \u0434\u043B\u044F \u0443\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u043D\u043E\u0433\u043E \u043F\u0440\u0438\u043B\u043E\u0436\u0435\u043D\u0438\u044F \u0438\u043B\u0438 \u0447\u0430\u0441\u0442\u043E \u043E\u0442\u043A\u0440\u044B\u0432\u0430\u0435\u043C\u043E\u0433\u043E \u0441\u0430\u0439\u0442\u0430.", React.createElement("button", {
+    type: "button",
+    className: "txt-alt underline ml-1",
+    onClick: async () => {
+      const p = await storagePersisted(true);
+      setPersisted(p);
+      toast(p ? 'Защита включена' : 'Браузер пока отказал');
+    }
+  }, "\u0417\u0430\u043F\u0440\u043E\u0441\u0438\u0442\u044C")), (() => {
+    const last = data.meta.lastBackupAt,
+      age = daysSince(last);
+    const fresh = last && (!s.backupDays || age < s.backupDays);
+    return React.createElement("div", {
+      className: "f-mono text-[11px] tracking-wider mb-3",
+      style: {
+        color: fresh ? '#59FF00' : 'var(--warn)'
+      }
+    }, "\u25CF \u041F\u041E\u0421\u041B\u0415\u0414\u041D\u0418\u0419 \u0411\u042D\u041A\u0410\u041F: ", !last ? 'НИКОГДА' : age === 0 ? 'СЕГОДНЯ' : `${age} ${plural(age, 'ДЕНЬ', 'ДНЯ', 'ДНЕЙ')} НАЗАД`);
+  })(), !cloudOn && React.createElement(React.Fragment, null, React.createElement("span", {
+    className: "lbl"
+  }, "\u041D\u0430\u043F\u043E\u043C\u0438\u043D\u0430\u0442\u044C \u043E\u0431 \u044D\u043A\u0441\u043F\u043E\u0440\u0442\u0435"), React.createElement(Segmented, {
+    value: s.backupDays,
+    onChange: v => set({
+      backupDays: v
+    }),
+    accent: "var(--alt)",
+    className: "mb-4",
+    options: [{
+      v: 0,
+      l: 'Выкл'
+    }, {
+      v: 7,
+      l: '7 дн'
+    }, {
+      v: 14,
+      l: '14 дн'
+    }, {
+      v: 30,
+      l: '30 дн'
+    }]
+  })), React.createElement("div", {
     className: "grid gap-2"
   }, React.createElement(Btn, {
     icon: Download,
@@ -6028,13 +6116,14 @@ function App() {
       localStorage.setItem(`${LS_KEY}.tab`, t);
     } catch (e) {}
   };
-  const toast = useCallback(msg => {
+  const toast = useCallback((msg, action) => {
     setToastMsg({
       msg,
+      action,
       k: Date.now()
     });
     clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToastMsg(null), 2400);
+    toastTimer.current = setTimeout(() => setToastMsg(null), action ? 6000 : 2400);
   }, []);
   const up = useCallback((key, fn) => setData(d => ({
     ...d,
@@ -6048,6 +6137,34 @@ function App() {
   const replaceAll = useCallback(d => {
     setRate(null);
     setData(normalize(d));
+  }, []);
+  const undoable = useCallback((msg, keys, fn) => {
+    const snap = dataRef.current;
+    fn();
+    toast(msg, {
+      label: 'Отменить',
+      run: () => {
+        setRate(null);
+        setData(d => {
+          const o = {
+            ...d
+          };
+          (keys || Object.keys(snap)).forEach(k => {
+            o[k] = snap[k];
+          });
+          return o;
+        });
+        sfx('save');
+        toast('Удаление отменено');
+      }
+    });
+  }, [toast]);
+  const markBackup = useCallback(() => up('meta', m => ({
+    ...m,
+    lastBackupAt: new Date().toISOString()
+  })), [up]);
+  useEffect(() => {
+    storagePersisted(true);
   }, []);
   useEffect(() => {
     if (document.getElementById('cj-fonts')) return;
@@ -6208,9 +6325,39 @@ function App() {
           date: k,
           source: 'evening'
         });
+        return;
       }
     }
-  }, [askRetro]);
+    const today = dKey(now);
+    if (s.backupDays > 0 && !window.claude && d.meta.backupAskedOn !== today && hasContent(d)) {
+      const last = d.meta.lastBackupAt;
+      const age = daysSince(last || d.meta.since);
+      if (age >= (last ? s.backupDays : 1)) {
+        up('meta', m => ({
+          ...m,
+          backupAskedOn: today
+        }));
+        const ans = await ask({
+          title: 'Пора сделать бэкап',
+          code: 'SYS // BACKUP.CHECK',
+          text: `${last ? `Последний экспорт был ${age} ${plural(age, 'день', 'дня', 'дней')} назад.` : 'Экспорта данных ещё не было.'}\n\nВсе записи хранятся только в памяти этого браузера. Сохрани файл .json в надёжное место (например, на Google Диск), чтобы не потерять их.`,
+          ok: 'Экспорт сейчас',
+          cancel: 'Позже'
+        });
+        if (ans === true) {
+          const res = await exportBackup(dataRef.current);
+          if (res === 'saved') {
+            markBackup();
+            sfx('save');
+            toast('Бэкап выгружен в .json');
+          } else if (res !== 'declined') {
+            sfx('error');
+            toast('Не удалось сохранить файл');
+          }
+        }
+      }
+    }
+  }, [askRetro, ask, up, toast, markBackup]);
   useEffect(() => {
     const t0 = setTimeout(runChecks, 900);
     const iv = setInterval(runChecks, 60000);
@@ -6296,8 +6443,10 @@ function App() {
     ask,
     toast,
     replaceAll,
+    undoable,
+    markBackup,
     cloudOn
-  }), [data, up, ask, toast, replaceAll, cloudOn]);
+  }), [data, up, ask, toast, replaceAll, undoable, markBackup, cloudOn]);
   return React.createElement(AppCtx.Provider, {
     value: ctx
   }, React.createElement("div", {
@@ -6341,8 +6490,21 @@ function App() {
     close: () => setDialog(null)
   }), toastMsg && React.createElement("div", {
     key: toastMsg.k,
-    className: "toast cut"
-  }, toastMsg.msg), data.settings.scanlines && React.createElement("div", {
+    className: `toast cut ${toastMsg.action ? 'toast-act' : ''}`
+  }, toastMsg.action ? React.createElement("span", {
+    className: "toast-msg"
+  }, toastMsg.msg) : toastMsg.msg, toastMsg.action && React.createElement("button", {
+    type: "button",
+    className: "toast-btn cut",
+    onClick: () => {
+      const a = toastMsg.action;
+      clearTimeout(toastTimer.current);
+      setToastMsg(null);
+      a.run();
+    }
+  }, React.createElement(Undo2, {
+    size: 14
+  }), toastMsg.action.label)), data.settings.scanlines && React.createElement("div", {
     className: "scan"
   })));
 }

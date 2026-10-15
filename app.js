@@ -1,4 +1,4 @@
-/* CJ_BUILD 20261016-024244 */
+/* CJ_BUILD 20261016-024829 */
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
 const {
   useState,
@@ -1176,8 +1176,6 @@ textarea.inp{resize:vertical;line-height:1.5;}
 .scan{background:repeating-linear-gradient(0deg,rgba(0,0,0,.2) 0,rgba(0,0,0,.2) 1px,transparent 1px,transparent 3px);}
 .crt,.crt-on .scan{animation:flick 7s infinite steps(1);}
 .crt::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 58%,rgba(0,0,0,.5) 100%);}
-.crt::before{content:'';position:absolute;left:0;right:0;top:0;height:140px;background:linear-gradient(180deg,transparent,rgba(var(--alt-rgb),.05),transparent);animation:scanbar 8s linear infinite;}
-@keyframes scanbar{from{transform:translateY(-140px)}to{transform:translateY(100vh)}}
 @keyframes flick{0%,100%{opacity:1}43%{opacity:.82}44%{opacity:1}88%{opacity:.9}89%{opacity:1}}
 /* глитч */
 .glitch{position:relative;display:inline-block;}
@@ -6121,7 +6119,7 @@ function SettingsScreen({
       crt: v
     }),
     label: "\u042D\u0444\u0444\u0435\u043A\u0442 \u042D\u041B\u0422-\u044D\u043A\u0440\u0430\u043D\u0430",
-    hint: "\u041C\u0435\u0440\u0446\u0430\u043D\u0438\u0435, \u0437\u0430\u0442\u0435\u043C\u043D\u0435\u043D\u0438\u0435 \u043F\u043E \u043A\u0440\u0430\u044F\u043C \u0438 \u0431\u0435\u0433\u0443\u0449\u0430\u044F \u043F\u043E\u043B\u043E\u0441\u0430 \u0440\u0430\u0437\u0432\u0451\u0440\u0442\u043A\u0438. \u0412\u044B\u043A\u043B\u044E\u0447\u0438, \u0435\u0441\u043B\u0438 \u0443\u0441\u0442\u0430\u044E\u0442 \u0433\u043B\u0430\u0437\u0430"
+    hint: "\u041C\u0435\u0440\u0446\u0430\u043D\u0438\u0435 \u0438 \u0437\u0430\u0442\u0435\u043C\u043D\u0435\u043D\u0438\u0435 \u043F\u043E \u043A\u0440\u0430\u044F\u043C. \u0412\u044B\u043A\u043B\u044E\u0447\u0438, \u0435\u0441\u043B\u0438 \u0443\u0441\u0442\u0430\u044E\u0442 \u0433\u043B\u0430\u0437\u0430"
   }), React.createElement(Toggle, {
     on: s.glitch,
     onChange: v => set({

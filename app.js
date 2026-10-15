@@ -1,4 +1,4 @@
-/* CJ_BUILD 20261016-022547 */
+/* CJ_BUILD 20261016-024244 */
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
 const {
   useState,
@@ -111,9 +111,9 @@ const fmtDT = v => {
   if (isNaN(d)) return '—';
   return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} · ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
-const fmtHMS = ms => {
+const fmtTotalHMS = ms => {
   const s = Math.max(0, Math.floor(ms / 1000));
-  return `${pad(Math.floor(s / 3600) % 24)}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}`;
+  return `${pad(Math.floor(s / 3600))}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}`;
 };
 const inWindow = (now, a, b) => {
   const m = now.getHours() * 60 + now.getMinutes(),
@@ -202,18 +202,39 @@ const DEFAULT_SETTINGS = {
   },
   theme: 'classic',
   scanlines: true,
+  crt: true,
   glitch: true,
   sound: true,
+  haptics: true,
   avatar: 'preset:m',
   avatarHolo: false,
   backupDays: 7
 };
 const SFX = {
   on: true,
+  vib: true,
   ctx: null
 };
+const VIBES = {
+  click: 10,
+  tab: 8,
+  open: 12,
+  close: 8,
+  check: 22,
+  uncheck: 12,
+  score: 18,
+  save: [18, 50, 28],
+  error: [70, 50, 70]
+};
 function sfx(kind = 'click') {
-  if (!SFX.on || kind === 'none') return;
+  if (kind === 'none') return;
+  const ua = navigator.userActivation;
+  if (SFX.vib && (!ua || ua.isActive)) {
+    try {
+      if (navigator.vibrate) navigator.vibrate(VIBES[kind] || VIBES.click);
+    } catch (e) {}
+  }
+  if (!SFX.on) return;
   try {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
@@ -267,25 +288,242 @@ function sfx(kind = 'click') {
     }
   } catch (e) {}
 }
-function fileToDataURL(file, maxDim = 1000, q = 0.8) {
-  return new Promise((res, rej) => {
-    const r = new FileReader();
-    r.onerror = rej;
-    r.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        const k = Math.min(1, maxDim / Math.max(img.width, img.height));
-        const c = document.createElement('canvas');
-        c.width = Math.round(img.width * k);
-        c.height = Math.round(img.height * k);
-        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-        res(c.toDataURL('image/jpeg', q));
-      };
-      img.onerror = () => res(r.result);
-      img.src = r.result;
-    };
-    r.readAsDataURL(file);
+const IDB_NAME = 'cyberjournal2077-img';
+const isIdb = v => typeof v === 'string' && v.startsWith('idb:');
+const isInline = v => typeof v === 'string' && v.startsWith('data:image/');
+const IMG = {
+  p: null,
+  urls: new Map()
+};
+function idbOpen() {
+  if (!IMG.p) {
+    IMG.p = new Promise((res, rej) => {
+      if (!window.indexedDB) {
+        rej(new Error('no-idb'));
+        return;
+      }
+      const r = indexedDB.open(IDB_NAME, 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('img');
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    }).catch(e => {
+      IMG.p = null;
+      throw e;
+    });
+  }
+  return IMG.p;
+}
+function idbTx(mode, fn) {
+  return idbOpen().then(db => new Promise((res, rej) => {
+    const tx = db.transaction('img', mode),
+      out = {};
+    fn(tx.objectStore('img'), out);
+    tx.oncomplete = () => res(out.v);
+    tx.onerror = tx.onabort = () => rej(tx.error);
+  }));
+}
+const imgPut = entries => idbTx('readwrite', st => {
+  const at = Date.now();
+  entries.forEach(([id, blob]) => blob && st.put({
+    blob,
+    at
+  }, id));
+});
+const imgGet = id => idbTx('readonly', (st, out) => {
+  const r = st.get(id);
+  r.onsuccess = () => {
+    out.v = r.result ? r.result.blob : null;
+  };
+});
+const imgDel = ids => idbTx('readwrite', st => ids.forEach(id => st.delete(id)));
+const imgList = () => idbTx('readonly', (st, out) => {
+  out.v = [];
+  const r = st.openCursor();
+  r.onsuccess = () => {
+    const c = r.result;
+    if (!c) return;
+    out.v.push({
+      id: c.key,
+      size: c.value.blob && c.value.blob.size || 0,
+      at: c.value.at || 0
+    });
+    c.continue();
+  };
+});
+function dataURLToBlob(u) {
+  const i = u.indexOf(',');
+  const head = u.slice(5, i),
+    b64 = /;base64/i.test(head);
+  const type = head.split(';')[0] || 'application/octet-stream';
+  if (!b64) return new Blob([decodeURIComponent(u.slice(i + 1))], {
+    type
   });
+  const bin = atob(u.slice(i + 1)),
+    a = new Uint8Array(bin.length);
+  for (let k = 0; k < bin.length; k++) a[k] = bin.charCodeAt(k);
+  return new Blob([a], {
+    type
+  });
+}
+const blobToDataURL = b => new Promise((res, rej) => {
+  const r = new FileReader();
+  r.onload = () => res(r.result);
+  r.onerror = rej;
+  r.readAsDataURL(b);
+});
+function loadImage(blob) {
+  return new Promise((res, rej) => {
+    const u = URL.createObjectURL(blob),
+      img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(u);
+      res(img);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(u);
+      rej(new Error('decode'));
+    };
+    img.src = u;
+  });
+}
+function canvasBlob(img, maxDim, q) {
+  const k = Math.min(1, maxDim / Math.max(img.width, img.height));
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round(img.width * k));
+  c.height = Math.max(1, Math.round(img.height * k));
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  const enc = type => new Promise(res => c.toBlob(res, type, q));
+  return enc('image/webp').then(b => b && b.type === 'image/webp' ? b : enc('image/jpeg'));
+}
+const THUMB_DIM = 240;
+async function makeThumb(img) {
+  if (Math.max(img.width, img.height) <= THUMB_DIM * 1.5) return null;
+  try {
+    return await canvasBlob(img, THUMB_DIM, 0.75);
+  } catch (e) {
+    return null;
+  }
+}
+async function storeImageFile(file, maxDim = 1080) {
+  const img = await loadImage(file);
+  const full = await canvasBlob(img, maxDim, 0.8);
+  const id = uid('img');
+  try {
+    await imgPut([[id, full], [`${id}.t`, await makeThumb(img)]]);
+    return `idb:${id}`;
+  } catch (e) {
+    return blobToDataURL(full);
+  }
+}
+async function storeInlineImage(u) {
+  const blob = dataURLToBlob(u);
+  let thumb = null;
+  try {
+    thumb = await makeThumb(await loadImage(blob));
+  } catch (e) {}
+  const id = uid('img');
+  await imgPut([[id, blob], [`${id}.t`, thumb]]);
+  return `idb:${id}`;
+}
+async function imgURL(id, thumb) {
+  const key = thumb ? `${id}.t` : id;
+  if (IMG.urls.has(key)) return IMG.urls.get(key);
+  let blob = null;
+  try {
+    blob = await imgGet(key);
+  } catch (e) {}
+  if (!blob && thumb) return imgURL(id, false);
+  const u = blob ? URL.createObjectURL(blob) : '';
+  if (u) IMG.urls.set(key, u);
+  return u;
+}
+function useImgSrc(v, thumb = false) {
+  const id = isIdb(v) ? v.slice(4) : null;
+  const cached = id ? IMG.urls.get(thumb ? `${id}.t` : id) : null;
+  const [got, setGot] = useState(null);
+  useEffect(() => {
+    if (!id || cached) return undefined;
+    let live = true;
+    imgURL(id, thumb).then(u => {
+      if (live) setGot({
+        v,
+        u
+      });
+    });
+    return () => {
+      live = false;
+    };
+  }, [v, thumb]);
+  if (!id) return v || '';
+  return cached || (got && got.v === v ? got.u : '');
+}
+function Img({
+  src,
+  thumb,
+  ...rest
+}) {
+  const u = useImgSrc(src, thumb);
+  return u ? React.createElement("img", _extends({
+    src: u,
+    alt: ""
+  }, rest)) : React.createElement("div", _extends({}, rest, {
+    style: {
+      ...(rest.style || {}),
+      background: 'rgba(255,255,255,.04)'
+    }
+  }));
+}
+function mapImages(d, fn) {
+  const m = v => {
+    if (!v) return v;
+    const r = fn(v);
+    return r === undefined ? v : r;
+  };
+  const avatar = d.settings.avatar;
+  return {
+    ...d,
+    missions: d.missions.map(x => x.image ? {
+      ...x,
+      image: m(x.image)
+    } : x),
+    shards: d.shards.map(x => x.image ? {
+      ...x,
+      image: m(x.image)
+    } : x),
+    cards: d.cards.map(x => String(x.icon).startsWith('url:') ? {
+      ...x,
+      icon: `url:${m(x.icon.slice(4))}`
+    } : x),
+    timers: d.timers.map(x => x.bgUrl ? {
+      ...x,
+      bgUrl: m(x.bgUrl)
+    } : x),
+    settings: avatar && !String(avatar).startsWith('preset:') ? {
+      ...d.settings,
+      avatar: m(avatar)
+    } : d.settings
+  };
+}
+const listImages = d => {
+  const out = [];
+  mapImages(d, v => {
+    out.push(v);
+  });
+  return out;
+};
+async function collectImages(d) {
+  const ids = [...new Set(listImages(d).filter(isIdb).map(v => v.slice(4)))];
+  const out = {};
+  for (const id of ids) {
+    for (const key of [id, `${id}.t`]) {
+      let b = null;
+      try {
+        b = await imgGet(key);
+      } catch (e) {}
+      if (b) out[key] = await blobToDataURL(b);
+    }
+  }
+  return out;
 }
 function demoMapImage() {
   const R = rng(2077);
@@ -371,6 +609,7 @@ function normalize(d) {
       ...(d && d.settings && d.settings.thr || {})
     }
   };
+  if (typeof (d && d.settings && d.settings.crt) !== 'boolean') out.settings.crt = out.settings.scanlines !== false;
   out.meta = {
     ...base.meta,
     ...(d && d.meta || {})
@@ -817,12 +1056,19 @@ async function saveFile(filename, text) {
     return 'error';
   }
 }
-const exportBackup = data => saveFile(`cyberjournal-backup-${dKey(new Date())}.json`, JSON.stringify({
-  app: 'cyberjournal2077',
-  version: APP_VERSION,
-  exportedAt: new Date().toISOString(),
-  data
-}, null, 2));
+const exportBackup = async data => {
+  let images = {};
+  try {
+    images = await collectImages(data);
+  } catch (e) {}
+  return saveFile(`cyberjournal-backup-${dKey(new Date())}.json`, JSON.stringify({
+    app: 'cyberjournal2077',
+    version: APP_VERSION,
+    exportedAt: new Date().toISOString(),
+    data,
+    images
+  }, null, 2));
+};
 const hasContent = d => d.missions.length + d.shards.length + d.timers.length + Object.keys(d.ratings).length > 0;
 const daysSince = iso => {
   const t = Date.parse(iso);
@@ -926,9 +1172,11 @@ textarea.inp{resize:vertical;line-height:1.5;}
 .toast-btn{flex-shrink:0;display:inline-flex;align-items:center;gap:5px;--cut:6px;padding:7px 10px;background:var(--warn);color:#0a0a0f;font:inherit;font-size:12px;letter-spacing:.08em;text-transform:uppercase;}
 @keyframes toastin{0%{opacity:0;transform:translate(-50%,10px)}30%{opacity:1;transform:translate(calc(-50% + 3px),0)}45%{transform:translate(calc(-50% - 3px),0)}60%{transform:translate(-50%,0)}}
 /* сканлайны / ЭЛТ */
-.scan{position:fixed;inset:0;pointer-events:none;z-index:250;background:repeating-linear-gradient(0deg,rgba(0,0,0,.2) 0,rgba(0,0,0,.2) 1px,transparent 1px,transparent 3px);animation:flick 7s infinite steps(1);}
-.scan::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 58%,rgba(0,0,0,.5) 100%);}
-.scan::before{content:'';position:absolute;left:0;right:0;top:0;height:140px;background:linear-gradient(180deg,transparent,rgba(var(--alt-rgb),.05),transparent);animation:scanbar 8s linear infinite;}
+.scan,.crt{position:fixed;inset:0;pointer-events:none;z-index:250;}
+.scan{background:repeating-linear-gradient(0deg,rgba(0,0,0,.2) 0,rgba(0,0,0,.2) 1px,transparent 1px,transparent 3px);}
+.crt,.crt-on .scan{animation:flick 7s infinite steps(1);}
+.crt::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 58%,rgba(0,0,0,.5) 100%);}
+.crt::before{content:'';position:absolute;left:0;right:0;top:0;height:140px;background:linear-gradient(180deg,transparent,rgba(var(--alt-rgb),.05),transparent);animation:scanbar 8s linear infinite;}
 @keyframes scanbar{from{transform:translateY(-140px)}to{transform:translateY(100vh)}}
 @keyframes flick{0%,100%{opacity:1}43%{opacity:.82}44%{opacity:1}88%{opacity:.9}89%{opacity:1}}
 /* глитч */
@@ -1395,20 +1643,20 @@ function NeonScroll({
 function ImageInput({
   value,
   onChange,
-  maxDim = 1000,
+  maxDim = 1080,
   noPreview
 }) {
   const fileRef = useRef(null);
   const {
     toast
   } = useApp();
-  const [url, setUrl] = useState(value && !String(value).startsWith('data:') ? value : '');
+  const [url, setUrl] = useState(value && !isInline(value) && !isIdb(value) ? value : '');
+  const [busy, setBusy] = useState(false);
   return React.createElement("div", null, value && !noPreview && React.createElement("div", {
     className: "relative mb-2"
-  }, React.createElement("img", {
+  }, React.createElement(Img, {
     src: value,
-    alt: "",
-    className: "w-full max-h-48 object-cover",
+    className: "w-full max-h-48 min-h-[96px] object-cover",
     style: {
       boxShadow: 'inset 0 0 0 1px rgba(255,255,255,.2)'
     }
@@ -1441,8 +1689,9 @@ function ImageInput({
     variant: "dark",
     className: "mt-2 w-full",
     icon: Upload,
+    disabled: busy,
     onClick: () => fileRef.current && fileRef.current.click()
-  }, "\u0417\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044C \u0441 \u0443\u0441\u0442\u0440\u043E\u0439\u0441\u0442\u0432\u0430"), React.createElement("input", {
+  }, busy ? 'Сжатие…' : 'Загрузить с устройства'), React.createElement("input", {
     ref: fileRef,
     type: "file",
     accept: "image/*",
@@ -1450,11 +1699,13 @@ function ImageInput({
     onChange: async e => {
       const f = e.target.files && e.target.files[0];
       if (!f) return;
+      setBusy(true);
       try {
-        onChange(await fileToDataURL(f, maxDim));
+        onChange(await storeImageFile(f, maxDim));
       } catch (err) {
         toast('Не удалось прочитать файл');
       }
+      setBusy(false);
       e.target.value = '';
     }
   }));
@@ -1869,6 +2120,7 @@ function Sticker({
   const key = icon.startsWith('st:') ? icon.slice(3) : null;
   const glyph = key && ICONS[key] ? ICONS[key][1] : null;
   const k = shape === 'diamond' ? 0.95 : shape === 'shield' ? 1.08 : 1.2;
+  const pic = useImgSrc(icon.startsWith('url:') ? icon.slice(4) : '', mini);
   return React.createElement("svg", {
     viewBox: "0 0 64 64",
     width: size,
@@ -1916,8 +2168,8 @@ function Sticker({
     width: "64",
     height: "64",
     fill: `url(#${id}g)`
-  }), icon.startsWith('url:') && React.createElement("image", {
-    href: icon.slice(4),
+  }), pic && React.createElement("image", {
+    href: pic,
     x: "0",
     y: "0",
     width: "64",
@@ -2301,9 +2553,9 @@ function AvatarSlot({
       '--cut': `${Math.round(size / 6) - 2}px`,
       background: 'radial-gradient(circle at 50% 35%,rgba(var(--main-rgb),.22),#08070c 70%)'
     }
-  }, img ? React.createElement("img", {
+  }, img ? React.createElement(Img, {
     src: avatar,
-    alt: "",
+    thumb: size <= 120,
     className: "w-full h-full object-cover block"
   }) : React.createElement("div", {
     className: "w-full h-full",
@@ -2784,9 +3036,8 @@ function MissionDetail({
       background: 'rgba(var(--main-rgb),.5)',
       padding: 1
     }
-  }, React.createElement("img", {
+  }, React.createElement(Img, {
     src: m.image,
-    alt: "",
     className: "w-full h-44 object-cover block cut",
     style: {
       '--cut': '13px'
@@ -3183,9 +3434,10 @@ function ShardItem({
     color: "rgba(var(--main-rgb),.4)"
   }, React.createElement("div", {
     className: "p-3 flex gap-3"
-  }, s.image && React.createElement("img", {
+  }, s.image && React.createElement(Img, {
     src: s.image,
-    alt: "",
+    thumb: true,
+    loading: "lazy",
     className: "w-14 h-14 object-cover shrink-0 cut",
     style: {
       '--cut': '6px'
@@ -3247,10 +3499,9 @@ function ShardReader({
     style: {
       color: 'rgba(var(--alt-rgb),.6)'
     }
-  }, "\u0421\u041E\u0417\u0414\u0410\u041D\u041E: ", fmtDT(s.createdAt), s.updatedAt && s.updatedAt !== s.createdAt ? ` · ИЗМЕНЕНО: ${fmtDT(s.updatedAt)}` : ''), s.image && React.createElement("img", {
+  }, "\u0421\u041E\u0417\u0414\u0410\u041D\u041E: ", fmtDT(s.createdAt), s.updatedAt && s.updatedAt !== s.createdAt ? ` · ИЗМЕНЕНО: ${fmtDT(s.updatedAt)}` : ''), s.image && React.createElement(Img, {
     src: s.image,
-    alt: "",
-    className: "w-full mb-4 cut",
+    className: "w-full min-h-[120px] mb-4 cut",
     style: {
       '--cut': '14px'
     }
@@ -5058,9 +5309,8 @@ function TimerBg({
       background: preset[2]
     }
   });
-  if (t.bg === 'custom' && t.bgUrl) return React.createElement(React.Fragment, null, React.createElement("img", {
+  if (t.bg === 'custom' && t.bgUrl) return React.createElement(React.Fragment, null, React.createElement(Img, {
     src: t.bgUrl,
-    alt: "",
     className: "absolute inset-0 w-full h-full object-cover"
   }), React.createElement("div", {
     className: "absolute inset-0 bg-black/40"
@@ -5080,7 +5330,8 @@ function timerState(t, now) {
     const prev = [0, ...MILESTONES].filter(m => m <= days).pop();
     return {
       days,
-      hms: fmtHMS(diff - days * 864e5),
+      hms: fmtTotalHMS(diff),
+      cap: 'ВСЕГО ПРОШЛО · Ч:М:С',
       pct: clamp((daysF - prev) / (next - prev), 0, 1),
       l2: 'SINCE',
       left: `${prev} ДН.`,
@@ -5097,11 +5348,12 @@ function timerState(t, now) {
   const sh = x => `${pad(x.getDate())}.${pad(x.getMonth() + 1)}.${String(x.getFullYear()).slice(2)}`;
   return {
     days,
-    hms: fmtHMS(d - days * 864e5),
+    hms: fmtTotalHMS(d),
+    cap: 'ВСЕГО ОСТАЛОСЬ · Ч:М:С',
     pct: clamp((now - start) / span, 0, 1),
     l2: done ? 'DONE' : 'TO GO',
     left: sh(start),
-    right: sh(target),
+    right: `${sh(target)} ${pad(target.getHours())}:${pad(target.getMinutes())}`,
     done
   };
 }
@@ -5191,7 +5443,12 @@ function TimerCard({
       '--cut': '6px',
       color: st.done ? accent : '#fff'
     }
-  }, st.done ? 'COMPLETE' : st.hms)), React.createElement("div", {
+  }, st.done ? 'COMPLETE' : st.hms), !st.done && React.createElement("div", {
+    className: "micro mt-1.5",
+    style: {
+      color: 'rgba(255,255,255,.55)'
+    }
+  }, st.cap)), React.createElement("div", {
     className: "absolute left-5 right-5 bottom-6 z-10"
   }, React.createElement("div", {
     className: "flex justify-between items-end f-mono text-[10px] tracking-widest text-white/75 mb-1.5"
@@ -5562,6 +5819,13 @@ function SettingsScreen({
   useEffect(() => {
     storagePersisted(false).then(setPersisted);
   }, []);
+  const [photoStat, setPhotoStat] = useState(null);
+  useEffect(() => {
+    imgList().then(rs => setPhotoStat({
+      n: rs.filter(r => !String(r.id).endsWith('.t')).length,
+      mb: rs.reduce((a, r) => a + r.size, 0) / 1048576
+    })).catch(() => setPhotoStat(null));
+  }, [data]);
   const s = data.settings;
   const set = p => up('settings', x => ({
     ...x,
@@ -5606,18 +5870,27 @@ function SettingsScreen({
       const j = JSON.parse(await f.text());
       const d = j && j.data ? j.data : j;
       if (!d || typeof d !== 'object' || !(Array.isArray(d.missions) || Array.isArray(d.cards) || Array.isArray(d.shards))) throw new Error('bad');
-      const nd = normalize(d);
+      let nd = normalize(d);
+      const imgs = j && j.images && typeof j.images === 'object' ? Object.entries(j.images).filter(([, v]) => isInline(v)) : [];
+      const photos = imgs.filter(([k]) => !k.endsWith('.t')).length + listImages(nd).filter(isInline).length;
       const ok = await ask({
         title: 'Импорт данных',
         code: 'SYS // RESTORE',
-        text: `Файл: ${f.name}\nМиссий: ${nd.missions.length} · чипов: ${nd.shards.length} · оценённых дней: ${Object.keys(nd.ratings).length} · таймеров: ${nd.timers.length}\n\nТекущие данные будут заменены.`,
+        text: `Файл: ${f.name}\nМиссий: ${nd.missions.length} · чипов: ${nd.shards.length} · оценённых дней: ${Object.keys(nd.ratings).length} · таймеров: ${nd.timers.length} · фото: ${photos}\n\nТекущие данные будут заменены.`,
         ok: 'Восстановить',
         danger: true
       });
-      if (ok === true) {
-        undoable('Данные восстановлены', null, () => replaceAll(nd));
-        sfx('save');
+      if (ok !== true) return;
+      if (imgs.length) {
+        try {
+          await imgPut(imgs.map(([k, v]) => [k, dataURLToBlob(v)]));
+        } catch (e) {
+          const all = Object.fromEntries(imgs);
+          nd = mapImages(nd, v => isIdb(v) && all[v.slice(4)] ? all[v.slice(4)] : undefined);
+        }
       }
+      undoable('Данные восстановлены', null, () => replaceAll(nd));
+      sfx('save');
     } catch (e) {
       sfx('error');
       toast('Ошибка: неверный файл бэкапа');
@@ -5840,8 +6113,15 @@ function SettingsScreen({
     onChange: v => set({
       scanlines: v
     }),
-    label: "\u042D\u0444\u0444\u0435\u043A\u0442 \u0441\u043A\u0430\u043D\u043B\u0430\u0439\u043D\u043E\u0432 \u0438 \u042D\u041B\u0422-\u044D\u043A\u0440\u0430\u043D\u0430",
-    hint: "\u041F\u043E\u043B\u043E\u0441\u044B \u043C\u043E\u043D\u0438\u0442\u043E\u0440\u0430, \u043C\u0435\u0440\u0446\u0430\u043D\u0438\u0435 \u0438 \u0432\u0438\u043D\u044C\u0435\u0442\u043A\u0430. \u0412\u044B\u043A\u043B\u044E\u0447\u0438, \u0435\u0441\u043B\u0438 \u0443\u0441\u0442\u0430\u044E\u0442 \u0433\u043B\u0430\u0437\u0430"
+    label: "\u0421\u043A\u0430\u043D\u043B\u0430\u0439\u043D\u044B",
+    hint: "\u0422\u043E\u043D\u043A\u0438\u0435 \u0433\u043E\u0440\u0438\u0437\u043E\u043D\u0442\u0430\u043B\u044C\u043D\u044B\u0435 \u043F\u043E\u043B\u043E\u0441\u044B \u043C\u043E\u043D\u0438\u0442\u043E\u0440\u0430 \u043F\u043E\u0432\u0435\u0440\u0445 \u044D\u043A\u0440\u0430\u043D\u0430"
+  }), React.createElement(Toggle, {
+    on: s.crt,
+    onChange: v => set({
+      crt: v
+    }),
+    label: "\u042D\u0444\u0444\u0435\u043A\u0442 \u042D\u041B\u0422-\u044D\u043A\u0440\u0430\u043D\u0430",
+    hint: "\u041C\u0435\u0440\u0446\u0430\u043D\u0438\u0435, \u0437\u0430\u0442\u0435\u043C\u043D\u0435\u043D\u0438\u0435 \u043F\u043E \u043A\u0440\u0430\u044F\u043C \u0438 \u0431\u0435\u0433\u0443\u0449\u0430\u044F \u043F\u043E\u043B\u043E\u0441\u0430 \u0440\u0430\u0437\u0432\u0451\u0440\u0442\u043A\u0438. \u0412\u044B\u043A\u043B\u044E\u0447\u0438, \u0435\u0441\u043B\u0438 \u0443\u0441\u0442\u0430\u044E\u0442 \u0433\u043B\u0430\u0437\u0430"
   }), React.createElement(Toggle, {
     on: s.glitch,
     onChange: v => set({
@@ -5866,7 +6146,20 @@ function SettingsScreen({
     className: "mt-1",
     onClick: () => setTimeout(() => sfx('save'), 60),
     snd: "check"
-  }, "\u041F\u0440\u043E\u0432\u0435\u0440\u0438\u0442\u044C \u0437\u0432\u0443\u043A")), React.createElement(SetBlock, {
+  }, "\u041F\u0440\u043E\u0432\u0435\u0440\u0438\u0442\u044C \u0437\u0432\u0443\u043A"), React.createElement("div", {
+    className: "mt-1"
+  }, React.createElement(Toggle, {
+    on: s.haptics,
+    onChange: v => {
+      SFX.vib = v;
+      set({
+        haptics: v
+      });
+      if (v) sfx('save');
+    },
+    label: "\u0412\u0438\u0431\u0440\u0430\u0446\u0438\u044F",
+    hint: "\u041A\u043E\u0440\u043E\u0442\u043A\u0438\u0439 \u043E\u0442\u043A\u043B\u0438\u043A \u043D\u0430 \u043D\u0430\u0436\u0430\u0442\u0438\u044F, \u043E\u0446\u0435\u043D\u043A\u0438 \u0438 \u043E\u0442\u043C\u0435\u0442\u043A\u0438 \u0446\u0435\u043B\u0435\u0439 (Android)"
+  }))), React.createElement(SetBlock, {
     n: "03",
     title: "\u0421\u043F\u0440\u0430\u0432\u043E\u0447\u043D\u0438\u043A\u0438",
     icon: Layers
@@ -5993,7 +6286,12 @@ function SettingsScreen({
       setPersisted(p);
       toast(p ? 'Защита включена' : 'Браузер пока отказал');
     }
-  }, "\u0417\u0430\u043F\u0440\u043E\u0441\u0438\u0442\u044C")), (() => {
+  }, "\u0417\u0430\u043F\u0440\u043E\u0441\u0438\u0442\u044C")), photoStat && React.createElement("div", {
+    className: "f-mono text-[11px] tracking-wider mb-1",
+    style: {
+      color: 'rgba(var(--alt-rgb),.85)'
+    }
+  }, "\u25CF \u0424\u041E\u0422\u041E: ", photoStat.n, " \xB7 ", photoStat.mb < 0.1 ? '<0.1' : photoStat.mb.toFixed(1), " \u041C\u0411 \xB7 \u041E\u0422\u0414\u0415\u041B\u042C\u041D\u041E\u0415 \u0425\u0420\u0410\u041D\u0418\u041B\u0418\u0429\u0415"), (() => {
     const last = data.meta.lastBackupAt,
       age = daysSince(last);
     const fresh = last && (!s.backupDays || age < s.backupDays);
@@ -6107,6 +6405,7 @@ function App() {
   });
   const toastTimer = useRef(null);
   SFX.on = !!data.settings.sound;
+  SFX.vib = !!data.settings.haptics;
   const th = THEMES[data.settings.theme] || THEMES.classic;
   const setTab = t => {
     if (t === tab) return;
@@ -6276,6 +6575,39 @@ function App() {
     }, 250);
     return () => clearTimeout(t);
   }, [data, toast, cloudSave]);
+  const migrating = useRef(false);
+  useEffect(() => {
+    if (migrating.current || IMG.broken) return;
+    const inline = [...new Set(listImages(data).filter(isInline))];
+    if (!inline.length) return;
+    migrating.current = true;
+    (async () => {
+      const map = new Map();
+      for (const u of inline) {
+        try {
+          map.set(u, await storeInlineImage(u));
+        } catch (e) {
+          IMG.broken = true;
+          break;
+        }
+      }
+      if (map.size) setData(d => mapImages(d, v => map.get(v)));
+      migrating.current = false;
+    })();
+  }, [data]);
+  const bootData = useRef(data);
+  useEffect(() => {
+    const t = setTimeout(async () => {
+      if (migrating.current) return;
+      try {
+        const used = new Set([...listImages(bootData.current), ...listImages(dataRef.current)].filter(isIdb).map(v => v.slice(4)));
+        const old = Date.now() - 3 * 864e5;
+        const dead = (await imgList()).filter(r => !used.has(String(r.id).replace(/\.t$/, '')) && r.at < old).map(r => r.id);
+        if (dead.length) await imgDel(dead);
+      } catch (e) {}
+    }, 8000);
+    return () => clearTimeout(t);
+  }, []);
   useEffect(() => {
     document.body.style.background = th.bg2;
     document.documentElement.style.background = th.bg2;
@@ -6450,7 +6782,7 @@ function App() {
   return React.createElement(AppCtx.Provider, {
     value: ctx
   }, React.createElement("div", {
-    className: `cj-root ${data.settings.glitch ? 'fx-glitch' : ''}`,
+    className: `cj-root ${data.settings.glitch ? 'fx-glitch' : ''} ${data.settings.crt ? 'crt-on' : ''}`,
     style: vars
   }, React.createElement("style", null, CSS), React.createElement("div", {
     className: "mx-auto max-w-[480px] h-full flex flex-col relative"
@@ -6504,7 +6836,9 @@ function App() {
     }
   }, React.createElement(Undo2, {
     size: 14
-  }), toastMsg.action.label)), data.settings.scanlines && React.createElement("div", {
+  }), toastMsg.action.label)), data.settings.crt && React.createElement("div", {
+    className: "crt"
+  }), data.settings.scanlines && React.createElement("div", {
     className: "scan"
   })));
 }

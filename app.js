@@ -1,4 +1,4 @@
-/* CJ_BUILD 20261016-105046 */
+/* CJ_BUILD 20261016-151748 */
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
 const {
   useState,
@@ -47,10 +47,24 @@ const {
   Layers,
   CalendarDays,
   Tag,
-  Undo2
+  Undo2,
+  ListChecks,
+  Timer,
+  Settings,
+  ChevronDown,
+  Archive,
+  Flag,
+  FileText
 } = LucideReact;
-const LS_KEY = 'cyberjournal2077.v1';
+const BETA = typeof window !== 'undefined' && !!window.CJ_BETA;
+const MAIN_KEY = 'cyberjournal2077.v1';
+const LS_KEY = BETA ? 'cyberjournal2077.beta' : MAIN_KEY;
 const APP_VERSION = '1.0.0';
+const UI = {
+  mono: false
+};
+const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : s;
+const nice = s => UI.mono && s && s === s.toUpperCase() ? cap(s) : s;
 const uid = (p = 'id') => `${p}_${Math.random().toString(36).slice(2, 8)}${Date.now().toString(36).slice(-4)}`;
 const pad = n => String(n).padStart(2, '0');
 const dKey = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -191,6 +205,40 @@ const THEMES = {
     sel: ['#9E0C1F', '#E8112D']
   }
 };
+const MONO_ACCENTS = [{
+  id: 'lime',
+  name: 'Лайм',
+  c: '#B8FF00'
+}, {
+  id: 'mint',
+  name: 'Мята',
+  c: '#3DDC97'
+}, {
+  id: 'sky',
+  name: 'Небо',
+  c: '#4CB3FF'
+}, {
+  id: 'sun',
+  name: 'Солнце',
+  c: '#FFC83D'
+}, {
+  id: 'coral',
+  name: 'Коралл',
+  c: '#FF6B57'
+}, {
+  id: 'violet',
+  name: 'Фиалка',
+  c: '#A98BFF'
+}];
+const UI_STYLES = [{
+  id: 'cyber',
+  name: 'Cyberpunk',
+  sub: 'Неон, рамки, глитч'
+}, {
+  id: 'mono',
+  name: 'Моно',
+  sub: 'Чёрный, скругления, стикеры'
+}];
 const DEFAULT_SETTINGS = {
   winStart: '21:00',
   winEnd: '23:59',
@@ -201,6 +249,8 @@ const DEFAULT_SETTINGS = {
     l: 3.5,
     y: 2.5
   },
+  ui: 'cyber',
+  monoAccent: 'lime',
   theme: 'classic',
   scanlines: true,
   crt: true,
@@ -214,6 +264,7 @@ const DEFAULT_SETTINGS = {
 const SFX = {
   on: true,
   vib: true,
+  soft: false,
   ctx: null
 };
 const VIBES = {
@@ -256,6 +307,40 @@ function sfx(kind = 'click') {
       o.start(t + delay);
       o.stop(t + delay + dur + 0.03);
     };
+    if (SFX.soft) {
+      switch (kind) {
+        case 'check':
+          tone(660, 990, 0.07, 'sine', 0.06);
+          tone(990, 1320, 0.08, 'sine', 0.05, 0.06);
+          break;
+        case 'uncheck':
+          tone(700, 440, 0.08, 'sine', 0.05);
+          break;
+        case 'open':
+          tone(440, 660, 0.09, 'sine', 0.045);
+          break;
+        case 'close':
+          tone(660, 440, 0.08, 'sine', 0.04);
+          break;
+        case 'save':
+          tone(523, 523, 0.08, 'sine', 0.06);
+          tone(659, 659, 0.08, 'sine', 0.06, 0.08);
+          tone(784, 784, 0.13, 'sine', 0.06, 0.16);
+          break;
+        case 'error':
+          tone(320, 200, 0.18, 'triangle', 0.06);
+          break;
+        case 'tab':
+          tone(880, 880, 0.035, 'sine', 0.045);
+          break;
+        case 'score':
+          tone(740, 1000, 0.06, 'sine', 0.06);
+          break;
+        default:
+          tone(1180, 1180, 0.03, 'sine', 0.045);
+      }
+      return;
+    }
     switch (kind) {
       case 'check':
         tone(900, 1800, 0.05, 'square', 0.035);
@@ -1005,6 +1090,17 @@ function loadState() {
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (raw) return normalize(JSON.parse(raw));
+    if (BETA) {
+      const main = localStorage.getItem(MAIN_KEY);
+      const d = main ? normalize(JSON.parse(main)) : makeDemo();
+      return {
+        ...d,
+        settings: {
+          ...d.settings,
+          ui: 'mono'
+        }
+      };
+    }
   } catch (e) {}
   return makeDemo();
 }
@@ -1267,6 +1363,103 @@ textarea.inp{resize:vertical;line-height:1.5;}
 .term-bg{background-image:linear-gradient(rgba(var(--main-rgb),.05) 1px,transparent 1px),linear-gradient(90deg,rgba(var(--main-rgb),.05) 1px,transparent 1px);background-size:22px 22px;}
 .stat-cell{padding:10px;box-shadow:inset 0 0 0 1px rgba(var(--alt-rgb),.22);background:rgba(var(--alt-rgb),.04);--cut:8px;}
 `;
+const MONO_CSS = `
+.cj-root.ui-mono{font-family:'Inter',system-ui,sans-serif;color:#F2F2F7;background:#000;}
+.ui-mono input,.ui-mono textarea,.ui-mono select{font-family:'Inter',system-ui,sans-serif;}
+.ui-mono .f-mono,.ui-mono .f-read,.ui-mono .f-disp{font-family:'Inter',system-ui,sans-serif;font-variant-numeric:tabular-nums;}
+.ui-mono .mx-col{font-family:'Share Tech Mono',monospace;}
+.ui-mono .f-orb,.ui-mono .st-score{font-family:'Unbounded','Inter',sans-serif;font-weight:700;letter-spacing:-.01em;}
+.ui-mono .uppercase{text-transform:none;}
+.ui-mono [class*="tracking-"]{letter-spacing:0;}
+.ui-mono .deco{display:none!important;}
+.ui-mono .cut,.ui-mono .cut-tr,.ui-mono .cut-br{clip-path:none;border-radius:12px;}
+.ui-mono div[style*="inset 0 0 0 1px"]{border-radius:14px;}
+.ui-mono .frame{background:var(--fc,rgba(255,255,255,.07));border-radius:var(--r,20px);}
+.ui-mono .frame-in{background:var(--fb,#111113);border-radius:calc(var(--r,20px) - 1px);}
+.ui-mono .micro{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:.03em;color:#8E8E93;}
+.ui-mono .lbl{font-family:'Inter',sans-serif;font-size:13px;font-weight:500;letter-spacing:0;text-transform:none;color:#8E8E93;margin-bottom:7px;}
+.ui-mono .h1{font-family:'Inter',sans-serif;font-weight:700;font-size:30px;letter-spacing:-.02em;text-transform:none;color:#fff;text-shadow:none;}
+.ui-mono .txt-main{color:#F2F2F7;}
+.ui-mono .glow-main,.ui-mono .glow-alt{text-shadow:none;}
+.ui-mono .txt-alt.glow-alt{color:#F2F2F7;}
+.ui-mono .sec-title{font-size:19px;font-weight:700;letter-spacing:-.01em;text-transform:none;color:#fff;text-shadow:none;line-height:1.2;}
+.ui-mono .m-title{font-size:16.5px;font-weight:600;letter-spacing:-.01em;text-transform:none;color:#fff;text-shadow:none;line-height:1.25;}
+.ui-mono .m-status{font-size:12.5px;font-weight:600;letter-spacing:0;text-transform:none;margin-top:4px;}
+.ui-mono .desc{color:#C7C7CC;filter:none;font-family:'Inter',sans-serif;font-size:15.5px;line-height:1.6;}
+.ui-mono .inp{background:#1C1C1E;border:1px solid transparent;border-radius:12px;color:#fff;padding:11px 13px;}
+.ui-mono .inp::placeholder{color:#636366;}
+.ui-mono .inp:focus{border-color:var(--alt);box-shadow:none;}
+.ui-mono .btn{border-radius:14px;font-weight:600;font-size:15px;letter-spacing:-.005em;text-transform:none;box-shadow:none;padding:13px 18px;}
+.ui-mono .btn-sm{border-radius:12px;font-size:13.5px;padding:10px 13px;}
+.ui-mono .btn:active{transform:scale(.97);filter:brightness(1.12);}
+.ui-mono .icon-btn{border-radius:50%;background:rgba(255,255,255,.1);color:#E5E5EA;box-shadow:none;}
+.ui-mono .icon-btn.red{background:rgba(255,69,58,.15);color:#FF6961;box-shadow:none;}
+.ui-mono .tg{width:50px;height:30px;border-radius:15px;background:#39393D;box-shadow:none;}
+.ui-mono .tg>i{top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.35);}
+.ui-mono .tg.on{background:var(--alt);box-shadow:none;}
+.ui-mono .tg.on>i{left:23px;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.35);}
+.ui-mono .seg{background:#1C1C1E;box-shadow:none;border-radius:13px;}
+.ui-mono .seg-b{border-radius:10px;text-transform:none;letter-spacing:0;font-weight:600;font-size:14px;color:#8E8E93;}
+.ui-mono .seg-b.on{background:#3A3A3C;color:#fff;}
+.ui-mono .modal-bg{background:rgba(0,0,0,.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}
+.ui-mono .modal-panel{background:#0E0E10;border-top:0;border-radius:24px 24px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.6);}
+.ui-mono .modal-head{border-bottom:0;padding:18px 16px 8px;align-items:center;}
+.ui-mono .modal-title{font-weight:700;font-size:22px;letter-spacing:-.01em;text-transform:none;color:#fff;text-shadow:none;margin-top:0;}
+.ui-mono .modal-foot{border-top:1px solid #1C1C1E;background:#0E0E10;}
+.ui-mono .dlg-in{animation:mdlg .2s ease-out;}
+@keyframes mdlg{from{transform:scale(.96);opacity:0}to{transform:none;opacity:1}}
+.ui-mono .sheet-item{font-weight:500;letter-spacing:0;border-bottom-color:#2C2C2E;}
+.ui-mono .sheet-item:active{background:rgba(255,255,255,.06);}
+.ui-mono .toast{border-radius:999px;background:rgba(242,242,247,.97);color:#000;box-shadow:0 8px 30px rgba(0,0,0,.55);font-weight:600;letter-spacing:0;text-transform:none;font-size:14px;animation:mtoast .25s ease-out;}
+.ui-mono .toast-btn{border-radius:999px;background:#000;color:var(--alt);text-transform:none;letter-spacing:0;font-size:13px;}
+@keyframes mtoast{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
+.ui-mono .alert-tag{clip-path:none;border-radius:50%;width:20px;height:20px;left:-6px;top:-6px;font-size:13px;box-shadow:0 0 0 3px #000;}
+.ui-mono .new-tag{font-weight:700;font-size:10px;border:0;background:var(--alt);color:#000;border-radius:999px;padding:2px 7px;letter-spacing:.02em;}
+.ui-mono .done-stamp{font-family:'Inter',sans-serif;font-weight:700;font-size:10px;letter-spacing:.02em;box-shadow:none;background:rgba(var(--alt-rgb),.16);border-radius:999px;padding:3px 8px;}
+.ui-mono .step-box{border-radius:8px;border:1.5px solid #48484A;}
+.ui-mono .step-box.cur{background:var(--warn);border-color:var(--warn);color:#000;}
+.ui-mono .step-box.done{background:var(--alt);border-color:var(--alt);color:#000;}
+.ui-mono .neon-track{background:transparent;}
+.ui-mono .neon-thumb{background:#48484A;box-shadow:none;border-radius:3px;}
+.ui-mono .holo img{filter:none;}
+.ui-mono .holo::after{display:none;}
+.ui-mono .tag{border-radius:999px;box-shadow:none;background:rgba(255,255,255,.08);font-family:'Inter',sans-serif;font-weight:600;letter-spacing:0;padding:5px 10px;}
+.ui-mono .tag.on{background:var(--tc);color:#000;}
+.ui-mono .plus-btn{border-radius:50%;background:var(--alt);color:#000;}
+.ui-mono .nav{background:rgba(0,0,0,.94);border-top:1px solid #1C1C1E;box-shadow:none;}
+.ui-mono .nav-b{color:#8E8E93;padding:9px 2px 8px;gap:4px;}
+.ui-mono .nav-b .nl{font-size:11px;font-weight:600;letter-spacing:0;}
+.ui-mono .nav-b.on{color:var(--alt);text-shadow:none;}
+.ui-mono .nav-b.on::before{display:none;}
+.ui-mono .nav-b.on svg{filter:none;}
+.ui-mono .seg-bar i{transform:none;border-radius:3px;height:6px;background:#2C2C2E;}
+.ui-mono .day-sel{border-radius:50%;background:rgba(255,255,255,.1);box-shadow:none;inset:2px;}
+.ui-mono .day-today{border:0;width:5px;height:5px;border-radius:50%;background:var(--alt);margin-left:-2.5px;bottom:-4px;filter:none;}
+.ui-mono .day-n{font-family:'Unbounded','Inter',sans-serif;font-size:12px;font-weight:500;}
+.ui-mono .wd-chip{border-radius:10px;box-shadow:none;background:#1C1C1E;color:#8E8E93;}
+.ui-mono .wd-chip.on{background:var(--alt);color:#000;}
+.ui-mono .thumb{border-radius:12px;box-shadow:none;opacity:.45;}
+.ui-mono .thumb.on{box-shadow:0 0 0 2px var(--alt);opacity:1;}
+.ui-mono .sw{border-radius:50%;}
+.ui-mono .tk-hms{border-radius:999px;box-shadow:none;background:rgba(0,0,0,.3);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);font-family:'Inter',sans-serif;font-weight:600;letter-spacing:.04em;font-size:22px;padding:6px 18px;font-variant-numeric:tabular-nums;}
+.ui-mono .tk-sub{font-family:'Inter',sans-serif;font-weight:600;letter-spacing:.08em;}
+.ui-mono .set-head{background:none;border-bottom:0;padding:16px 16px 2px;}
+.ui-mono .set-n{display:none;}
+.ui-mono .set-t{font-size:17px;font-weight:700;letter-spacing:-.01em;text-transform:none;color:#fff;}
+.ui-mono .set-head svg{color:var(--alt);}
+.ui-mono .term-bg{background-image:none;}
+.ui-mono .stat-cell{background:#1C1C1E;box-shadow:none;border-radius:14px;}
+.mono-card{position:relative;border-radius:30px;overflow:hidden;}
+.mono-score{display:flex;align-items:baseline;justify-content:center;gap:7px;width:min(80%,300px);padding:14px 16px;border-radius:22px;background:rgba(17,17,19,.92);box-shadow:inset 0 0 0 1px #2A2A2D;}
+.mono-crit{display:grid;grid-template-columns:76px 1fr;align-items:center;gap:8px;padding:13px 0;border-bottom:1px solid #2C2C2E;text-align:center;}
+.mono-crit.head{border-bottom:0;padding:0 0 6px;font-size:16px;font-weight:500;color:#fff;}
+.mono-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.mono-row{background:#111113;border-radius:18px;}
+.mono-pill{min-width:26px;padding:3px 8px;border-radius:999px;background:#2C2C2E;color:#fff;font-weight:600;font-size:12px;text-align:center;}
+.mono-rail{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.3);color:#fff;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);}
+.mono-rail:active{transform:scale(.94);}
+.mono-blob{position:absolute;left:50%;top:-12%;width:140%;aspect-ratio:1;margin-left:-70%;border-radius:50%;animation:drift 24s ease-in-out infinite;will-change:transform;}
+`;
 const AppCtx = createContext(null);
 const useApp = () => useContext(AppCtx);
 function useNow(ms = 1000, active = true) {
@@ -1286,18 +1479,25 @@ function Frame({
   bg,
   cut = 12,
   style,
-  onClick
+  onClick,
+  mc,
+  mb
 }) {
+  const fc = UI.mono ? mc : color,
+    fb = UI.mono ? mb : bg;
   return React.createElement("div", {
     onClick: onClick,
     className: `frame cut ${className}`,
     style: {
       '--cut': `${cut}px`,
-      ...(color ? {
-        '--fc': color
+      ...(UI.mono ? {
+        '--r': `${Math.round(cut * 1.45)}px`
       } : {}),
-      ...(bg ? {
-        '--fb': bg
+      ...(fc ? {
+        '--fc': fc
+      } : {}),
+      ...(fb ? {
+        '--fb': fb
       } : {}),
       ...style
     }
@@ -1342,6 +1542,43 @@ const BTN_V = {
     bd: 'rgba(255,255,255,.2)'
   }
 };
+const BTN_M = {
+  main: {
+    bg: 'var(--alt)',
+    fg: '#050505',
+    bd: 'transparent'
+  },
+  alt: {
+    bg: '#F2F2F7',
+    fg: '#050505',
+    bd: 'transparent'
+  },
+  ghost: {
+    bg: '#1C1C1E',
+    fg: '#F2F2F7',
+    bd: 'transparent'
+  },
+  ghostMain: {
+    bg: '#1C1C1E',
+    fg: '#F2F2F7',
+    bd: 'transparent'
+  },
+  danger: {
+    bg: '#FF453A',
+    fg: '#fff',
+    bd: 'transparent'
+  },
+  dangerGhost: {
+    bg: 'rgba(255,69,58,.14)',
+    fg: '#FF6961',
+    bd: 'transparent'
+  },
+  dark: {
+    bg: '#1C1C1E',
+    fg: '#C7C7CC',
+    bd: 'transparent'
+  }
+};
 function Btn({
   children,
   onClick,
@@ -1353,7 +1590,8 @@ function Btn({
   snd = 'click',
   style
 }) {
-  const v = BTN_V[variant] || BTN_V.main;
+  const set = UI.mono ? BTN_M : BTN_V;
+  const v = set[variant] || set.main;
   return React.createElement("button", {
     type: "button",
     disabled: disabled,
@@ -1486,7 +1724,7 @@ function Modal({
   }, React.createElement("div", {
     className: "min-w-0"
   }, React.createElement("div", {
-    className: "micro"
+    className: "micro deco"
   }, code || 'SYS.DIALOG // EDIT'), React.createElement("div", {
     className: "modal-title mt-1"
   }, title)), onClose && React.createElement(IconBtn, {
@@ -1520,11 +1758,13 @@ function Dialog({
     className: "w-full max-w-[400px] dlg-in",
     color: d.danger ? '#FF2A2A' : 'var(--main)',
     cut: 16,
-    bg: "linear-gradient(180deg,rgba(26,12,20,.98),rgba(8,7,12,.98))"
+    bg: "linear-gradient(180deg,rgba(26,12,20,.98),rgba(8,7,12,.98))",
+    mc: d.danger ? 'rgba(255,69,58,.45)' : 'transparent',
+    mb: "#1C1C1E"
   }, React.createElement("div", {
     className: "p-5"
   }, React.createElement("div", {
-    className: "micro flex items-center gap-2"
+    className: "micro deco flex items-center gap-2"
   }, React.createElement(AlertTriangle, {
     size: 11
   }), " ", d.code || 'SYSTEM MESSAGE'), React.createElement("div", {
@@ -1580,7 +1820,9 @@ function Sheet({
     }
   }, React.createElement(Frame, {
     cut: 14,
-    bg: "linear-gradient(180deg,rgba(26,12,20,.98),rgba(8,7,12,.98))"
+    bg: "linear-gradient(180deg,rgba(26,12,20,.98),rgba(8,7,12,.98))",
+    mc: "transparent",
+    mb: "#1C1C1E"
   }, React.createElement("div", {
     className: "p-2"
   }, React.createElement("div", {
@@ -1736,7 +1978,7 @@ function ColorRow({
       onChange(c);
     },
     "aria-label": c,
-    className: "w-8 h-8 cut",
+    className: "w-8 h-8 cut sw",
     style: {
       '--cut': '6px',
       background: c,
@@ -1783,6 +2025,17 @@ function ScreenHeader({
   sub,
   right
 }) {
+  if (UI.mono) return React.createElement("div", {
+    className: "px-4 pt-6 pb-1"
+  }, React.createElement("div", {
+    className: "flex items-end justify-between gap-3"
+  }, React.createElement("div", {
+    className: "min-w-0"
+  }, React.createElement("h1", {
+    className: "h1"
+  }, title), sub && React.createElement("div", {
+    className: "text-[13px] text-white/45 mt-1"
+  }, sub)), right));
   return React.createElement("div", {
     className: "px-4 pt-4 pb-1"
   }, React.createElement("div", {
@@ -2111,11 +2364,761 @@ const stickerLabel = icon => {
   if (icon.startsWith('st:')) return (ICONS[icon.slice(3)] || ['Стикер'])[0];
   return icon.startsWith('url:') ? 'Своя картинка' : 'Эмодзи';
 };
+const OL = '#121212';
+const ol = (d, c, w = 2) => React.createElement(React.Fragment, null, React.createElement("path", {
+  d: d,
+  stroke: OL,
+  strokeWidth: w + 3
+}), React.createElement("path", {
+  d: d,
+  stroke: c,
+  strokeWidth: w
+}));
+const blobPts = (cx, cy, r, amp, n, seg = 56) => Array.from({
+  length: seg
+}, (_, i) => {
+  const a = i / seg * Math.PI * 2,
+    rr = r + amp * Math.sin(a * n);
+  return `${(cx + rr * Math.cos(a)).toFixed(2)},${(cy + rr * Math.sin(a)).toFixed(2)}`;
+}).join(' ');
+function sunPath(n, r, R, hw) {
+  const pt = (a, rad) => `${(32 + rad * Math.cos(a)).toFixed(2)} ${(32 + rad * Math.sin(a)).toFixed(2)}`;
+  let d = '';
+  for (let i = 0; i < n; i++) {
+    const a = -Math.PI / 2 + i * 2 * Math.PI / n;
+    d += `${i ? `A${r} ${r} 0 0 1` : 'M'} ${pt(a - hw, r)} L${pt(a, R)} L${pt(a + hw, r)} `;
+  }
+  return `${d}A${r} ${r} 0 0 1 ${pt(-Math.PI / 2 - hw, r)} Z`;
+}
+const TOON_FRAMES = {
+  oct: p => React.createElement("path", _extends({
+    d: sunPath(8, 21.5, 31, 0.27)
+  }, p)),
+  hex: p => React.createElement("path", _extends({
+    d: sunPath(12, 23, 30.5, 0.17)
+  }, p)),
+  shield: p => React.createElement("path", _extends({
+    d: "M9 6 H55 Q58 6 58 9 V35 Q58 41 52 46 L34.5 59.5 Q32 61.5 29.5 59.5 L12 46 Q6 41 6 35 V9 Q6 6 9 6 Z"
+  }, p)),
+  diamond: p => React.createElement("path", _extends({
+    d: "M29 4 Q32 1 35 4 L60 29 Q63 32 60 35 L35 60 Q32 63 29 60 L4 35 Q1 32 4 29 Z"
+  }, p)),
+  cut: p => React.createElement("rect", _extends({
+    x: "4",
+    y: "4",
+    width: "56",
+    height: "56",
+    rx: "15"
+  }, p)),
+  circle: p => React.createElement("circle", _extends({
+    cx: "32",
+    cy: "32",
+    r: "29"
+  }, p))
+};
+const TOON_FRAME_NAMES = {
+  oct: 'Звезда',
+  hex: 'Солнце',
+  shield: 'Щит',
+  diamond: 'Ромб',
+  cut: 'Квадрат',
+  circle: 'Круг'
+};
+const TY = '#FFD43B',
+  TO = '#FF8C2B',
+  TR = '#FF4D4D',
+  TP = '#FF7EB6',
+  TV = '#B48CFF',
+  TB = '#4DB6FF',
+  TG = '#5FD35F',
+  TW = '#FFFFFF',
+  TBR = '#B9773F',
+  TGR = '#C9CED6',
+  TD = '#2B2B33';
+const noSign = React.createElement(React.Fragment, null, ol('M16 3.5 a12.5 12.5 0 1 1 -0.01 0 Z', TR, 2.6), ol('M7.2 7.2 L24.8 24.8', TR, 2.6));
+const TOON = {
+  donut: c => React.createElement(React.Fragment, null, React.createElement("circle", {
+    cx: "15",
+    cy: "17",
+    r: "12",
+    fill: "#D9934E"
+  }), React.createElement("polygon", {
+    points: blobPts(15, 17, 9.4, 1.1, 7),
+    fill: TV
+  }), React.createElement("circle", {
+    cx: "15",
+    cy: "17",
+    r: "3.6",
+    fill: c
+  }), React.createElement("g", {
+    strokeWidth: "1.7"
+  }, React.createElement("path", {
+    d: "M8.5 13 l1.8 -1",
+    stroke: TW
+  }), React.createElement("path", {
+    d: "M19.5 11 l1.6 1.2",
+    stroke: TB
+  }), React.createElement("path", {
+    d: "M21.5 19.5 l-.6 1.9",
+    stroke: TY
+  }), React.createElement("path", {
+    d: "M10 21.5 l1.8 .8",
+    stroke: TG
+  }), React.createElement("path", {
+    d: "M14.5 9.4 l1.9 -.2",
+    stroke: TP
+  }), React.createElement("path", {
+    d: "M17.5 24 l1.8 -.6",
+    stroke: TW
+  })), React.createElement("circle", {
+    cx: "25.5",
+    cy: "7",
+    r: "4.6",
+    fill: TR
+  }), React.createElement("path", {
+    d: "M23.8 5.3 l3.4 3.4 M27.2 5.3 l-3.4 3.4",
+    strokeWidth: "1.5"
+  })),
+  apple: () => React.createElement(React.Fragment, null, ol('M16 10 C16 7.5 16.5 5.5 18 4', TBR, 1.6), React.createElement("path", {
+    d: "M16 10 C12 7 5 8.5 5 16 C5 23 9.5 28 13 28 C14.3 28 15 27.3 16 27.3 C17 27.3 17.7 28 19 28 C22.5 28 27 23 27 16 C27 8.5 20 7 16 10 Z",
+    fill: TR
+  }), React.createElement("path", {
+    d: "M17.5 7 C18 3.5 22 2.5 25 3.5 C24 6.5 21 8 17.5 7 Z",
+    fill: TG
+  }), React.createElement("ellipse", {
+    cx: "10",
+    cy: "15",
+    rx: "1.5",
+    ry: "3",
+    fill: TW,
+    stroke: "none",
+    transform: "rotate(20 10 15)"
+  })),
+  water: () => React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M16 3 C16 3 6 14.5 6 20.5 A10 10 0 0 0 26 20.5 C26 14.5 16 3 16 3 Z",
+    fill: TB
+  }), React.createElement("path", {
+    d: "M10.5 20 a5.5 5.5 0 0 0 4 5",
+    stroke: TW,
+    strokeWidth: "2"
+  })),
+  coffee: () => React.createElement(React.Fragment, null, ol('M11 2.5 c-1.5 2 1.5 3 0 5.5', TW, 1.4), ol('M16.5 2 c-1.5 2 1.5 3 0 5.5', TW, 1.4), React.createElement("ellipse", {
+    cx: "15",
+    cy: "27",
+    rx: "12",
+    ry: "2.6",
+    fill: TW
+  }), ol('M23 14.5 h1.5 a3.2 3.2 0 0 1 0 6.4 h-1.8', TW, 1.8), React.createElement("path", {
+    d: "M5 11.5 h19 v7.5 a8 8 0 0 1 -8 8 h-3 a8 8 0 0 1 -8 -8 z",
+    fill: TW
+  }), React.createElement("ellipse", {
+    cx: "14.5",
+    cy: "11.8",
+    rx: "9.5",
+    ry: "1.9",
+    fill: TBR
+  }), React.createElement("path", {
+    d: "M6.5 16.5 h16",
+    stroke: TP,
+    strokeWidth: "2.2"
+  })),
+  sleep: () => React.createElement(React.Fragment, null, React.createElement("circle", {
+    cx: "14",
+    cy: "19",
+    r: "10.5",
+    fill: "#FFC94A"
+  }), React.createElement("path", {
+    d: "M8.2 18 q2 1.8 4 0 M15.8 18 q2 1.8 4 0",
+    strokeWidth: "1.4"
+  }), React.createElement("ellipse", {
+    cx: "14",
+    cy: "23.8",
+    rx: "1.4",
+    ry: "1.7",
+    fill: "#7A3B12"
+  }), ol('M11.5 6.5 h2.6 l-2.6 3 h2.6', TW, 1.5), ol('M17 2.8 h3.6 l-3.6 4.2 h3.6', TW, 1.8), ol('M23 -1 h5 l-5 6 h5', TW, 2.1)),
+  sun: () => React.createElement(React.Fragment, null, ol('M16 1.5 v4 M16 26.5 v4 M1.5 16 h4 M26.5 16 h4 M5.7 5.7 l2.8 2.8 M23.5 23.5 l2.8 2.8 M26.3 5.7 l-2.8 2.8 M8.5 23.5 l-2.8 2.8', TO, 2), React.createElement("circle", {
+    cx: "16",
+    cy: "16",
+    r: "8.5",
+    fill: TY
+  }), React.createElement("circle", {
+    cx: "13",
+    cy: "14",
+    r: "1",
+    fill: OL
+  }), React.createElement("circle", {
+    cx: "19",
+    cy: "14",
+    r: "1",
+    fill: OL
+  }), React.createElement("path", {
+    d: "M12.5 17.5 q3.5 3.5 7 0",
+    strokeWidth: "1.4"
+  })),
+  dumbbell: () => React.createElement(React.Fragment, null, ol('M6 16 h20', TGR, 2.4), React.createElement("rect", {
+    x: "2.5",
+    y: "8.5",
+    width: "5",
+    height: "15",
+    rx: "1.6",
+    fill: TR
+  }), React.createElement("rect", {
+    x: "7",
+    y: "11",
+    width: "3.6",
+    height: "10",
+    rx: "1.2",
+    fill: TO
+  }), React.createElement("rect", {
+    x: "24.5",
+    y: "8.5",
+    width: "5",
+    height: "15",
+    rx: "1.6",
+    fill: TR
+  }), React.createElement("rect", {
+    x: "21.4",
+    y: "11",
+    width: "3.6",
+    height: "10",
+    rx: "1.2",
+    fill: TO
+  })),
+  run: () => React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M3.5 21 L4 11.5 c2 1.5 5 1.5 7 -1 l3.5 3.5 c2 1.5 4 2 7 2.3 c4 .5 7.5 1.8 7.5 4.2 v.5 Z",
+    fill: TB
+  }), React.createElement("path", {
+    d: "M3 21 h26.5 v2 c0 1.2 -1 2 -2.3 2 H5 c-1.2 0 -2 -.8 -2 -2 Z",
+    fill: TW
+  }), React.createElement("path", {
+    d: "M12 14.5 l2 -1.3 M14.6 16.4 l2 -1.3 M17.2 17.9 l2 -1.1",
+    stroke: TW,
+    strokeWidth: "1.3"
+  }), React.createElement("path", {
+    d: "M6 17.5 q4 -1.2 7.5 1",
+    strokeWidth: "1.3"
+  })),
+  steps: () => React.createElement(React.Fragment, null, React.createElement("ellipse", {
+    cx: "10",
+    cy: "11",
+    rx: "4.2",
+    ry: "6.2",
+    fill: TW
+  }), React.createElement("ellipse", {
+    cx: "10",
+    cy: "21.8",
+    rx: "2.9",
+    ry: "2.7",
+    fill: TW
+  }), React.createElement("ellipse", {
+    cx: "22",
+    cy: "15",
+    rx: "4.2",
+    ry: "6.2",
+    fill: TW
+  }), React.createElement("ellipse", {
+    cx: "22",
+    cy: "25.8",
+    rx: "2.9",
+    ry: "2.7",
+    fill: TW
+  })),
+  bolt: () => React.createElement("path", {
+    d: "M18.5 2 L6.5 18 h8 l-2.2 12 L25.5 13 h-8.2 Z",
+    fill: TY
+  }),
+  heart: () => React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M16 27 C6 20 3 15 3 10.5 C3 6.5 6 4 9.5 4 C12.5 4 14.5 6 16 8 C17.5 6 19.5 4 22.5 4 C26 4 29 6.5 29 10.5 C29 15 26 20 16 27 Z",
+    fill: TR
+  }), ol('M7 14.5 h4.5 l2 -4 l3 8 l2 -4 h6', TW, 1.5)),
+  pill: () => React.createElement("g", {
+    transform: "rotate(-40 16 16)"
+  }, React.createElement("path", {
+    d: "M16 10 H10 a6 6 0 0 0 0 12 H16 Z",
+    fill: TR
+  }), React.createElement("path", {
+    d: "M16 10 H22 a6 6 0 0 1 0 12 H16 Z",
+    fill: TW
+  }), React.createElement("path", {
+    d: "M8.5 13 h3.5",
+    stroke: TW,
+    strokeWidth: "1.5"
+  })),
+  lotus: () => React.createElement(React.Fragment, null, ol('M5 28.5 h22', TB, 1.8), React.createElement("path", {
+    d: "M16 26 C10 26 4.5 22 3.5 16.5 C9 16.5 13.5 19.5 16 23 Z",
+    fill: "#FF6FB0"
+  }), React.createElement("path", {
+    d: "M16 26 C22 26 27.5 22 28.5 16.5 C23 16.5 18.5 19.5 16 23 Z",
+    fill: "#FF6FB0"
+  }), React.createElement("path", {
+    d: "M16 25 C12 20.5 12 12 16 5.5 C20 12 20 20.5 16 25 Z",
+    fill: "#FFA3CF"
+  })),
+  brain: () => React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M16 6 C13 3 7 4 7 9 C3 10 3 16 6 17.5 C4 21 6.5 26 10.5 25.5 C11.5 28.5 15 28.5 16 26 Z",
+    fill: "#FF9EC4"
+  }), React.createElement("path", {
+    d: "M16 6 C19 3 25 4 25 9 C29 10 29 16 26 17.5 C28 21 25.5 26 21.5 25.5 C20.5 28.5 17 28.5 16 26 Z",
+    fill: "#FF9EC4"
+  }), React.createElement("path", {
+    d: "M10 12 q2 0 3 2 M9 19.5 q2.5 -1 4 1 M22 12 q-2 0 -3 2 M23 19.5 q-2.5 -1 -4 1",
+    strokeWidth: "1.3"
+  })),
+  book: () => React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M2 9 V27 C6.5 25.8 11.5 26.2 16 29 C20.5 26.2 25.5 25.8 30 27 V9 Z",
+    fill: TB
+  }), React.createElement("path", {
+    d: "M16 8 C12 5 7 5 3.5 6 V24.5 C7.5 23.5 12 24 16 27 Z",
+    fill: TW
+  }), React.createElement("path", {
+    d: "M16 8 C20 5 25 5 28.5 6 V24.5 C24.5 23.5 20 24 16 27 Z",
+    fill: TW
+  }), React.createElement("path", {
+    d: "M6.5 10.5 q3.5 -.8 6.5 .8 M6.5 14.5 q3.5 -.8 6.5 .8 M19 11.3 q3 -1.6 6.5 -.8 M19 15.3 q3 -1.6 6.5 -.8",
+    strokeWidth: "1.1"
+  })),
+  pen: () => React.createElement("g", {
+    transform: "rotate(-45 16 16)"
+  }, React.createElement("path", {
+    d: "M4 12.5 h3.5 v7 H4 a1.5 1.5 0 0 1 -1.5 -1.5 v-4 a1.5 1.5 0 0 1 1.5 -1.5 z",
+    fill: TP
+  }), React.createElement("rect", {
+    x: "7.5",
+    y: "12.5",
+    width: "2.5",
+    height: "7",
+    fill: TGR
+  }), React.createElement("rect", {
+    x: "10",
+    y: "12.5",
+    width: "11.5",
+    height: "7",
+    fill: TY
+  }), React.createElement("path", {
+    d: "M21.5 12.5 L28.5 16 L21.5 19.5 Z",
+    fill: "#F2C48D"
+  }), React.createElement("path", {
+    d: "M26.2 14.85 L28.5 16 L26.2 17.15 Z",
+    fill: OL
+  })),
+  globe: () => React.createElement(React.Fragment, null, React.createElement("circle", {
+    cx: "16",
+    cy: "16",
+    r: "12.5",
+    fill: TB
+  }), React.createElement("path", {
+    d: "M9 8.5 c2 -1 5 -.5 5.5 1.5 c.5 2 -2 2.5 -1.5 4.5 c.5 2 -1.5 3.5 -3.5 3 c-2 -.5 -3.5 -3 -3 -5 c.3 -1.6 1 -3.2 2.5 -4 z",
+    fill: TG
+  }), React.createElement("path", {
+    d: "M19 14 c2 -1 5 0 6 2 c1 2.5 -.5 5.5 -2.5 7 c-1.5 1 -3 .5 -3 -1 c0 -1.5 -1.5 -2.5 -1.5 -4 c0 -1.6 0 -3.2 1 -4 z",
+    fill: TG
+  }), React.createElement("path", {
+    d: "M18 5.5 c1.5 -.3 3.5 .3 4 1.4 c-1 .8 -3 .9 -4 -1.4 z",
+    fill: TG
+  })),
+  code: () => React.createElement(React.Fragment, null, React.createElement("rect", {
+    x: "2.5",
+    y: "5",
+    width: "27",
+    height: "22",
+    rx: "4",
+    fill: TD
+  }), React.createElement("path", {
+    d: "M2.5 10.5 h27",
+    strokeWidth: "1.5"
+  }), React.createElement("circle", {
+    cx: "6.2",
+    cy: "7.8",
+    r: "1.1",
+    fill: TR,
+    stroke: "none"
+  }), React.createElement("circle", {
+    cx: "9.4",
+    cy: "7.8",
+    r: "1.1",
+    fill: TY,
+    stroke: "none"
+  }), React.createElement("circle", {
+    cx: "12.6",
+    cy: "7.8",
+    r: "1.1",
+    fill: TG,
+    stroke: "none"
+  }), ol('M11 15 l-3.5 3.5 l3.5 3.5 M21 15 l3.5 3.5 l-3.5 3.5', TG, 1.8), ol('M17.5 14 l-3 9', TW, 1.6)),
+  target: () => React.createElement(React.Fragment, null, React.createElement("circle", {
+    cx: "15",
+    cy: "17",
+    r: "12.5",
+    fill: TW
+  }), React.createElement("circle", {
+    cx: "15",
+    cy: "17",
+    r: "9",
+    fill: TR
+  }), React.createElement("circle", {
+    cx: "15",
+    cy: "17",
+    r: "5.5",
+    fill: TW
+  }), React.createElement("circle", {
+    cx: "15",
+    cy: "17",
+    r: "2.2",
+    fill: TR
+  }), ol('M15 17 L26 6', TD, 1.6), React.createElement("path", {
+    d: "M24.5 4 l2.5 -2.5 l.5 3.5 l3.5 .5 l-2.5 2.5 z",
+    fill: TY
+  })),
+  clock: () => React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M9 26 l-2.2 3 M23 26 l2.2 3",
+    strokeWidth: "2"
+  }), React.createElement("path", {
+    d: "M4.5 9.5 a4.5 4.5 0 0 1 6 -5.5 z",
+    fill: TR
+  }), React.createElement("path", {
+    d: "M27.5 9.5 a4.5 4.5 0 0 0 -6 -5.5 z",
+    fill: TR
+  }), React.createElement("circle", {
+    cx: "16",
+    cy: "17",
+    r: "10.5",
+    fill: TR
+  }), React.createElement("circle", {
+    cx: "16",
+    cy: "17",
+    r: "7.8",
+    fill: TW
+  }), React.createElement("path", {
+    d: "M16 12 v5 l3.5 2.5",
+    strokeWidth: "1.7"
+  })),
+  coin: () => React.createElement(React.Fragment, null, React.createElement("circle", {
+    cx: "16",
+    cy: "16",
+    r: "13",
+    fill: TY
+  }), React.createElement("circle", {
+    cx: "16",
+    cy: "16",
+    r: "9.5",
+    fill: "#F5B400"
+  }), React.createElement("path", {
+    d: "M19.5 12.3 c-.8 -1.4 -2.2 -1.8 -3.5 -1.8 c-2 0 -3.6 1 -3.6 2.7 c0 3.6 7.4 1.8 7.4 5.4 c0 1.8 -1.7 2.7 -3.8 2.7 c-1.5 0 -3 -.6 -3.8 -1.7 M16 8.5 v15",
+    strokeWidth: "1.7"
+  }), React.createElement("path", {
+    d: "M7 12.5 a9.5 9.5 0 0 1 4 -5",
+    stroke: TW,
+    strokeWidth: "1.4"
+  })),
+  broom: () => React.createElement(React.Fragment, null, ol('M15 13 L26.5 2.5', TBR, 2.2), React.createElement("path", {
+    d: "M9.5 15.5 h11 l3 6 c-1 3 -3 5.5 -6 7 h-7 c-2.5 -1.5 -4 -4 -4 -7 z",
+    fill: TY
+  }), React.createElement("rect", {
+    x: "9.5",
+    y: "12.8",
+    width: "11",
+    height: "3.6",
+    rx: "1",
+    fill: TR
+  }), React.createElement("path", {
+    d: "M12 21 l-.8 6.3 M15 21 v7 M18 21 l1 6.3",
+    strokeWidth: "1.1"
+  })),
+  plant: () => React.createElement(React.Fragment, null, ol('M16 18 V9', TG, 1.8), React.createElement("path", {
+    d: "M16 12.5 c-6 0 -9.5 -3.5 -9.5 -8.5 c6 0 9.5 3.5 9.5 8.5 z",
+    fill: TG
+  }), React.createElement("path", {
+    d: "M16 10.5 c0 -5 3.5 -8.5 9 -8.5 c0 5 -3.5 8.5 -9 8.5 z",
+    fill: "#8BE36B"
+  }), React.createElement("path", {
+    d: "M9 19.5 h14 l-2 9.5 h-10 z",
+    fill: "#E2763A"
+  }), React.createElement("rect", {
+    x: "7.5",
+    y: "17",
+    width: "17",
+    height: "3.8",
+    rx: "1.2",
+    fill: "#F08C4E"
+  })),
+  music: () => React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M11.5 23 V8.5 L26 5 V20",
+    strokeWidth: "2.2"
+  }), React.createElement("path", {
+    d: "M11.5 8.5 L26 5 v3.5 L11.5 12 z",
+    fill: OL
+  }), React.createElement("ellipse", {
+    cx: "8",
+    cy: "23.5",
+    rx: "4.2",
+    ry: "3.4",
+    fill: TV,
+    transform: "rotate(-20 8 23.5)"
+  }), React.createElement("ellipse", {
+    cx: "22.5",
+    cy: "20.5",
+    rx: "4.2",
+    ry: "3.4",
+    fill: TV,
+    transform: "rotate(-20 22.5 20.5)"
+  })),
+  eye: () => React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M2 16 Q16 3 30 16 Q16 29 2 16 Z",
+    fill: TW
+  }), React.createElement("circle", {
+    cx: "16",
+    cy: "16",
+    r: "6",
+    fill: TB
+  }), React.createElement("circle", {
+    cx: "16",
+    cy: "16",
+    r: "2.8",
+    fill: OL
+  }), React.createElement("circle", {
+    cx: "18",
+    cy: "13.8",
+    r: "1.3",
+    fill: TW,
+    stroke: "none"
+  })),
+  chip: () => React.createElement(React.Fragment, null, ol('M11 3.5 v4 M16 3.5 v4 M21 3.5 v4 M11 24.5 v4 M16 24.5 v4 M21 24.5 v4 M3.5 11 h4 M3.5 16 h4 M3.5 21 h4 M24.5 11 h4 M24.5 16 h4 M24.5 21 h4', TGR, 1.6), React.createElement("rect", {
+    x: "7",
+    y: "7",
+    width: "18",
+    height: "18",
+    rx: "3",
+    fill: TD
+  }), React.createElement("rect", {
+    x: "11.5",
+    y: "11.5",
+    width: "9",
+    height: "9",
+    rx: "1.5",
+    fill: TG
+  })),
+  nophone: () => React.createElement(React.Fragment, null, React.createElement("rect", {
+    x: "9.5",
+    y: "3",
+    width: "13",
+    height: "26",
+    rx: "3",
+    fill: TD
+  }), React.createElement("rect", {
+    x: "11.5",
+    y: "6.5",
+    width: "9",
+    height: "17",
+    rx: "1",
+    fill: TB
+  }), noSign),
+  nosmoke: () => React.createElement(React.Fragment, null, ol('M9 14 c-1.5 -2 1.5 -3 0 -5.5 c-1 -1.5 0 -3 1 -4', TGR, 1.5), React.createElement("rect", {
+    x: "5",
+    y: "16.5",
+    width: "16",
+    height: "5",
+    rx: "1",
+    fill: TW
+  }), React.createElement("rect", {
+    x: "21",
+    y: "16.5",
+    width: "6.5",
+    height: "5",
+    rx: "1",
+    fill: TO
+  }), React.createElement("rect", {
+    x: "3",
+    y: "16.5",
+    width: "3",
+    height: "5",
+    rx: "1",
+    fill: TR
+  }), noSign),
+  noalco: () => React.createElement(React.Fragment, null, ol('M16 15.5 v10', TW, 1.6), ol('M11 27 h10', TW, 2), React.createElement("path", {
+    d: "M9.5 4 h13 c0 7.5 -2.5 11.5 -6.5 11.5 c-4 0 -6.5 -4 -6.5 -11.5 z",
+    fill: TW
+  }), React.createElement("path", {
+    d: "M10.2 8.5 h11.6 c-.6 4.4 -2.6 6.8 -5.8 6.8 c-3.2 0 -5.2 -2.4 -5.8 -6.8 z",
+    fill: "#C2185B"
+  }), noSign),
+  game: () => React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M9 9.5 h14 a6.5 6.5 0 0 1 6.5 6.5 v3.5 a4.2 4.2 0 0 1 -7.4 2.8 l-2 -2.3 h-8.2 l-2 2.3 a4.2 4.2 0 0 1 -7.4 -2.8 v-3.5 a6.5 6.5 0 0 1 6.5 -6.5 z",
+    fill: TV
+  }), React.createElement("path", {
+    d: "M9.5 13 v6 M6.5 16 h6",
+    strokeWidth: "2.2"
+  }), React.createElement("circle", {
+    cx: "21.5",
+    cy: "14.5",
+    r: "1.7",
+    fill: TR
+  }), React.createElement("circle", {
+    cx: "24.8",
+    cy: "17.6",
+    r: "1.7",
+    fill: TY
+  })),
+  skull: () => React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M16 3 c-7 0 -12 5 -12 11.5 c0 4 2 6.5 4.5 7.5 v5 h15 v-5 c2.5 -1 4.5 -3.5 4.5 -7.5 c0 -6.5 -5 -11.5 -12 -11.5 z",
+    fill: TW
+  }), React.createElement("circle", {
+    cx: "11",
+    cy: "15",
+    r: "3",
+    fill: OL
+  }), React.createElement("circle", {
+    cx: "21",
+    cy: "15",
+    r: "3",
+    fill: OL
+  }), React.createElement("path", {
+    d: "M16 18.5 l-1.4 2.5 h2.8 z",
+    fill: OL
+  }), React.createElement("path", {
+    d: "M13 27 v-3 M16 27 v-3 M19 27 v-3",
+    strokeWidth: "1.2"
+  })),
+  mountain: () => React.createElement(React.Fragment, null, React.createElement("circle", {
+    cx: "26.5",
+    cy: "5.5",
+    r: "3",
+    fill: TY
+  }), React.createElement("path", {
+    d: "M12 28 L21 9 L30.5 28 Z",
+    fill: "#7E8BA3"
+  }), React.createElement("path", {
+    d: "M1.5 28 L11.5 8 L22 28 Z",
+    fill: "#A9B4C8"
+  }), React.createElement("path", {
+    d: "M8.3 14.4 L11.5 8 L14.8 14.6 l-2 -1.3 l-1.3 1.6 l-1.3 -1.6 z",
+    fill: TW
+  })),
+  bike: () => React.createElement(React.Fragment, null, React.createElement("circle", {
+    cx: "8",
+    cy: "21",
+    r: "5.6",
+    strokeWidth: "2.6"
+  }), React.createElement("circle", {
+    cx: "24",
+    cy: "21",
+    r: "5.6",
+    strokeWidth: "2.6"
+  }), ol('M8 21 L13 11.5 H21.5 L24 21 M13 11.5 L17 21 H8 M17 21 L21.5 11.5', TR, 1.8), React.createElement("path", {
+    d: "M10.5 9 h4.5",
+    strokeWidth: "2.4"
+  }), React.createElement("path", {
+    d: "M21.5 11.5 L20.5 7.5 h3.5",
+    strokeWidth: "2"
+  })),
+  phone: () => React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M8 4 h4 l2 6 l-3 2 c2 4 4 6 8 8 l2 -3 l6 2 v4 c0 2 -2 3 -4 3 C13 26 6 19 5 8 c0 -2 1 -4 3 -4 z",
+    fill: TG
+  }), React.createElement("path", {
+    d: "M24.5 11 c-3 -2 -4.5 -3.5 -4.5 -5.2 c0 -1.3 1 -2.3 2.2 -2.3 c1 0 1.7 .6 2.3 1.3 c.6 -.7 1.3 -1.3 2.3 -1.3 c1.2 0 2.2 1 2.2 2.3 c0 1.7 -1.5 3.2 -4.5 5.2 z",
+    fill: TR
+  })),
+  fire: () => React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M16 29.5 c-6 0 -10 -4 -10 -9 c0 -6 6 -9 6 -15.5 c4 3 6 6 6 10 c1 -1 2 -3 2 -5 c3 3 6 6.5 6 11 c0 5 -4 8.5 -10 8.5 z",
+    fill: TO
+  }), React.createElement("path", {
+    d: "M16 29.5 c-3 0 -4.5 -2 -4.5 -4.3 c0 -3 4.5 -5 4.5 -8.2 c2 2 4.5 4.2 4.5 8.2 c0 2.3 -1.5 4.3 -4.5 4.3 z",
+    fill: TY
+  })),
+  star: () => React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M16 3 l3.8 8.2 l9 1 l-6.7 6 l1.9 8.8 l-8 -4.6 l-8 4.6 l1.9 -8.8 l-6.7 -6 l9 -1 z",
+    fill: TY
+  }), React.createElement("path", {
+    d: "M11 13.4 l2.2 -.3",
+    stroke: TW,
+    strokeWidth: "1.6"
+  }))
+};
+function ToonSticker({
+  icon,
+  color,
+  size,
+  frame
+}) {
+  const id = useMemo(() => uid('tn'), []);
+  const mini = size < 40;
+  const shape = TOON_FRAMES[frame] ? frame : 'oct';
+  const outline = p => TOON_FRAMES[shape](p);
+  const key = icon.startsWith('st:') ? icon.slice(3) : null;
+  const glyph = key && TOON[key] ? TOON[key](color) : null;
+  const k = shape === 'diamond' ? 1.05 : 1.32;
+  const pic = useImgSrc(icon.startsWith('url:') ? icon.slice(4) : '', mini);
+  const sw = mini ? 3.6 : 2.4;
+  return React.createElement("svg", {
+    viewBox: "0 0 64 64",
+    width: size,
+    height: size,
+    style: {
+      display: 'block',
+      overflow: 'visible'
+    },
+    "aria-label": stickerLabel(icon)
+  }, React.createElement("defs", null, React.createElement("clipPath", {
+    id: `${id}c`
+  }, outline({}))), outline({
+    fill: color,
+    stroke: OL,
+    strokeWidth: sw,
+    strokeLinejoin: 'round'
+  }), pic && React.createElement("g", {
+    clipPath: `url(#${id}c)`
+  }, React.createElement("image", {
+    href: pic,
+    x: "0",
+    y: "0",
+    width: "64",
+    height: "64",
+    preserveAspectRatio: "xMidYMid slice"
+  })), pic && outline({
+    fill: 'none',
+    stroke: OL,
+    strokeWidth: sw,
+    strokeLinejoin: 'round'
+  }), glyph && React.createElement("g", {
+    transform: `translate(${32 - 16 * k} ${(shape === 'shield' ? 30 : 32) - 16 * k}) scale(${k})`,
+    fill: "none",
+    stroke: OL,
+    strokeWidth: mini ? 2 : 1.5,
+    strokeLinecap: "round",
+    strokeLinejoin: "round"
+  }, glyph), icon.startsWith('em:') && React.createElement("text", {
+    x: "32",
+    y: "34",
+    textAnchor: "middle",
+    dominantBaseline: "central",
+    fontSize: "30"
+  }, icon.slice(3)));
+}
 function Sticker({
   icon = 'st:star',
   color = '#FCEE0A',
   size = 96,
-  frame = 'oct'
+  frame = 'oct',
+  toon = UI.mono
+}) {
+  if (toon) return React.createElement(ToonSticker, {
+    icon: icon,
+    color: color,
+    size: size,
+    frame: frame
+  });
+  return React.createElement(NeonSticker, {
+    icon: icon,
+    color: color,
+    size: size,
+    frame: frame
+  });
+}
+function NeonSticker({
+  icon,
+  color,
+  size,
+  frame
 }) {
   const id = useMemo(() => uid('stk'), []);
   const mini = size < 40;
@@ -2234,8 +3237,23 @@ function Sticker({
 }
 function ChipIcon({
   active,
-  dim
+  dim,
+  kind
 }) {
+  if (UI.mono) {
+    const I = kind === 'shard' ? FileText : Flag;
+    return React.createElement("span", {
+      className: "mono-dot",
+      style: {
+        background: active ? 'var(--alt)' : '#1C1C1F',
+        color: active ? '#000' : '#8E8E93',
+        opacity: dim ? 0.5 : 1
+      }
+    }, React.createElement(I, {
+      size: 14,
+      strokeWidth: 2.3
+    }));
+  }
   return React.createElement("svg", {
     width: "30",
     height: "44",
@@ -2284,6 +3302,47 @@ function MissionBadge({
   const c = b.color || '#F5B83D',
     t = String(b.text || '').slice(0, 7);
   const fs = t.length > 4 ? 6.5 : t.length > 2 ? 9 : 12;
+  if (UI.mono) {
+    const [r, g, bl] = hexRgb(c).split(',').map(Number);
+    const ink = r * 0.299 + g * 0.587 + bl * 0.114 > 150 ? '#111' : '#fff';
+    const mfs = t.length > 4 ? 7 : t.length > 2 ? 9.5 : 13;
+    return React.createElement("div", {
+      className: "shrink-0 flex items-center justify-center",
+      style: {
+        width: size + 8
+      }
+    }, React.createElement("svg", {
+      width: size,
+      height: size,
+      viewBox: "0 0 50 50"
+    }, b.shape === 'diamond' && React.createElement("path", {
+      d: "M22.2 4.8 Q25 2 27.8 4.8 L45.2 22.2 Q48 25 45.2 27.8 L27.8 45.2 Q25 48 22.2 45.2 L4.8 27.8 Q2 25 4.8 22.2 Z",
+      fill: c
+    }), b.shape === 'square' && React.createElement("rect", {
+      x: "5",
+      y: "5",
+      width: "40",
+      height: "40",
+      rx: "12",
+      fill: c
+    }), b.shape === 'triangle' && React.createElement("path", {
+      d: "M22.3 7 Q25 2.5 27.7 7 L46 39.5 Q48 44 43 44 H7 Q2 44 4 39.5 Z",
+      fill: c
+    }), b.shape === 'circle' && React.createElement("circle", {
+      cx: "25",
+      cy: "25",
+      r: "21",
+      fill: c
+    }), React.createElement("text", {
+      x: "25",
+      y: b.shape === 'triangle' ? 36 : 25 + mfs * 0.36,
+      textAnchor: "middle",
+      fontSize: mfs,
+      fontWeight: "700",
+      fill: ink,
+      fontFamily: "Unbounded, Inter, sans-serif"
+    }, t)));
+  }
   return React.createElement("div", {
     className: "shrink-0 flex flex-col items-center",
     style: {
@@ -2418,8 +3477,8 @@ function Ring({
     cy: size / 2,
     r: r,
     fill: "none",
-    stroke: "rgba(255,255,255,.13)",
-    strokeWidth: stroke - 0.6,
+    stroke: UI.mono ? '#2C2C2E' : 'rgba(255,255,255,.13)',
+    strokeWidth: UI.mono ? stroke : stroke - 0.6,
     strokeDasharray: dashed ? '3 3' : undefined
   }), avg != null && React.createElement("circle", {
     cx: size / 2,
@@ -2431,7 +3490,7 @@ function Ring({
     strokeDasharray: `${C * pct} ${C}`,
     strokeLinecap: "round",
     transform: `rotate(-90 ${size / 2} ${size / 2})`,
-    style: {
+    style: UI.mono ? undefined : {
       filter: `drop-shadow(0 0 3px ${color})`
     }
   }));
@@ -2441,6 +3500,70 @@ const isPresetAvatar = v => !v || String(v).startsWith('preset:');
 function AvatarGlyph({
   id = 'preset:m'
 }) {
+  if (UI.mono) {
+    const K = {
+        fill: '#000'
+      },
+      L = {
+        stroke: '#000',
+        fill: 'none'
+      };
+    return React.createElement("svg", {
+      viewBox: "0 0 64 64",
+      className: "w-full h-full block"
+    }, React.createElement("circle", {
+      cx: "32",
+      cy: "32",
+      r: "32",
+      style: {
+        fill: 'var(--alt)'
+      }
+    }), React.createElement("g", {
+      transform: "translate(32 32) scale(.66) translate(-32 -32)"
+    }, id === 'preset:optics' ? React.createElement(React.Fragment, null, React.createElement("path", {
+      d: "M14 22 L32 14 L50 22 L48 40 L32 52 L16 40 Z",
+      style: L,
+      strokeWidth: "5",
+      strokeLinejoin: "round"
+    }), React.createElement("path", {
+      d: "M18 29 H29 L31 34 H20 Z M46 29 H35 L33 34 H44 Z",
+      style: K
+    })) : id === 'preset:chip' ? React.createElement(React.Fragment, null, React.createElement("rect", {
+      x: "17",
+      y: "17",
+      width: "30",
+      height: "30",
+      rx: "5",
+      style: L,
+      strokeWidth: "5"
+    }), React.createElement("rect", {
+      x: "26",
+      y: "26",
+      width: "12",
+      height: "12",
+      rx: "2",
+      style: K
+    }), [24, 32, 40].map(p => React.createElement("path", {
+      key: p,
+      d: `M${p} 6 V15 M${p} 49 V58 M6 ${p} H15 M49 ${p} H58`,
+      style: L,
+      strokeWidth: "4",
+      strokeLinecap: "round"
+    }))) : id === 'preset:eye' ? React.createElement(React.Fragment, null, React.createElement("path", {
+      d: "M6 32 Q32 8 58 32 Q32 56 6 32 Z",
+      style: L,
+      strokeWidth: "5",
+      strokeLinejoin: "round"
+    }), React.createElement("circle", {
+      cx: "32",
+      cy: "32",
+      r: "9",
+      style: K
+    })) : React.createElement("path", {
+      d: "M10 52 V12 L32 30 L54 12 V52 H44 V33 L32 43 L20 33 V52 Z",
+      style: K
+    })));
+  }
   const M = {
       fill: 'var(--main)'
     },
@@ -2538,6 +3661,41 @@ function AvatarSlot({
     avatarHolo
   } = data.settings;
   const img = !isPresetAvatar(avatar);
+  if (UI.mono) return React.createElement("div", {
+    className: "relative shrink-0",
+    style: {
+      width: size,
+      height: size
+    }
+  }, React.createElement("button", {
+    type: "button",
+    onClick: onClick ? () => {
+      sfx('open');
+      onClick();
+    } : undefined,
+    "aria-label": "\u0421\u043C\u0435\u043D\u0438\u0442\u044C \u0430\u0432\u0430\u0442\u0430\u0440",
+    className: "block w-full h-full rounded-full overflow-hidden",
+    style: {
+      background: '#1C1C1E',
+      cursor: onClick ? 'pointer' : 'default'
+    }
+  }, img ? React.createElement(Img, {
+    src: avatar,
+    thumb: size <= 120,
+    className: "w-full h-full object-cover block"
+  }) : React.createElement(AvatarGlyph, {
+    id: avatar
+  })), onClick && React.createElement("span", {
+    className: "absolute bottom-0 right-0 w-6 h-6 rounded-full flex items-center justify-center pointer-events-none",
+    style: {
+      background: '#F2F2F7',
+      color: '#000',
+      boxShadow: '0 0 0 3px #000'
+    }
+  }, React.createElement(Pencil, {
+    size: 12,
+    strokeWidth: 2.6
+  })));
   return React.createElement("div", {
     className: "relative shrink-0",
     style: {
@@ -2827,6 +3985,38 @@ function SectionHeader({
   onToggle,
   onMenu
 }) {
+  if (UI.mono) return React.createElement("div", {
+    className: "flex items-center gap-1 pt-1"
+  }, React.createElement("button", {
+    type: "button",
+    onClick: onToggle,
+    className: "flex-1 flex items-baseline gap-2 py-1.5 text-left min-w-0"
+  }, React.createElement("span", {
+    className: "sec-title truncate"
+  }, nice(name)), React.createElement("span", {
+    className: "text-[13px] font-semibold text-white/35 shrink-0"
+  }, count)), onMenu && React.createElement("button", {
+    type: "button",
+    "aria-label": "\u041C\u0435\u043D\u044E \u0440\u0430\u0437\u0434\u0435\u043B\u0430",
+    onClick: () => {
+      sfx();
+      onMenu();
+    },
+    className: "w-9 h-9 flex items-center justify-center text-white/45"
+  }, React.createElement(MoreVertical, {
+    size: 18
+  })), onToggle && React.createElement("button", {
+    type: "button",
+    "aria-label": "\u0421\u0432\u0435\u0440\u043D\u0443\u0442\u044C",
+    onClick: onToggle,
+    className: "w-9 h-9 flex items-center justify-center text-white/60"
+  }, React.createElement(ChevronDown, {
+    size: 20,
+    style: {
+      transform: collapsed ? 'rotate(-90deg)' : 'none',
+      transition: 'transform .2s'
+    }
+  })));
   return React.createElement("div", {
     className: "flex items-stretch"
   }, React.createElement("div", {
@@ -2874,6 +4064,25 @@ function ArchiveHeader({
   open,
   onToggle
 }) {
+  if (UI.mono) return React.createElement("button", {
+    type: "button",
+    onClick: onToggle,
+    className: "mono-row w-full flex items-center gap-3 px-4 py-3.5 text-left"
+  }, React.createElement(Archive, {
+    size: 19,
+    className: "shrink-0 text-white/60"
+  }), React.createElement("span", {
+    className: "flex-1 min-w-0 text-[16px] font-semibold text-white"
+  }, "\u0410\u0440\u0445\u0438\u0432 \xB7 \u0437\u0430\u0432\u0435\u0440\u0448\u0451\u043D\u043D\u044B\u0435"), React.createElement("span", {
+    className: "mono-pill"
+  }, count), React.createElement(ChevronDown, {
+    size: 18,
+    className: "shrink-0 text-white/50",
+    style: {
+      transform: open ? 'none' : 'rotate(-90deg)',
+      transition: 'transform .2s'
+    }
+  }));
   return React.createElement("div", {
     className: "flex items-stretch"
   }, React.createElement("div", {
@@ -2957,7 +4166,9 @@ function MissionRow({
   }, React.createElement(Frame, {
     cut: 14,
     color: open ? 'var(--sel2)' : m.done ? 'rgba(var(--alt-rgb),.3)' : 'rgba(var(--main-rgb),.42)',
-    bg: open ? 'linear-gradient(90deg,var(--sel1),var(--sel2))' : m.done ? 'repeating-linear-gradient(135deg,rgba(14,12,20,.96) 0 8px,rgba(20,17,28,.96) 8px 16px)' : undefined
+    bg: open ? 'linear-gradient(90deg,var(--sel1),var(--sel2))' : m.done ? 'repeating-linear-gradient(135deg,rgba(14,12,20,.96) 0 8px,rgba(20,17,28,.96) 8px 16px)' : undefined,
+    mc: open ? 'rgba(var(--alt-rgb),.55)' : undefined,
+    mb: open ? '#1C1C1E' : undefined
   }, React.createElement("div", {
     className: "flex items-center gap-2 pl-2.5 pr-3 py-3"
   }, React.createElement(MissionBadge, {
@@ -2970,13 +4181,13 @@ function MissionRow({
       color: 'var(--sel-fg, var(--alt))',
       textShadow: 'var(--sel-shadow)'
     } : undefined
-  }, m.title || 'БЕЗ НАЗВАНИЯ'), React.createElement("div", {
+  }, nice(m.title || 'БЕЗ НАЗВАНИЯ')), React.createElement("div", {
     className: "m-status",
     style: {
       color: open ? `var(--sel-sub, ${m.statusColor || 'var(--warn)'})` : m.statusColor || 'var(--warn)',
       textShadow: open ? 'var(--sel-shadow)' : 'none'
     }
-  }, m.status)), React.createElement("div", {
+  }, nice(m.status))), React.createElement("div", {
     className: "flex flex-col items-end gap-1.5 shrink-0 self-stretch justify-between"
   }, m.done ? React.createElement("span", {
     className: "done-stamp"
@@ -2985,7 +4196,7 @@ function MissionRow({
   }, "NEW") : React.createElement("span", null), m.steps.length > 0 && React.createElement("span", {
     className: "f-mono text-[11px]",
     style: {
-      color: open ? 'rgba(0,0,0,.6)' : 'rgba(255,255,255,.5)'
+      color: open && !UI.mono ? 'rgba(0,0,0,.6)' : 'rgba(255,255,255,.5)'
     }
   }, done, "/", m.steps.length)))))));
 }
@@ -3012,10 +4223,10 @@ function MissionDetail({
   }, React.createElement("div", {
     className: "p-4"
   }, React.createElement("div", {
-    className: "micro mb-1"
+    className: "micro deco mb-1"
   }, archived ? 'ARCHIVE.RECORD' : 'MISSION.DATA', " // ", m.id.slice(-6).toUpperCase()), React.createElement("div", {
     className: "text-[22px] font-semibold tracking-wider uppercase txt-main glow-main leading-tight"
-  }, m.title), archived && React.createElement("div", {
+  }, nice(m.title)), archived && React.createElement("div", {
     className: "mt-2 flex flex-wrap items-center gap-2"
   }, React.createElement("span", {
     className: "done-stamp"
@@ -3139,6 +4350,20 @@ function DangerIcon({
     const h = 6 + i * 5,
       x = 2 + i * 8;
     const on = i < level;
+    if (UI.mono) return React.createElement("rect", {
+      key: i,
+      x: x + 0.5,
+      y: 24 - h + 0.5,
+      width: "6",
+      height: h - 1,
+      rx: "2",
+      strokeOpacity: on ? 1 : 0.35,
+      strokeWidth: "1",
+      style: {
+        fill: on ? color : 'none',
+        stroke: color
+      }
+    });
     return React.createElement("polygon", {
       key: i,
       points: `${x + 3},${24 - h} ${x + 7},${24 - h} ${x + 4},24 ${x},24`,
@@ -3489,7 +4714,9 @@ function ShardItem({
     className: "flex items-stretch gap-1.5"
   }, React.createElement("div", {
     className: "w-8 shrink-0 flex items-center justify-center"
-  }, React.createElement(ChipIcon, null)), React.createElement(Frame, {
+  }, React.createElement(ChipIcon, {
+    kind: "shard"
+  })), React.createElement(Frame, {
     cut: 14,
     className: "flex-1 min-w-0",
     color: "rgba(var(--main-rgb),.4)"
@@ -3572,7 +4799,7 @@ function ShardReader({
     className: "text-white/35"
   }, "\u041F\u0443\u0441\u0442\u0430\u044F \u0437\u0430\u043F\u0438\u0441\u044C")), React.createElement("div", {
     className: "micro mt-8"
-  }, "// END OF SHARD \xB7 ", words, " ", plural(words, 'слово', 'слова', 'слов')));
+  }, UI.mono ? '' : '// END OF SHARD · ', words, " ", plural(words, 'слово', 'слова', 'слов')));
 }
 function ShardEditor({
   initial,
@@ -3868,11 +5095,11 @@ function MissionsScreen() {
     options: [{
       v: 'missions',
       l: 'Миссии',
-      i: Crosshair
+      i: UI.mono ? Flag : Crosshair
     }, {
       v: 'shards',
       l: 'Чипы данных',
-      i: Cpu
+      i: UI.mono ? FileText : Cpu
     }]
   }), React.createElement("div", {
     className: "flex gap-2 mt-3"
@@ -4125,6 +5352,17 @@ function ScoreBox({
 }) {
   const has = typeof score === 'number';
   const c = has ? SCORE_COLOR[score] : '#6a6a72';
+  if (UI.mono) return React.createElement("span", {
+    className: "shrink-0 flex items-center justify-center st-score",
+    style: {
+      width: size,
+      height: size,
+      borderRadius: Math.round(size * 0.32),
+      fontSize: Math.round(size * 0.42),
+      color: c,
+      background: has ? alpha(c, 0.14) : 'rgba(255,255,255,.06)'
+    }
+  }, has ? score : '—');
   return React.createElement("span", {
     className: "cut shrink-0 flex items-center justify-center f-orb font-black",
     style: {
@@ -4152,7 +5390,7 @@ function SegBar({
     key: i,
     style: i < on ? {
       background: color,
-      boxShadow: `0 0 6px ${color}`
+      boxShadow: UI.mono ? 'none' : `0 0 6px ${color}`
     } : undefined
   })));
 }
@@ -4202,7 +5440,33 @@ function CalendarView({
   const todayRated = !!data.ratings[todayK];
   const col = avg != null ? ringColor(avg, s.thr) : '#6a6a72';
   const scored = rec ? Object.values(rec.scores).filter(v => typeof v.score === 'number').length : 0;
-  return React.createElement("div", null, React.createElement("div", {
+  return React.createElement("div", null, UI.mono ? React.createElement("div", {
+    className: "px-4 mt-6 flex flex-col items-center text-center"
+  }, React.createElement(AvatarSlot, {
+    size: 84,
+    onClick: () => setAvEdit(true)
+  }), React.createElement("div", {
+    className: "text-[28px] font-bold mt-4 text-white leading-tight tracking-[-.02em]"
+  }, "\u0418\u0442\u043E\u0433\u0438 \u0434\u043D\u044F"), React.createElement("div", {
+    className: "mono-score mt-4"
+  }, React.createElement("span", {
+    className: "st-score text-[42px] leading-none",
+    style: {
+      color: col
+    }
+  }, avg != null ? avg.toFixed(1) : '–'), React.createElement("span", {
+    className: "st-score text-[18px]",
+    style: {
+      color: '#636366'
+    }
+  }, "/ 5")), React.createElement("div", {
+    className: "text-[13.5px] font-semibold mt-3",
+    style: {
+      color: col
+    }
+  }, cap(dayStatus(avg, s.thr))), React.createElement("div", {
+    className: "text-[12.5px] text-white/45 mt-0.5"
+  }, sel === todayK ? 'Сегодня · ' : '', fmtDay(sel), " \xB7 ", rec ? `${scored} ${plural(scored, 'оценка', 'оценки', 'оценок')}` : 'не оценён')) : React.createElement("div", {
     className: "px-4 mt-4"
   }, React.createElement(Frame, {
     cut: 18,
@@ -4242,9 +5506,11 @@ function CalendarView({
     className: "px-4 mt-4"
   }, React.createElement(Frame, {
     cut: 16,
-    color: "rgba(var(--main-rgb),.4)"
+    color: "rgba(var(--main-rgb),.4)",
+    mc: "transparent",
+    mb: "transparent"
   }, React.createElement("div", {
-    className: "p-3"
+    className: UI.mono ? 'py-3' : 'p-3'
   }, React.createElement("div", {
     className: "flex items-center justify-between gap-1 mb-3"
   }, React.createElement("div", {
@@ -4276,7 +5542,7 @@ function CalendarView({
   }, MONTHS[ym.m], " ", ym.y), React.createElement("div", {
     className: "micro mt-1",
     style: {
-      color: 'rgba(var(--alt-rgb),.7)'
+      color: UI.mono ? '#8E8E93' : 'rgba(var(--alt-rgb),.7)'
     }
   }, mAvg != null ? `СРЕДНЕЕ ЗА МЕСЯЦ · ${mAvg.toFixed(1)}` : 'НЕТ ОЦЕНОК')), React.createElement("div", {
     className: "flex gap-1"
@@ -4296,7 +5562,7 @@ function CalendarView({
     key: w,
     className: "f-mono text-[10px] tracking-widest uppercase pb-1",
     style: {
-      color: 'rgba(var(--main-rgb),.65)'
+      color: UI.mono ? '#636366' : 'rgba(var(--main-rgb),.65)'
     }
   }, w)), cells.map((d, i) => {
     if (!d) return React.createElement("div", {
@@ -4321,12 +5587,13 @@ function CalendarView({
     }), React.createElement(Ring, {
       avg: r ? r.avg : null,
       color: ringColor(r ? r.avg : null, s.thr),
-      size: 38,
+      size: UI.mono ? 40 : 38,
+      stroke: UI.mono ? 2.6 : 2.8,
       dashed: !!r && r.avg == null
     }), React.createElement("span", {
-      className: "relative text-[15px] font-bold",
+      className: "relative text-[15px] font-bold day-n",
       style: {
-        color: future ? 'rgba(255,255,255,.22)' : isSel ? 'var(--main)' : r ? '#fff' : 'rgba(255,255,255,.6)'
+        color: UI.mono ? future ? '#48484A' : r || isSel ? '#fff' : '#8E8E93' : future ? 'rgba(255,255,255,.22)' : isSel ? 'var(--main)' : r ? '#fff' : 'rgba(255,255,255,.6)'
       }
     }, d), isToday && React.createElement("span", {
       className: "day-today"
@@ -4337,10 +5604,10 @@ function CalendarView({
     key: c,
     className: "flex items-center gap-1"
   }, React.createElement("i", {
-    className: "w-2.5 h-1.5 inline-block",
+    className: UI.mono ? 'w-2 h-2 rounded-full inline-block' : 'w-2.5 h-1.5 inline-block',
     style: {
       background: c,
-      boxShadow: `0 0 6px ${c}`
+      boxShadow: UI.mono ? 'none' : `0 0 6px ${c}`
     }
   }), "\u2265", Number(v).toFixed(1))))))), React.createElement("div", {
     className: "px-4 mt-4"
@@ -4435,6 +5702,74 @@ function HabitCardView({
   onEdit,
   onDelete
 }) {
+  if (UI.mono) {
+    const has = typeof score === 'number';
+    return React.createElement("div", {
+      className: "mono-card",
+      style: {
+        background: `linear-gradient(180deg, ${alpha(card.glow, 1)} 0%, ${alpha(card.glow, 0.45)} 30%, #000 62%)`
+      }
+    }, React.createElement("div", {
+      className: "flex justify-end gap-2 px-4 pt-4"
+    }, React.createElement(IconBtn, {
+      sm: true,
+      icon: Pencil,
+      onClick: onEdit,
+      title: "\u0420\u0435\u0434\u0430\u043A\u0442\u0438\u0440\u043E\u0432\u0430\u0442\u044C"
+    }), React.createElement(IconBtn, {
+      sm: true,
+      red: true,
+      icon: Trash2,
+      onClick: onDelete,
+      title: "\u0423\u0434\u0430\u043B\u0438\u0442\u044C"
+    })), React.createElement("div", {
+      className: "flex justify-center -mt-3"
+    }, React.createElement(Sticker, {
+      icon: card.icon,
+      color: card.iconColor,
+      frame: card.iconFrame,
+      size: 150
+    })), React.createElement("h3", {
+      className: "text-[30px] font-bold text-center mt-6 leading-tight px-4 text-white tracking-[-.02em]"
+    }, card.name), React.createElement("div", {
+      className: "text-center text-[12.5px] text-white/45 mt-1 px-4"
+    }, cap(schedText(card))), React.createElement("div", {
+      className: "mono-score mx-auto mt-4"
+    }, React.createElement("span", {
+      className: "st-score text-[44px] leading-none",
+      style: {
+        color: has ? SCORE_COLOR[score] : '#636366'
+      }
+    }, has ? score : '–'), React.createElement("span", {
+      className: "st-score text-[18px]",
+      style: {
+        color: '#636366'
+      }
+    }, "/ 5")), score === null && React.createElement("div", {
+      className: "text-center text-[12.5px] text-white/45 mt-2"
+    }, "\u041F\u0440\u043E\u043F\u0443\u0449\u0435\u043D\u043E \u0432 \u0432\u044B\u0431\u0440\u0430\u043D\u043D\u044B\u0439 \u0434\u0435\u043D\u044C"), React.createElement("div", {
+      className: "px-5 mt-6 pb-6"
+    }, React.createElement("div", {
+      className: "mono-crit head"
+    }, React.createElement("span", null, "\u041E\u0446\u0435\u043D\u043A\u0430"), React.createElement("span", null, "\u041A\u0440\u0438\u0442\u0435\u0440\u0438\u0438")), [5, 4, 3, 2, 1].map(n => React.createElement("div", {
+      key: n,
+      className: "mono-crit",
+      style: score === n ? {
+        background: alpha(SCORE_COLOR[n], 0.1),
+        borderRadius: 14
+      } : undefined
+    }, React.createElement("span", {
+      className: "st-score text-[24px]",
+      style: {
+        color: SCORE_COLOR[n]
+      }
+    }, n), React.createElement("span", {
+      className: "text-[14.5px] leading-snug px-1",
+      style: {
+        color: '#9A9AA0'
+      }
+    }, card.criteria[n] || '—')))));
+  }
   return React.createElement(Frame, {
     cut: 20,
     color: alpha(card.glow, 1),
@@ -4589,7 +5924,9 @@ function CardEditor({
     cut: 14,
     className: "mb-5",
     color: alpha(c.glow, 1),
-    bg: `linear-gradient(180deg, ${alpha(c.glow, 0.95)}, rgba(8,7,12,.97))`
+    bg: `linear-gradient(180deg, ${alpha(c.glow, 0.95)}, rgba(8,7,12,.97))`,
+    mc: "transparent",
+    mb: `linear-gradient(180deg, ${alpha(c.glow, 1)}, #000)`
   }, React.createElement("div", {
     className: "flex items-center gap-4 p-4"
   }, React.createElement(Sticker, {
@@ -4641,7 +5978,7 @@ function CardEditor({
     size: 30
   }), React.createElement("span", {
     className: "f-mono text-[9px] text-white/55 uppercase"
-  }, l))))), React.createElement(Field, {
+  }, UI.mono ? TOON_FRAME_NAMES[v] : l))))), React.createElement(Field, {
     label: `Иконка · ${stickerLabel(c.icon)}`
   }, React.createElement("div", {
     className: "grid grid-cols-6 gap-1.5"
@@ -4668,9 +6005,9 @@ function CardEditor({
   })))), React.createElement("div", {
     className: "micro mt-2",
     style: {
-      color: 'rgba(var(--alt-rgb),.7)'
+      color: UI.mono ? '#8E8E93' : 'rgba(var(--alt-rgb),.7)'
     }
-  }, STICKERS.length, " \u0418\u041A\u041E\u041D\u041E\u041A \xB7 6 \u0420\u0410\u041C\u041E\u041A \xB7 \u041B\u042E\u0411\u041E\u0419 \u041D\u0415\u041E\u041D\u041E\u0412\u042B\u0419 \u0426\u0412\u0415\u0422"), React.createElement("div", {
+  }, STICKERS.length, " \u0418\u041A\u041E\u041D\u041E\u041A \xB7 6 \u0420\u0410\u041C\u041E\u041A \xB7 \u041B\u042E\u0411\u041E\u0419 ", UI.mono ? '' : 'НЕОНОВЫЙ ', "\u0426\u0412\u0415\u0422"), React.createElement("div", {
     className: "flex gap-2 mt-2"
   }, React.createElement("input", {
     className: "inp flex-1 min-w-0",
@@ -4697,7 +6034,7 @@ function CardEditor({
       icon: v ? `url:${v}` : 'st:star'
     })
   }))), React.createElement(Field, {
-    label: "\u041D\u0435\u043E\u043D\u043E\u0432\u044B\u0439 \u0446\u0432\u0435\u0442 \u0441\u0442\u0438\u043A\u0435\u0440\u0430"
+    label: UI.mono ? 'Цвет стикера' : 'Неоновый цвет стикера'
   }, React.createElement(ColorRow, {
     value: c.iconColor,
     onChange: v => set({
@@ -4705,7 +6042,7 @@ function CardEditor({
     }),
     presets: ['#FCEE0A', '#00F0FF', '#FF4655', '#B98CF0', '#59FF00', '#FF7A00', '#FF2E8C', '#FFFFFF']
   })), React.createElement(Field, {
-    label: "\u0426\u0432\u0435\u0442 \u0441\u0432\u0435\u0447\u0435\u043D\u0438\u044F \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438"
+    label: UI.mono ? 'Цвет фона карточки' : 'Цвет свечения карточки'
   }, React.createElement(ColorRow, {
     value: c.glow,
     onChange: v => set({
@@ -4851,7 +6188,7 @@ function CardCatalog({
   }, "\u041A\u0430\u0442\u0430\u043B\u043E\u0433 \u043A\u0430\u0440\u0442\u043E\u0447\u0435\u043A"), React.createElement("div", {
     className: "micro mt-1",
     style: {
-      color: 'rgba(var(--alt-rgb),.7)'
+      color: UI.mono ? '#8E8E93' : 'rgba(var(--alt-rgb),.7)'
     }
   }, cards.length, " ", plural(cards.length, 'КАРТОЧКА', 'КАРТОЧКИ', 'КАРТОЧЕК'), " \xB7 \u0411\u0410\u041B\u041B\u042B \u0417\u0410 ", fmtShort(sel))), React.createElement(Btn, {
     small: true,
@@ -5110,7 +6447,9 @@ function RateModal({
       cut: 16,
       className: "mb-4",
       color: alpha(c.glow, 1),
-      bg: `linear-gradient(180deg, ${alpha(c.glow, 0.75)}, rgba(10,8,14,.96) 62%)`
+      bg: `linear-gradient(180deg, ${alpha(c.glow, 0.75)}, rgba(10,8,14,.96) 62%)`,
+      mc: "transparent",
+      mb: `linear-gradient(180deg, ${alpha(c.glow, 0.95)}, #111113 55%)`
     }, React.createElement("div", {
       className: "flex items-center gap-3 p-3"
     }, React.createElement(Sticker, {
@@ -5359,10 +6698,38 @@ function MatrixBG() {
     }
   }, c.chars)));
 }
+const MONO_TBG = {
+  smoke: ['Гранат', '#C2185B', 'linear-gradient(180deg,#5A0F2B 0%,#1E0610 45%,#000 85%)'],
+  grid: ['Океан', '#2F6BFF', 'linear-gradient(180deg,#0F2A6B 0%,#081330 45%,#000 85%)'],
+  city: ['Закат', '#FF7A1A', 'linear-gradient(180deg,#6B2A06 0%,#2A1003 45%,#000 85%)'],
+  matrix: ['Лес', '#2BD46A', 'linear-gradient(180deg,#0B4A26 0%,#04200F 45%,#000 85%)'],
+  custom: ['Своё фото', '#888', 'repeating-linear-gradient(45deg,#1c1c1e 0 6px,#2c2c2e 6px 12px)']
+};
+function MonoTimerBg({
+  k,
+  live
+}) {
+  const p = MONO_TBG[k] || MONO_TBG.smoke;
+  return React.createElement("div", {
+    className: "absolute inset-0 overflow-hidden",
+    style: {
+      background: p[2]
+    }
+  }, live && React.createElement("div", {
+    className: "mono-blob",
+    style: {
+      background: `radial-gradient(circle, ${alpha(p[1], 0.55)} 0%, transparent 62%)`
+    }
+  }));
+}
 function TimerBg({
   t,
   live
 }) {
+  if (UI.mono && !(t.bg === 'custom' && t.bgUrl && live)) return React.createElement(MonoTimerBg, {
+    k: t.bg,
+    live: live
+  });
   const preset = TIMER_BGS.find(b => b[0] === t.bg) || TIMER_BGS[0];
   if (!live) return React.createElement("div", {
     className: "absolute inset-0",
@@ -5442,11 +6809,43 @@ function TimerCard({
       background: 'linear-gradient(180deg,rgba(0,0,0,.25),transparent 25%,transparent 70%,rgba(0,0,0,.55))'
     }
   }), React.createElement("div", {
-    className: "absolute top-4 left-4 micro",
+    className: "absolute top-4 left-4 micro deco",
     style: {
       color: 'rgba(255,255,255,.65)'
     }
-  }, "COUNTDOWN.FEED // ", pad(index + 1), "/", pad(total)), React.createElement("div", {
+  }, "COUNTDOWN.FEED // ", pad(index + 1), "/", pad(total)), UI.mono ? React.createElement("div", {
+    className: "absolute right-3 top-5 flex flex-col items-center gap-3 z-10"
+  }, React.createElement("button", {
+    type: "button",
+    "aria-label": "\u0418\u0437\u043C\u0435\u043D\u0438\u0442\u044C",
+    className: "mono-rail",
+    onClick: () => {
+      sfx('open');
+      onEdit();
+    }
+  }, React.createElement(Pencil, {
+    size: 19
+  })), React.createElement("button", {
+    type: "button",
+    "aria-label": "\u041D\u043E\u0432\u044B\u0439 \u0442\u0430\u0439\u043C\u0435\u0440",
+    className: "mono-rail",
+    onClick: () => {
+      sfx('open');
+      onAdd();
+    }
+  }, React.createElement(Plus, {
+    size: 22
+  })), React.createElement("button", {
+    type: "button",
+    "aria-label": "\u0423\u0434\u0430\u043B\u0438\u0442\u044C",
+    className: "mono-rail",
+    onClick: () => {
+      sfx();
+      onDelete();
+    }
+  }, React.createElement(Trash2, {
+    size: 18
+  }))) : React.createElement("div", {
     className: "absolute right-3 top-14 flex flex-col items-center gap-6 z-10"
   }, React.createElement("button", {
     type: "button",
@@ -5517,9 +6916,21 @@ function TimerCard({
     className: "text-[13px]",
     style: {
       color: accent,
-      textShadow: `0 0 10px ${accent}`
+      textShadow: UI.mono ? 'none' : `0 0 10px ${accent}`
     }
-  }, (st.pct * 100).toFixed(1), "%"), React.createElement("span", null, st.right)), React.createElement("div", {
+  }, (st.pct * 100).toFixed(1), "%"), React.createElement("span", null, st.right)), UI.mono ? React.createElement("div", {
+    className: "relative h-[8px] rounded-full overflow-hidden",
+    style: {
+      background: 'rgba(255,255,255,.16)'
+    }
+  }, React.createElement("div", {
+    className: "absolute left-0 top-0 bottom-0 rounded-full",
+    style: {
+      width: `${st.pct * 100}%`,
+      background: accent,
+      transition: 'width 1s linear'
+    }
+  })) : React.createElement("div", {
     className: "relative h-[7px]",
     style: {
       background: 'rgba(255,255,255,.12)',
@@ -5703,7 +7114,7 @@ function TimerEditor({
     className: "cut h-20 flex items-end p-2 text-left",
     style: {
       '--cut': '8px',
-      background: css,
+      background: UI.mono ? MONO_TBG[k][2] : css,
       boxShadow: t.bg === k ? 'inset 0 0 0 2px var(--alt)' : 'inset 0 0 0 1px rgba(255,255,255,.15)'
     }
   }, React.createElement("span", {
@@ -5711,7 +7122,7 @@ function TimerEditor({
     style: {
       textShadow: '0 1px 3px #000'
     }
-  }, name))))), t.bg === 'custom' && React.createElement(Field, {
+  }, UI.mono ? MONO_TBG[k][0] : name))))), t.bg === 'custom' && React.createElement(Field, {
     label: "\u0421\u0432\u043E\u0451 \u0444\u043E\u0442\u043E \u0444\u043E\u043D\u0430"
   }, React.createElement(ImageInput, {
     value: t.bgUrl,
@@ -5806,7 +7217,10 @@ function CountdownScreen() {
     onDelete: () => delTimer(t)
   })) : React.createElement("section", {
     className: "tk flex items-center justify-center"
-  }, React.createElement(SmokeBG, null), React.createElement("div", {
+  }, UI.mono ? React.createElement(MonoTimerBg, {
+    k: "smoke",
+    live: true
+  }) : React.createElement(SmokeBG, null), React.createElement("div", {
     className: "relative"
   }, React.createElement(Empty, {
     icon: Hourglass,
@@ -5993,6 +7407,27 @@ function SettingsScreen({
       }
     }));
   };
+  const pullMain = async () => {
+    let d = null;
+    try {
+      d = JSON.parse(localStorage.getItem(MAIN_KEY));
+    } catch (e) {}
+    if (!d) {
+      sfx('error');
+      toast('Основная версия ещё не сохраняла данные');
+      return;
+    }
+    const ok = await ask({
+      title: 'Взять данные из основной версии?',
+      code: 'BETA // SYNC',
+      text: 'Данные тестовой версии заменятся текущими данными основного приложения. Основное приложение не изменится.',
+      ok: 'Заменить'
+    });
+    if (ok === true) undoable('Данные основной версии загружены', null, () => replaceAll({
+      ...normalize(d),
+      settings: s
+    }));
+  };
   return React.createElement("div", {
     className: "pb-8"
   }, React.createElement(ScreenHeader, {
@@ -6105,9 +7540,74 @@ function SettingsScreen({
     onClick: simulateSkip
   }, "\u0421\u0438\u043C\u0443\u043B\u0438\u0440\u043E\u0432\u0430\u0442\u044C \u043F\u0440\u043E\u043F\u0443\u0441\u043A \u0432\u0447\u0435\u0440\u0430\u0448\u043D\u0435\u0433\u043E \u0434\u043D\u044F"))), React.createElement(SetBlock, {
     n: "02",
-    title: "\u041F\u0435\u0440\u0441\u043E\u043D\u0430\u043B\u0438\u0437\u0430\u0446\u0438\u044F \u0438 FX",
+    title: UI.mono ? 'Внешний вид' : 'Персонализация и FX',
     icon: Palette
   }, React.createElement("span", {
+    className: "lbl"
+  }, "\u0421\u0442\u0438\u043B\u044C \u0438\u043D\u0442\u0435\u0440\u0444\u0435\u0439\u0441\u0430"), React.createElement("div", {
+    className: "grid grid-cols-2 gap-2 mb-4"
+  }, UI_STYLES.map(st => {
+    const on = (s.ui || 'cyber') === st.id,
+      mono = st.id === 'mono';
+    return React.createElement("button", {
+      key: st.id,
+      type: "button",
+      onClick: () => {
+        if (!on) {
+          sfx('save');
+          set({
+            ui: st.id
+          });
+        }
+      },
+      className: "cut relative flex flex-col items-center text-center px-2 pt-3 pb-2.5",
+      style: {
+        '--cut': '10px',
+        background: mono ? 'linear-gradient(180deg,#0F3B52,#000 75%)' : 'linear-gradient(135deg,#18080C,#0A0A0F)',
+        boxShadow: on ? 'inset 0 0 0 2px var(--alt)' : 'inset 0 0 0 1px rgba(255,255,255,.15)',
+        borderRadius: mono ? 18 : undefined
+      }
+    }, mono ? React.createElement(Sticker, {
+      icon: "st:sleep",
+      color: "#4DB6FF",
+      frame: "oct",
+      size: 46,
+      toon: true
+    }) : React.createElement(Sticker, {
+      icon: "st:bolt",
+      color: "#FF4655",
+      frame: "hex",
+      size: 46,
+      toon: false
+    }), React.createElement("div", {
+      className: "mt-2 leading-tight",
+      style: mono ? {
+        fontFamily: 'Inter, sans-serif',
+        fontWeight: 700,
+        fontSize: 16,
+        color: '#fff'
+      } : {
+        fontFamily: 'Rajdhani, sans-serif',
+        fontWeight: 700,
+        fontSize: 16,
+        letterSpacing: '.1em',
+        textTransform: 'uppercase',
+        color: '#FF4655',
+        textShadow: '0 0 8px rgba(255,70,85,.6)'
+      }
+    }, st.name), React.createElement("div", {
+      className: "text-[11px] text-white/50 mt-0.5 leading-tight",
+      style: {
+        fontFamily: mono ? 'Inter, sans-serif' : "'Exo 2', sans-serif"
+      }
+    }, st.sub), on && React.createElement(Check, {
+      size: 15,
+      className: "absolute top-2 right-2.5",
+      style: {
+        color: 'var(--alt)'
+      }
+    }));
+  })), React.createElement("span", {
     className: "lbl"
   }, "\u0410\u0432\u0430\u0442\u0430\u0440 \u043D\u0430 \u044D\u043A\u0440\u0430\u043D\u0435 \u0441\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043A\u0438"), React.createElement("div", {
     className: "flex items-center gap-4 mb-4"
@@ -6123,7 +7623,32 @@ function SettingsScreen({
     variant: "ghost",
     icon: Pencil,
     onClick: () => setAvEdit(true)
-  }, "\u0418\u0437\u043C\u0435\u043D\u0438\u0442\u044C \u0430\u0432\u0430\u0442\u0430\u0440"))), React.createElement("span", {
+  }, "\u0418\u0437\u043C\u0435\u043D\u0438\u0442\u044C \u0430\u0432\u0430\u0442\u0430\u0440"))), UI.mono ? React.createElement(React.Fragment, null, React.createElement("span", {
+    className: "lbl"
+  }, "\u0410\u043A\u0446\u0435\u043D\u0442\u043D\u044B\u0439 \u0446\u0432\u0435\u0442"), React.createElement("div", {
+    className: "grid grid-cols-3 gap-2"
+  }, MONO_ACCENTS.map(a => React.createElement("button", {
+    key: a.id,
+    type: "button",
+    onClick: () => {
+      sfx('tab');
+      set({
+        monoAccent: a.id
+      });
+    },
+    className: "flex items-center gap-2 px-3 py-2.5 rounded-xl text-left",
+    style: {
+      background: '#1C1C1E',
+      boxShadow: s.monoAccent === a.id ? `inset 0 0 0 2px ${a.c}` : 'none'
+    }
+  }, React.createElement("i", {
+    className: "w-4 h-4 rounded-full shrink-0",
+    style: {
+      background: a.c
+    }
+  }), React.createElement("span", {
+    className: "text-[13px] font-semibold text-white/90 truncate"
+  }, a.name))))) : React.createElement(React.Fragment, null, React.createElement("span", {
     className: "lbl"
   }, "\u0426\u0432\u0435\u0442\u043E\u0432\u0430\u044F \u043F\u0430\u043B\u0438\u0442\u0440\u0430 \u0438\u043D\u0442\u0435\u0440\u0444\u0435\u0439\u0441\u0430"), React.createElement("div", {
     className: "grid grid-cols-2 gap-2"
@@ -6190,7 +7715,12 @@ function SettingsScreen({
     }),
     label: "\u0410\u043D\u0438\u043C\u0430\u0446\u0438\u044F \u0433\u043B\u0438\u0442\u0447\u0430",
     hint: "\u041F\u0435\u0440\u0438\u043E\u0434\u0438\u0447\u0435\u0441\u043A\u0438\u0435 \u0441\u0431\u043E\u0438 \u043D\u0430 \u0437\u0430\u0433\u043E\u043B\u043E\u0432\u043A\u0430\u0445"
-  }), React.createElement(Toggle, {
+  }))), React.createElement("div", {
+    className: UI.mono ? 'mt-3' : '',
+    style: UI.mono ? {
+      borderTop: '1px solid rgba(255,255,255,.07)'
+    } : undefined
+  }, React.createElement(Toggle, {
     on: s.sound,
     onChange: v => {
       SFX.on = v;
@@ -6199,7 +7729,7 @@ function SettingsScreen({
       });
     },
     label: "\u0417\u0432\u0443\u043A\u043E\u0432\u043E\u0439 \u043E\u0442\u043A\u043B\u0438\u043A \u0438\u043D\u0442\u0435\u0440\u0444\u0435\u0439\u0441\u0430",
-    hint: "\u0421\u0438\u043D\u0442\u0435\u0437\u0438\u0440\u043E\u0432\u0430\u043D\u043D\u044B\u0435 sci-fi \u043A\u043B\u0438\u043A\u0438 (Web Audio API)"
+    hint: UI.mono ? 'Мягкие щелчки при нажатиях' : 'Синтезированные sci-fi клики (Web Audio API)'
   })), s.sound && React.createElement(Btn, {
     small: true,
     variant: "dark",
@@ -6236,7 +7766,7 @@ function SettingsScreen({
     className: "flex-1 min-w-0"
   }, React.createElement("div", {
     className: "text-[15px] font-semibold txt-main truncate uppercase tracking-wide"
-  }, sec.name), React.createElement("div", {
+  }, nice(sec.name)), React.createElement("div", {
     className: "f-mono text-[10px] text-white/40"
   }, secCount[sec.id] || 0, " \xB7 \u041C\u0418\u0421\u0421\u0418\u0419")), React.createElement(IconBtn, {
     sm: true,
@@ -6325,7 +7855,13 @@ function SettingsScreen({
     className: "f-orb text-[18px] font-bold txt-alt glow-alt leading-none"
   }, v), React.createElement("div", {
     className: "f-mono text-[9px] tracking-widest text-white/50 uppercase mt-1.5"
-  }, l)))), React.createElement("div", {
+  }, l)))), BETA && React.createElement("div", {
+    className: "mb-3 p-3 text-[12.5px] leading-snug f-read",
+    style: {
+      color: 'var(--warn)',
+      boxShadow: 'inset 0 0 0 1px rgba(var(--warn-rgb),.4)'
+    }
+  }, "\u0422\u0435\u0441\u0442\u043E\u0432\u0430\u044F \u0432\u0435\u0440\u0441\u0438\u044F. \u0415\u0451 \u0434\u0430\u043D\u043D\u044B\u0435 \u0445\u0440\u0430\u043D\u044F\u0442\u0441\u044F \u043E\u0442\u0434\u0435\u043B\u044C\u043D\u043E \u043E\u0442 \u043E\u0441\u043D\u043E\u0432\u043D\u043E\u0433\u043E \u043F\u0440\u0438\u043B\u043E\u0436\u0435\u043D\u0438\u044F: \u0438\u0437\u043C\u0435\u043D\u0435\u043D\u0438\u044F \u0437\u0434\u0435\u0441\u044C \u0442\u0443\u0434\u0430 \u043D\u0435 \u043F\u043E\u043F\u0430\u0434\u0443\u0442."), React.createElement("div", {
     className: "f-mono text-[11px] tracking-wider mb-1",
     style: {
       color: cloudOn ? '#59FF00' : 'rgba(255,255,255,.5)'
@@ -6404,7 +7940,11 @@ function SettingsScreen({
       if (f) importFile(f);
       e.target.value = '';
     }
-  }), React.createElement(Btn, {
+  }), BETA && React.createElement(Btn, {
+    variant: "dark",
+    icon: FolderInput,
+    onClick: pullMain
+  }, "\u0412\u0437\u044F\u0442\u044C \u0434\u0430\u043D\u043D\u044B\u0435 \u0438\u0437 \u043E\u0441\u043D\u043E\u0432\u043D\u043E\u0439 \u0432\u0435\u0440\u0441\u0438\u0438"), React.createElement(Btn, {
     variant: "dark",
     icon: RotateCcw,
     onClick: resetDemo
@@ -6414,7 +7954,7 @@ function SettingsScreen({
     onClick: clearAll
   }, "\u041E\u0447\u0438\u0441\u0442\u0438\u0442\u044C \u0432\u0441\u0435 \u0434\u0430\u043D\u043D\u044B\u0435"))), React.createElement("div", {
     className: "micro text-center mt-6 mb-2"
-  }, "CYBER//JOURNAL 2077 \xB7 v", APP_VERSION, " \xB7 BUILD ", window.CJ_BUILD || 'DEV', " \xB7 ", cloudOn ? 'LOCAL + CLOUD SYNC' : 'LOCAL STORAGE')), avEdit && React.createElement(AvatarEditor, {
+  }, UI.mono ? 'CYBERJOURNAL' : 'CYBER//JOURNAL 2077', " \xB7 v", APP_VERSION, " \xB7 BUILD ", window.CJ_BUILD || 'DEV', " \xB7 ", cloudOn ? 'LOCAL + CLOUD SYNC' : 'LOCAL STORAGE')), avEdit && React.createElement(AvatarEditor, {
     onClose: () => setAvEdit(false)
   }));
 }
@@ -6458,22 +7998,30 @@ const TABS = [{
   id: 'missions',
   label: 'МИССИИ',
   sub: 'И ЧИПЫ',
-  icon: Crosshair
+  icon: Crosshair,
+  mLabel: 'Миссии',
+  mIcon: ListChecks
 }, {
   id: 'stats',
   label: 'СТАТИСТИКА',
   sub: 'ДНЯ',
-  icon: Activity
+  icon: Activity,
+  mLabel: 'Итоги',
+  mIcon: CalendarDays
 }, {
   id: 'timer',
   label: 'ОТСЧЁТ',
   sub: 'ВРЕМЕНИ',
-  icon: Hourglass
+  icon: Hourglass,
+  mLabel: 'Отсчёт',
+  mIcon: Timer
 }, {
   id: 'system',
   label: 'СИСТЕМА',
   sub: 'НАСТРОЙКИ',
-  icon: Terminal
+  icon: Terminal,
+  mLabel: 'Система',
+  mIcon: Settings
 }];
 const FONTS_URL = 'https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Exo+2:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Orbitron:wght@500;700;900&family=Oswald:wght@400;500;600;700&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Unbounded:wght@500;700&display=swap';
 function App() {
@@ -6503,7 +8051,12 @@ function App() {
   const toastTimer = useRef(null);
   SFX.on = !!data.settings.sound;
   SFX.vib = !!data.settings.haptics;
+  const mono = data.settings.ui === 'mono';
+  UI.mono = mono;
+  SFX.soft = mono;
   const th = THEMES[data.settings.theme] || THEMES.classic;
+  const acc = (MONO_ACCENTS.find(a => a.id === data.settings.monoAccent) || MONO_ACCENTS[0]).c;
+  const pageBg = mono ? '#000000' : th.bg2;
   const switched = useRef(false);
   const mainRef = useRef(null);
   const setTab = t => {
@@ -6706,6 +8259,7 @@ function App() {
   }, [data]);
   const bootData = useRef(data);
   useEffect(() => {
+    if (BETA) return undefined;
     const t = setTimeout(async () => {
       if (migrating.current) return;
       try {
@@ -6718,11 +8272,11 @@ function App() {
     return () => clearTimeout(t);
   }, []);
   useEffect(() => {
-    document.body.style.background = th.bg2;
-    document.documentElement.style.background = th.bg2;
+    document.body.style.background = pageBg;
+    document.documentElement.style.background = pageBg;
     const m = document.querySelector('meta[name="theme-color"]');
-    if (m) m.setAttribute('content', th.bg2);
-  }, [th]);
+    if (m) m.setAttribute('content', pageBg);
+  }, [pageBg]);
   const askRetro = useCallback(async y => {
     const ans = await ask({
       title: 'Протокол: пропуск',
@@ -6770,7 +8324,7 @@ function App() {
       }
     }
     const today = dKey(now);
-    if (s.backupDays > 0 && !window.claude && d.meta.backupAskedOn !== today && hasContent(d)) {
+    if (s.backupDays > 0 && !window.claude && !BETA && d.meta.backupAskedOn !== today && hasContent(d)) {
       const last = d.meta.lastBackupAt;
       const age = daysSince(last || d.meta.since);
       if (age >= (last ? s.backupDays : 1)) {
@@ -6863,7 +8417,20 @@ function App() {
     });
     setTimeout(() => askRetro(y), 350);
   };
-  const vars = {
+  const vars = mono ? {
+    '--main': '#F2F2F7',
+    '--alt': acc,
+    '--warn': '#FFD60A',
+    '--bg1': '#000000',
+    '--bg2': '#000000',
+    '--sel1': '#1C1C1E',
+    '--sel2': '#1C1C1E',
+    '--sel-fg': '#FFFFFF',
+    '--sel-shadow': 'none',
+    '--main-rgb': hexRgb('#F2F2F7'),
+    '--alt-rgb': hexRgb(acc),
+    '--warn-rgb': hexRgb('#FFD60A')
+  } : {
     '--main': th.main,
     '--alt': th.alt,
     '--warn': th.warn,
@@ -6891,9 +8458,9 @@ function App() {
   return React.createElement(AppCtx.Provider, {
     value: ctx
   }, React.createElement("div", {
-    className: `cj-root ${data.settings.glitch ? 'fx-glitch' : ''} ${data.settings.crt ? 'crt-on' : ''}`,
+    className: `cj-root ${mono ? 'ui-mono' : `${data.settings.glitch ? 'fx-glitch' : ''} ${data.settings.crt ? 'crt-on' : ''}`}`,
     style: vars
-  }, React.createElement("style", null, CSS), React.createElement("div", {
+  }, React.createElement("style", null, mono ? CSS + MONO_CSS : CSS), React.createElement("div", {
     className: "mx-auto max-w-[480px] h-full flex flex-col relative"
   }, React.createElement("main", {
     key: tab,
@@ -6914,12 +8481,15 @@ function App() {
     type: "button",
     onClick: () => setTab(t.id),
     className: `nav-b ${tab === t.id ? 'on' : ''}`
-  }, React.createElement(t.icon, {
+  }, mono ? React.createElement(t.mIcon, {
+    size: 22,
+    strokeWidth: 2
+  }) : React.createElement(t.icon, {
     size: 20,
     strokeWidth: 2
   }), React.createElement("span", {
     className: "nl"
-  }, t.label), React.createElement("span", {
+  }, mono ? t.mLabel : t.label), !mono && React.createElement("span", {
     className: "ns"
   }, t.sub))))), rate && React.createElement(RateModal, {
     key: `${rate.date}-${rate.source}`,
@@ -6946,9 +8516,9 @@ function App() {
     }
   }, React.createElement(Undo2, {
     size: 14
-  }), toastMsg.action.label)), data.settings.crt && React.createElement("div", {
+  }), toastMsg.action.label)), !mono && data.settings.crt && React.createElement("div", {
     className: "crt"
-  }), data.settings.scanlines && React.createElement("div", {
+  }), !mono && data.settings.scanlines && React.createElement("div", {
     className: "scan"
   })));
 }

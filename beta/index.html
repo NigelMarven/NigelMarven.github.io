@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="robots" content="noindex">
+<title>CyberJournal β</title>
+<link rel="icon" type="image/png" href="../icons/icon-192.png">
+<!-- Тестовая сборка: лежит в папке beta/ сайта и берёт библиотеки, шрифты и иконки из основной версии.
+     Своего service worker и манифеста нет. Данные — под отдельным ключом (window.CJ_BETA). -->
+<script>window.CJ_BETA = true; window.CJ_FONTS_URL = '../fonts/fonts.css'; window.CJ_BUILD = 'BETA-20261016-151036';</script>
+<script src="../vendor/tailwind.js"></script>
+<script src="../vendor/react.production.min.js"></script>
+<script src="../vendor/react-dom.production.min.js"></script>
+<script>window.react = window.React; /* lucide-react UMD ждёт глобальный "react" */</script>
+<script src="../vendor/lucide-react.min.js"></script>
+<style>
+  :root { color-scheme: dark; }
+  html { box-sizing: border-box; height: 100%; padding-block: env(safe-area-inset-top, 0px) env(safe-area-inset-bottom, 0px); }
+  html, body { margin: 0; background: #000; overscroll-behavior: none; }
+  body, #root { height: 100%; }
+  #boot { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+    font: 600 15px/1.4 system-ui, sans-serif; color: #F2F2F7; }
+  #boot i { display: block; width: 120px; height: 4px; border-radius: 2px; background: #1C1C1E; position: relative; overflow: hidden; }
+  #boot i::after { content: ''; position: absolute; inset: 0; width: 40%; border-radius: 2px; background: #B8FF00; animation: boot 1s ease-in-out infinite; }
+  @keyframes boot { from { transform: translateX(-100%); } to { transform: translateX(260%); } }
+  #boot pre { max-width: 92vw; white-space: pre-wrap; color: #FF6961; font-size: 12px; }
+</style>
+</head>
+<body>
+<div id="root"><div id="boot">CyberJournal β<i></i></div></div>
+<script>
+  window.addEventListener('error', function (e) {
+    var b = document.getElementById('boot');
+    if (b) b.innerHTML = 'Ошибка запуска<pre>' + (e.message || e) + '</pre>';
+  });
+</script>
+<script src="app.js"></script>
+<!-- build BETA-20261016-151036 -->
+</body>
+</html>

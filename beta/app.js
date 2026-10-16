@@ -1,4 +1,4 @@
-/* CJ_BUILD BETA-20261016-151036 */
+/* CJ_BUILD BETA-20261017-003745 */
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
 const {
   useState,
@@ -54,7 +54,10 @@ const {
   ChevronDown,
   Archive,
   Flag,
-  FileText
+  FileText,
+  Brain,
+  Target,
+  StickyNote
 } = LucideReact;
 const BETA = typeof window !== 'undefined' && !!window.CJ_BETA;
 const MAIN_KEY = 'cyberjournal2077.v1';
@@ -657,6 +660,18 @@ const DEFAULT_TAGS = () => [{
   name: 'итоги',
   color: '#59FF00'
 }];
+const FOCUS_LEVEL = {
+  min: 15,
+  streak: 0
+};
+const emptyFocus = () => ({
+  sessions: [],
+  inbox: [],
+  level: {
+    ...FOCUS_LEVEL
+  },
+  active: null
+});
 const emptyState = () => ({
   v: 1,
   sections: DEFAULT_SECTIONS(),
@@ -672,6 +687,7 @@ const emptyState = () => ({
       ...DEFAULT_SETTINGS.thr
     }
   },
+  focus: emptyFocus(),
   meta: {
     retroIgnored: [],
     since: new Date().toISOString(),
@@ -679,6 +695,29 @@ const emptyState = () => ({
     backupAskedOn: ''
   }
 });
+function normalizeFocus(f) {
+  const out = {
+    ...emptyFocus(),
+    ...(f && typeof f === 'object' ? f : {})
+  };
+  if (!Array.isArray(out.sessions)) out.sessions = [];
+  if (!Array.isArray(out.inbox)) out.inbox = [];
+  out.level = {
+    ...FOCUS_LEVEL,
+    ...(out.level || {})
+  };
+  const a = out.active;
+  out.active = a && typeof a === 'object' && a.startAt && a.endAt ? {
+    distractions: 0,
+    reasons: {},
+    leaves: 0,
+    away: 0,
+    parked: [],
+    stoppedAt: 0,
+    ...a
+  } : null;
+  return out;
+}
 function normalize(d) {
   const base = emptyState();
   const out = {
@@ -701,6 +740,7 @@ function normalize(d) {
     ...(d && d.meta || {})
   };
   if (!Array.isArray(out.meta.retroIgnored)) out.meta.retroIgnored = [];
+  out.focus = normalizeFocus(d && d.focus);
   out.v = 1;
   return out;
 }
@@ -1084,6 +1124,49 @@ function makeDemo() {
     font: 'oswald',
     accent: '#FCEE0A'
   }];
+  const fs = (days, h, missionId, title, goal, planMin, min, distractions, reasons, leaves, score) => ({
+    id: uid('fs'),
+    missionId,
+    title,
+    goal,
+    start: at(days, h).toISOString(),
+    planMin,
+    ms: min * 60e3,
+    away: 0,
+    distractions,
+    reasons,
+    leaves,
+    score,
+    completed: min >= planMin,
+    goalDone: score >= 4
+  });
+  st.focus = {
+    ...emptyFocus(),
+    level: {
+      min: 20,
+      streak: 1
+    },
+    sessions: [fs(-6, 10, 'm_eng', 'ПРОКАЧАТЬ АНГЛИЙСКИЙ', 'Разобрать 20 новых слов', 15, 15, 2, {
+      mind: 1
+    }, 0, 4), fs(-5, 19, 'm_corpo', 'THE CORPO-RAT', 'Черновик отчёта', 15, 9, 5, {
+      phone: 3,
+      noise: 1
+    }, 2, 2), fs(-4, 11, 'm_eng', 'ПРОКАЧАТЬ АНГЛИЙСКИЙ', 'Подкаст + конспект', 15, 15, 1, {
+      mind: 1
+    }, 0, 5), fs(-3, 18, 'm_corpo', 'THE CORPO-RAT', 'Собрать цифры для отчёта', 20, 20, 3, {
+      phone: 2
+    }, 0, 4), fs(-2, 10, '', '', 'Прочитать главу книги', 20, 20, 2, {
+      mind: 2
+    }, 0, 4), fs(-1, 20, 'm_corpo', 'THE CORPO-RAT', 'Финальная правка отчёта', 20, 14, 4, {
+      tired: 2,
+      phone: 1
+    }, 1, 3)],
+    inbox: [{
+      id: uid('fi'),
+      text: 'Купить кабель USB-C',
+      at: at(-1, 20, 7).toISOString()
+    }]
+  };
   return st;
 }
 function loadState() {
@@ -1166,7 +1249,7 @@ const exportBackup = async data => {
     images
   }, null, 2));
 };
-const hasContent = d => d.missions.length + d.shards.length + d.timers.length + Object.keys(d.ratings).length > 0;
+const hasContent = d => d.missions.length + d.shards.length + d.timers.length + Object.keys(d.ratings).length + d.focus.sessions.length > 0;
 const daysSince = iso => {
   const t = Date.parse(iso);
   return isNaN(t) ? Infinity : Math.floor((Date.now() - t) / 864e5);
@@ -1305,10 +1388,10 @@ textarea.inp{resize:vertical;line-height:1.5;}
 .plus-btn:active{filter:brightness(1.3);}
 .done-stamp{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:.14em;color:var(--alt);box-shadow:inset 0 0 0 1px var(--alt);padding:2px 5px;}
 /* навигация */
-.nav{display:grid;grid-template-columns:repeat(4,1fr);background:linear-gradient(180deg,rgba(10,8,14,.94),rgba(5,4,8,.99));border-top:1px solid rgba(var(--main-rgb),.45);box-shadow:0 -6px 24px rgba(var(--main-rgb),.14);position:relative;z-index:20;}
+.nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));background:linear-gradient(180deg,rgba(10,8,14,.94),rgba(5,4,8,.99));border-top:1px solid rgba(var(--main-rgb),.45);box-shadow:0 -6px 24px rgba(var(--main-rgb),.14);position:relative;z-index:20;}
 .nav-b{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:9px 2px 8px;color:rgba(255,255,255,.42);}
-.nav-b .nl{font-size:12px;font-weight:700;letter-spacing:.1em;line-height:1;}
-.nav-b .ns{font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:.12em;opacity:.75;line-height:1;}
+.nav-b .nl{font-size:11px;font-weight:700;letter-spacing:.03em;line-height:1;white-space:nowrap;}
+.nav-b .ns{font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:.08em;opacity:.75;line-height:1;white-space:nowrap;}
 .nav-b.on{color:var(--main);text-shadow:0 0 8px rgba(var(--main-rgb),.7);}
 .nav-b.on::before{content:'';position:absolute;top:-1px;left:22%;right:22%;height:3px;background:var(--main);box-shadow:0 0 12px var(--main);}
 .nav-b.on svg{filter:drop-shadow(0 0 5px var(--main));}
@@ -1362,6 +1445,16 @@ textarea.inp{resize:vertical;line-height:1.5;}
 .set-t{font-size:16px;font-weight:700;letter-spacing:.1em;color:var(--main);text-transform:uppercase;}
 .term-bg{background-image:linear-gradient(rgba(var(--main-rgb),.05) 1px,transparent 1px),linear-gradient(90deg,rgba(var(--main-rgb),.05) 1px,transparent 1px);background-size:22px 22px;}
 .stat-cell{padding:10px;box-shadow:inset 0 0 0 1px rgba(var(--alt-rgb),.22);background:rgba(var(--alt-rgb),.04);--cut:8px;}
+/* фокус-сессия */
+.focus-bg{background:radial-gradient(120% 60% at 50% 38%,var(--bg1) 0%,var(--bg2) 75%);}
+.f-ring{filter:drop-shadow(0 0 7px rgba(var(--alt-rgb),.75));}
+.f-time{font-family:'Orbitron','Russo One',sans-serif;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.02em;line-height:1;color:#fff;text-shadow:0 0 18px rgba(var(--alt-rgb),.55);}
+.f-alert{--cut:10px;background:rgba(255,42,42,.14);box-shadow:inset 0 0 0 1px #FF2A2A,0 0 24px rgba(255,42,42,.35);color:#FF5A5A;animation:dlgin .25s ease-out;}
+.f-chip{--cut:7px;padding:8px 12px;font-weight:700;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--alt);box-shadow:inset 0 0 0 1px rgba(var(--alt-rgb),.55);background:rgba(var(--alt-rgb),.06);}
+.f-chip:active{filter:brightness(1.4);}
+.f-bar{position:relative;width:100%;max-width:26px;margin:0 auto;background:var(--alt);box-shadow:0 0 8px rgba(var(--alt-rgb),.6);min-height:2px;}
+.f-dot{width:12px;height:12px;transform:rotate(45deg);box-shadow:inset 0 0 0 1.5px rgba(var(--alt-rgb),.6);}
+.f-dot.on{background:var(--alt);box-shadow:0 0 8px var(--alt);}
 `;
 const MONO_CSS = `
 .cj-root.ui-mono{font-family:'Inter',system-ui,sans-serif;color:#F2F2F7;background:#000;}
@@ -1459,6 +1552,14 @@ const MONO_CSS = `
 .mono-rail{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.3);color:#fff;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);}
 .mono-rail:active{transform:scale(.94);}
 .mono-blob{position:absolute;left:50%;top:-12%;width:140%;aspect-ratio:1;margin-left:-70%;border-radius:50%;animation:drift 24s ease-in-out infinite;will-change:transform;}
+.ui-mono .focus-bg{background:#000;}
+.ui-mono .f-ring{filter:none;}
+.ui-mono .f-time{font-family:'Unbounded','Inter',sans-serif;font-weight:500;letter-spacing:-.02em;text-shadow:none;}
+.ui-mono .f-alert{border-radius:16px;background:rgba(255,69,58,.16);box-shadow:none;color:#FF6961;animation:mdlg .2s ease-out;}
+.ui-mono .f-chip{border-radius:999px;box-shadow:none;background:#1C1C1E;color:#F2F2F7;text-transform:none;letter-spacing:0;font-weight:600;font-size:14px;}
+.ui-mono .f-bar{border-radius:6px;box-shadow:none;}
+.ui-mono .f-dot{transform:none;border-radius:50%;box-shadow:none;background:#2C2C2E;}
+.ui-mono .f-dot.on{background:var(--alt);box-shadow:none;}
 `;
 const AppCtx = createContext(null);
 const useApp = () => useContext(AppCtx);
@@ -4211,6 +4312,12 @@ function MissionDetail({
   onToggleDone,
   onResume
 }) {
+  const {
+    data,
+    openFocus
+  } = useApp();
+  const fSessions = data.focus.sessions.filter(s => s.missionId === m.id);
+  const fMin = fSessions.reduce((x, s) => x + focusMin(s), 0);
   const firstOpen = archived ? -1 : m.steps.findIndex(s => !s.done && !s.optional);
   const dl = parseLocal(m.deadline);
   const left = dl ? Math.ceil((dl - Date.now()) / 864e5) : null;
@@ -4286,7 +4393,11 @@ function MissionDetail({
     size: 14
   }), " \u0414\u0415\u0414\u041B\u0410\u0419\u041D: ", fmtDT(dl), " \xB7 ", left > 0 ? `${left} ДН.` : left === 0 ? 'СЕГОДНЯ' : 'ПРОСРОЧЕНО', m.countdown && React.createElement("span", {
     className: "done-stamp"
-  }, "\u041E\u0422\u0421\u0427\u0401\u0422 \u2713")), archived ? React.createElement("div", {
+  }, "\u041E\u0422\u0421\u0427\u0401\u0422 \u2713")), fSessions.length > 0 && React.createElement("div", {
+    className: "mt-3 flex items-center gap-2 text-[12px] f-mono tracking-wider txt-alt"
+  }, React.createElement(Brain, {
+    size: 14
+  }), " \u0424\u041E\u041A\u0423\u0421: ", fmtMin(fMin).toUpperCase(), " \xB7 ", fSessions.length, " ", plural(fSessions.length, 'СЕССИЯ', 'СЕССИИ', 'СЕССИЙ')), archived ? React.createElement("div", {
     className: "grid grid-cols-1 gap-2 mt-4"
   }, React.createElement(Btn, {
     small: true,
@@ -4302,6 +4413,12 @@ function MissionDetail({
   }, "\u0423\u0434\u0430\u043B\u0438\u0442\u044C \u043D\u0430\u0432\u0441\u0435\u0433\u0434\u0430")) : React.createElement("div", {
     className: "grid grid-cols-2 gap-2 mt-4"
   }, React.createElement(Btn, {
+    small: true,
+    className: "col-span-2",
+    icon: Brain,
+    snd: "open",
+    onClick: () => openFocus(m.id)
+  }, "\u0424\u043E\u043A\u0443\u0441-\u0441\u0435\u0441\u0441\u0438\u044F"), React.createElement(Btn, {
     small: true,
     variant: "ghost",
     icon: Pencil,
@@ -5636,12 +5753,29 @@ function DayDetail({
   const cardsById = Object.fromEntries(data.cards.map(c => [c.id, c]));
   const planned = activeCards(data.cards, k);
   const entries = r ? Object.entries(r.scores) : [];
+  const fDay = data.focus.sessions.filter(s => dKey(new Date(s.start)) === k);
+  const fAvg = calcAvg(fDay.map(s => s.score));
   return React.createElement("div", {
     className: "px-4 mt-5"
   }, React.createElement(SectionHeader, {
     name: `Сводка · ${fmtShort(k)}`,
     count: entries.length
+  }), fDay.length > 0 && React.createElement(Frame, {
+    cut: 12,
+    className: "mt-2.5",
+    color: "rgba(var(--alt-rgb),.35)"
+  }, React.createElement("div", {
+    className: "flex items-center gap-3 p-3"
+  }, React.createElement(Brain, {
+    size: 22,
+    className: "txt-alt shrink-0"
   }), React.createElement("div", {
+    className: "flex-1 min-w-0"
+  }, React.createElement("div", {
+    className: "m-title text-[16px]"
+  }, "\u0424\u043E\u043A\u0443\u0441 \xB7 ", fmtMin(fDay.reduce((x, s) => x + focusMin(s), 0))), React.createElement("div", {
+    className: "text-[12px] text-white/50 f-read mt-0.5"
+  }, fDay.length, " ", plural(fDay.length, 'сессия', 'сессии', 'сессий'), " \xB7 ", fDay.reduce((x, s) => x + s.distractions, 0), " \u043E\u0442\u0432\u043B\u0435\u0447.", fAvg != null ? ` · оценка ${fAvg.toFixed(1)}` : '')))), React.createElement("div", {
     className: "mt-2.5 space-y-2"
   }, future ? React.createElement(Empty, {
     icon: Clock,
@@ -7247,6 +7381,982 @@ function CountdownScreen() {
     onDelete: () => delTimer(edit)
   }));
 }
+const FOCUS_REASONS = [['phone', 'Телефон'], ['mind', 'Мысли'], ['noise', 'Шум'], ['tired', 'Усталость'], ['other', 'Другое']];
+const REASON_NAME = Object.fromEntries(FOCUS_REASONS);
+const FOCUS_DURS = [10, 15, 20, 25, 30, 45, 60, 90];
+const FOCUS_SCORE = {
+  5: 'Поток',
+  4: 'Собран',
+  3: 'Средне',
+  2: 'Рассеян',
+  1: 'Провал'
+};
+const FOCUS_MAX = 90;
+const FOCUS_CLEAN_RUN = 3;
+const FOCUS_LEFT_KEY = `${LS_KEY}.focusLeft`;
+const readLeft = () => {
+  try {
+    const v = Number(localStorage.getItem(FOCUS_LEFT_KEY)) || 0;
+    localStorage.removeItem(FOCUS_LEFT_KEY);
+    return v;
+  } catch (e) {
+    return 0;
+  }
+};
+const focusMin = s => Math.max(0, ((s.ms || 0) - (s.away || 0)) / 60e3);
+const fmtMin = m => {
+  const r = Math.round(m);
+  return r >= 60 ? `${Math.floor(r / 60)} ч ${r % 60 ? `${r % 60} мин` : ''}`.trim() : `${r} мин`;
+};
+const fmtClock = ms => {
+  const s = Math.max(0, Math.ceil(ms / 1000)),
+    h = Math.floor(s / 3600);
+  return h ? `${h}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}` : `${pad(Math.floor(s / 60))}:${pad(s % 60)}`;
+};
+const focusLevelNo = min => Math.max(1, Math.round((min - FOCUS_LEVEL.min) / 5) + 1);
+const isCleanSession = s => s.completed && !s.leaves && s.distractions <= 3;
+function nextFocusLevel(level, s) {
+  if (s.planMin < level.min) return {
+    level,
+    up: false
+  };
+  if (!isCleanSession(s)) return {
+    level: {
+      ...level,
+      streak: 0
+    },
+    up: false
+  };
+  const streak = level.streak + 1;
+  if (streak >= FOCUS_CLEAN_RUN && level.min < FOCUS_MAX) return {
+    level: {
+      min: Math.min(FOCUS_MAX, level.min + 5),
+      streak: 0
+    },
+    up: true
+  };
+  return {
+    level: {
+      ...level,
+      streak: Math.min(streak, FOCUS_CLEAN_RUN)
+    },
+    up: false
+  };
+}
+const topReason = sessions => {
+  const sum = {};
+  sessions.forEach(s => Object.entries(s.reasons || {}).forEach(([k, v]) => {
+    sum[k] = (sum[k] || 0) + v;
+  }));
+  const best = Object.entries(sum).sort((a, b) => b[1] - a[1])[0];
+  return best && best[1] > 0 ? best[0] : null;
+};
+function useParkOps() {
+  const {
+    data,
+    up,
+    toast
+  } = useApp();
+  return {
+    toMission: text => {
+      const sec = data.sections[0];
+      if (!sec) {
+        sfx('error');
+        toast('Сначала создай раздел миссий');
+        return false;
+      }
+      up('missions', ms => [...ms, {
+        ...blankMission(sec.id),
+        title: text,
+        steps: []
+      }]);
+      up('sections', ss => ss.map(x => x.id === sec.id ? {
+        ...x,
+        collapsed: false
+      } : x));
+      sfx('save');
+      toast(`Миссия добавлена · ${nice(sec.name)}`);
+      return true;
+    },
+    toShard: text => {
+      up('shards', ss => [{
+        ...blankShard(),
+        title: text.slice(0, 80),
+        body: text
+      }, ...ss]);
+      sfx('save');
+      toast('Чип данных записан');
+      return true;
+    }
+  };
+}
+function ParkedRow({
+  p,
+  onDone
+}) {
+  const ops = useParkOps();
+  return React.createElement(Frame, {
+    cut: 10,
+    color: "rgba(var(--alt-rgb),.3)"
+  }, React.createElement("div", {
+    className: "flex items-center gap-2 pl-3 pr-2 py-2"
+  }, React.createElement(StickyNote, {
+    size: 16,
+    className: "txt-alt shrink-0"
+  }), React.createElement("div", {
+    className: "flex-1 min-w-0 text-[14.5px] text-white/85 leading-snug f-read break-words"
+  }, p.text), React.createElement(IconBtn, {
+    sm: true,
+    icon: Flag,
+    title: "\u0412 \u043C\u0438\u0441\u0441\u0438\u044E",
+    onClick: () => {
+      if (ops.toMission(p.text)) onDone();
+    }
+  }), React.createElement(IconBtn, {
+    sm: true,
+    icon: FileText,
+    title: "\u0412 \u0447\u0438\u043F \u0434\u0430\u043D\u043D\u044B\u0445",
+    onClick: () => {
+      if (ops.toShard(p.text)) onDone();
+    }
+  }), React.createElement(IconBtn, {
+    sm: true,
+    red: true,
+    icon: X,
+    title: "\u0423\u0434\u0430\u043B\u0438\u0442\u044C",
+    onClick: onDone
+  })));
+}
+function FocusSetup({
+  missionId,
+  onClose
+}) {
+  const {
+    data,
+    up
+  } = useApp();
+  const lv = data.focus.level;
+  const missions = data.missions.filter(m => !m.done);
+  const stepOf = id => {
+    const m = data.missions.find(x => x.id === id);
+    const s = m && m.steps.find(x => !x.done && x.text.trim());
+    return s ? s.text : '';
+  };
+  const [mid, setMid] = useState(missions.some(m => m.id === missionId) ? missionId : '');
+  const [goal, setGoal] = useState(() => stepOf(missionId));
+  const [dur, setDur] = useState(lv.min);
+  const durs = [...new Set([...FOCUS_DURS, lv.min])].sort((a, b) => a - b);
+  const pickMission = id => {
+    if (!goal.trim() || goal === stepOf(mid)) setGoal(stepOf(id));
+    setMid(id);
+  };
+  const start = () => {
+    const m = data.missions.find(x => x.id === mid),
+      n = Date.now();
+    readLeft();
+    up('focus', f => ({
+      ...f,
+      active: {
+        id: uid('fs'),
+        missionId: mid,
+        title: m ? m.title : '',
+        goal: goal.trim(),
+        planMin: dur,
+        startAt: n,
+        endAt: n + dur * 60e3,
+        distractions: 0,
+        reasons: {},
+        leaves: 0,
+        away: 0,
+        parked: [],
+        stoppedAt: 0
+      }
+    }));
+    onClose();
+  };
+  return React.createElement(Modal, {
+    onClose: onClose,
+    title: "\u041D\u043E\u0432\u0430\u044F \u0441\u0435\u0441\u0441\u0438\u044F",
+    code: "NEURAL LINK // CALIBRATE",
+    footer: React.createElement(Btn, {
+      className: "flex-1",
+      icon: Play,
+      snd: "open",
+      onClick: start
+    }, UI.mono ? 'Начать' : 'Подключиться', " \xB7 ", dur, " \u043C\u0438\u043D")
+  }, React.createElement(Field, {
+    label: "\u041C\u0438\u0441\u0441\u0438\u044F"
+  }, React.createElement("select", {
+    className: "inp",
+    value: mid,
+    onChange: e => pickMission(e.target.value)
+  }, React.createElement("option", {
+    value: ""
+  }, "\u0411\u0435\u0437 \u043C\u0438\u0441\u0441\u0438\u0438"), missions.map(m => React.createElement("option", {
+    key: m.id,
+    value: m.id
+  }, nice(m.title || 'БЕЗ НАЗВАНИЯ'))))), React.createElement(Field, {
+    label: "\u0427\u0442\u043E \u0431\u0443\u0434\u0435\u0442 \u0441\u0434\u0435\u043B\u0430\u043D\u043E \u043A \u043A\u043E\u043D\u0446\u0443 \u0441\u0435\u0441\u0441\u0438\u0438"
+  }, React.createElement("input", {
+    className: "inp",
+    value: goal,
+    maxLength: 140,
+    onChange: e => setGoal(e.target.value),
+    placeholder: "\u041D\u0430\u043F\u0440\u0438\u043C\u0435\u0440: \u0447\u0435\u0440\u043D\u043E\u0432\u0438\u043A \u043F\u0435\u0440\u0432\u043E\u0439 \u0433\u043B\u0430\u0432\u044B"
+  }), React.createElement("div", {
+    className: "text-[12px] text-white/40 f-read mt-1.5 leading-snug"
+  }, "\u041E\u0434\u043D\u0430 \u043A\u043E\u043D\u043A\u0440\u0435\u0442\u043D\u0430\u044F \u0446\u0435\u043B\u044C. \u0421 \u043D\u0435\u0439 \u043B\u0435\u0433\u0447\u0435 \u0437\u0430\u043C\u0435\u0442\u0438\u0442\u044C, \u0447\u0442\u043E \u0432\u043D\u0438\u043C\u0430\u043D\u0438\u0435 \u0443\u0448\u043B\u043E \u0432 \u0441\u0442\u043E\u0440\u043E\u043D\u0443.")), React.createElement(Field, {
+    label: "\u0414\u043B\u0438\u0442\u0435\u043B\u044C\u043D\u043E\u0441\u0442\u044C, \u043C\u0438\u043D"
+  }, React.createElement("div", {
+    className: "flex flex-wrap gap-2"
+  }, durs.map(v => React.createElement("button", {
+    key: v,
+    type: "button",
+    onClick: () => {
+      sfx('tab');
+      setDur(v);
+    },
+    className: `wd-chip cut relative ${dur === v ? 'on' : ''}`,
+    style: {
+      minWidth: 52
+    }
+  }, v, v === lv.min && React.createElement("span", {
+    className: "absolute -top-1.5 -right-1.5 text-[9px] leading-none px-1 py-0.5 font-bold",
+    style: {
+      background: 'var(--warn)',
+      color: '#000',
+      borderRadius: UI.mono ? 6 : 0
+    }
+  }, "\u0423\u0420")))), React.createElement("div", {
+    className: "text-[12px] text-white/40 f-read mt-2 leading-snug"
+  }, "\xAB\u0423\u0420\xBB \u2014 \u0434\u043B\u0438\u0442\u0435\u043B\u044C\u043D\u043E\u0441\u0442\u044C \u0442\u0432\u043E\u0435\u0433\u043E \u0443\u0440\u043E\u0432\u043D\u044F (", lv.min, " \u043C\u0438\u043D). \u0421\u0435\u0441\u0441\u0438\u0438 \u043A\u043E\u0440\u043E\u0447\u0435 \u0443\u0440\u043E\u0432\u043D\u044F \u043D\u0430 \u043F\u0440\u043E\u0433\u0440\u0435\u0441\u0441 \u043D\u0435 \u0432\u043B\u0438\u044F\u044E\u0442.")));
+}
+function FocusRing({
+  p,
+  size = 260
+}) {
+  const r = size / 2 - 10,
+    c = 2 * Math.PI * r;
+  return React.createElement("svg", {
+    width: size,
+    height: size,
+    viewBox: `0 0 ${size} ${size}`,
+    className: "absolute inset-0",
+    style: {
+      transform: 'rotate(-90deg)'
+    }
+  }, React.createElement("circle", {
+    cx: size / 2,
+    cy: size / 2,
+    r: r,
+    fill: "none",
+    stroke: "rgba(255,255,255,.08)",
+    strokeWidth: UI.mono ? 10 : 6
+  }), !UI.mono && React.createElement("circle", {
+    cx: size / 2,
+    cy: size / 2,
+    r: r + 8,
+    fill: "none",
+    stroke: "rgba(var(--main-rgb),.35)",
+    strokeWidth: "1",
+    strokeDasharray: "2 6"
+  }), React.createElement("circle", {
+    className: "f-ring",
+    cx: size / 2,
+    cy: size / 2,
+    r: r,
+    fill: "none",
+    stroke: "var(--alt)",
+    strokeWidth: UI.mono ? 10 : 6,
+    strokeLinecap: UI.mono ? 'round' : 'butt',
+    strokeDasharray: c,
+    strokeDashoffset: c * (1 - clamp(p, 0, 1)),
+    style: {
+      transition: 'stroke-dashoffset 1s linear'
+    }
+  }));
+}
+function FocusSession() {
+  const {
+    data,
+    up,
+    ask,
+    toast
+  } = useApp();
+  const a = data.focus.active;
+  const aRef = useRef(a);
+  aRef.current = a;
+  const live = !a.stoppedAt && Date.now() < a.endAt;
+  const now = useNow(1000, live);
+  const over = !!a.stoppedAt || now >= a.endAt;
+  const [flash, setFlash] = useState(null);
+  const [reasonTill, setReasonTill] = useState(0);
+  const [thought, setThought] = useState(null);
+  const [score, setScore] = useState(null);
+  const [goalDone, setGoalDone] = useState(null);
+  useEffect(() => {
+    const settle = () => {
+      const left = readLeft(),
+        x = aRef.current;
+      if (!left || !x || x.stoppedAt || left < x.startAt || left >= x.endAt) return;
+      const away = Math.min(Date.now(), x.endAt) - left;
+      if (away < 3000) return;
+      up('focus', f => f.active && f.active.id === x.id ? {
+        ...f,
+        active: {
+          ...f.active,
+          leaves: f.active.leaves + 1,
+          away: f.active.away + away
+        }
+      } : f);
+      if (Date.now() < x.endAt) {
+        sfx('error');
+        setFlash({
+          away,
+          n: x.leaves + 1,
+          k: Date.now()
+        });
+      }
+    };
+    const onVis = () => {
+      if (document.visibilityState === 'hidden') {
+        const x = aRef.current;
+        if (x && !x.stoppedAt && Date.now() < x.endAt) {
+          try {
+            localStorage.setItem(FOCUS_LEFT_KEY, String(Date.now()));
+          } catch (e) {}
+        }
+      } else settle();
+    };
+    settle();
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, [up]);
+  useEffect(() => {
+    if (!flash) return undefined;
+    const t = setTimeout(() => setFlash(null), 5000);
+    return () => clearTimeout(t);
+  }, [flash]);
+  useEffect(() => {
+    if (over) return undefined;
+    let lock = null,
+      dead = false;
+    const req = async () => {
+      try {
+        if (!navigator.wakeLock || document.visibilityState !== 'visible') return;
+        const l = await navigator.wakeLock.request('screen');
+        if (dead) l.release();else lock = l;
+      } catch (e) {}
+    };
+    const onVis = () => {
+      if (document.visibilityState === 'visible') req();
+    };
+    req();
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      dead = true;
+      document.removeEventListener('visibilitychange', onVis);
+      try {
+        if (lock) lock.release();
+      } catch (e) {}
+    };
+  }, [over]);
+  const wasOver = useRef(over);
+  useEffect(() => {
+    if (over && !wasOver.current && !a.stoppedAt) sfx('save');
+    wasOver.current = over;
+  }, [over, a.stoppedAt]);
+  const patch = fn => up('focus', f => f.active && f.active.id === a.id ? {
+    ...f,
+    active: fn(f.active)
+  } : f);
+  const distract = () => {
+    sfx('uncheck');
+    patch(x => ({
+      ...x,
+      distractions: x.distractions + 1
+    }));
+    setReasonTill(Date.now() + 6000);
+  };
+  const pickReason = r => {
+    sfx('tab');
+    patch(x => ({
+      ...x,
+      reasons: {
+        ...x.reasons,
+        [r]: (x.reasons[r] || 0) + 1
+      }
+    }));
+    setReasonTill(0);
+  };
+  const park = () => {
+    const t = (thought || '').trim();
+    if (t) {
+      patch(x => ({
+        ...x,
+        parked: [...x.parked, {
+          id: uid('fi'),
+          text: t
+        }]
+      }));
+      sfx('check');
+      toast('Мысль отложена на потом');
+    }
+    setThought(null);
+  };
+  const stop = async () => {
+    const done = Math.floor((Date.now() - a.startAt) / 60e3);
+    const ans = await ask({
+      title: 'Завершить сессию?',
+      code: 'NEURAL LINK // DISCONNECT',
+      text: `Прошло ${done} из ${a.planMin} мин. Сессия будет записана как прерванная.`,
+      ok: 'Завершить',
+      cancel: 'Продолжить',
+      extra: 'Удалить без записи'
+    });
+    if (ans === true) patch(x => ({
+      ...x,
+      stoppedAt: Date.now()
+    }));
+    if (ans === 'extra') {
+      readLeft();
+      up('focus', f => ({
+        ...f,
+        active: null
+      }));
+      toast('Сессия удалена');
+    }
+  };
+  const save = () => {
+    const m = data.missions.find(x => x.id === a.missionId);
+    const s = {
+      id: a.id,
+      missionId: a.missionId || '',
+      title: m ? m.title : a.title || '',
+      goal: a.goal,
+      start: new Date(a.startAt).toISOString(),
+      planMin: a.planMin,
+      ms: Math.max(0, (a.stoppedAt || a.endAt) - a.startAt),
+      away: a.away,
+      distractions: a.distractions,
+      reasons: a.reasons,
+      leaves: a.leaves,
+      score,
+      completed: !a.stoppedAt,
+      goalDone
+    };
+    const {
+      level,
+      up: lvUp
+    } = nextFocusLevel(data.focus.level, s);
+    const at = new Date().toISOString();
+    readLeft();
+    up('focus', f => ({
+      ...f,
+      sessions: [...f.sessions, s],
+      inbox: [...f.inbox, ...a.parked.map(p => ({
+        ...p,
+        at
+      }))],
+      level,
+      active: null
+    }));
+    sfx('save');
+    toast(lvUp ? `Уровень повышен · сессии по ${level.min} мин` : a.parked.length ? 'Сессия записана · мысли во вкладке «Фокус»' : 'Сессия записана');
+  };
+  const discard = async () => {
+    const ok = await ask({
+      title: 'Не сохранять сессию?',
+      code: 'NEURAL LINK // PURGE',
+      text: 'Сессия и отложенные мысли будут удалены.',
+      ok: 'Удалить',
+      danger: true
+    });
+    if (ok === true) {
+      readLeft();
+      up('focus', f => ({
+        ...f,
+        active: null
+      }));
+    }
+  };
+  const m = data.missions.find(x => x.id === a.missionId);
+  const title = m ? m.title : a.title;
+  const end = a.stoppedAt || a.endAt;
+  const elapsed = Math.max(0, Math.min(now, end) - a.startAt);
+  const plan = a.planMin * 60e3;
+  const reasonsSet = Object.values(a.reasons).reduce((x, y) => x + y, 0);
+  const wrap = 'w-full max-w-[480px] h-full flex flex-col px-5';
+  const pads = {
+    paddingTop: 'calc(16px + env(safe-area-inset-top))',
+    paddingBottom: 'calc(16px + env(safe-area-inset-bottom))'
+  };
+  if (over) {
+    const draft = {
+      completed: !a.stoppedAt,
+      leaves: a.leaves,
+      distractions: a.distractions,
+      planMin: a.planMin
+    };
+    const lv = data.focus.level;
+    const preview = nextFocusLevel(lv, draft);
+    const mins = Math.max(0, (end - a.startAt - a.away) / 60e3);
+    return React.createElement("div", {
+      className: "fixed inset-0 z-[80] focus-bg flex justify-center"
+    }, React.createElement("div", {
+      className: wrap,
+      style: pads
+    }, React.createElement("div", {
+      className: "flex-1 overflow-y-auto noscb -mx-5 px-5"
+    }, React.createElement("div", {
+      className: "micro deco"
+    }, "NEURAL LINK // DEBRIEF"), React.createElement("div", {
+      className: "h1 mt-1"
+    }, a.stoppedAt ? 'Сессия прервана' : 'Сессия завершена'), (title || a.goal) && React.createElement("div", {
+      className: "mt-2 text-[14px] text-white/60 f-read leading-snug"
+    }, title && React.createElement("span", {
+      className: "font-semibold text-white/80"
+    }, nice(title)), title && a.goal ? ' · ' : '', a.goal), React.createElement("div", {
+      className: "grid grid-cols-3 gap-2 mt-4"
+    }, [[fmtMin(mins), `Фокус из ${a.planMin}`], [a.distractions, plural(a.distractions, 'Отвлечение', 'Отвлечения', 'Отвлечений')], [a.leaves, plural(a.leaves, 'Выход', 'Выхода', 'Выходов')]].map(([v, l]) => React.createElement("div", {
+      key: l,
+      className: "stat-cell cut"
+    }, React.createElement("div", {
+      className: "f-orb text-[18px] font-bold txt-alt glow-alt leading-none"
+    }, v), React.createElement("div", {
+      className: "f-mono text-[9.5px] tracking-widest text-white/50 uppercase mt-1.5"
+    }, l)))), reasonsSet > 0 && React.createElement("div", {
+      className: "flex flex-wrap gap-1.5 mt-2"
+    }, FOCUS_REASONS.filter(([k]) => a.reasons[k]).map(([k, n]) => React.createElement("span", {
+      key: k,
+      className: "tag cut",
+      style: {
+        '--tc': 'var(--warn)',
+        '--cut': '5px'
+      }
+    }, n, " \xD7 ", a.reasons[k]))), a.leaves > 0 && React.createElement("div", {
+      className: "text-[12.5px] text-white/45 f-read mt-2"
+    }, "\u0412\u043D\u0435 \u043F\u0440\u0438\u043B\u043E\u0436\u0435\u043D\u0438\u044F: ", fmtClock(a.away)), a.goal && React.createElement("div", {
+      className: "mt-5"
+    }, React.createElement("span", {
+      className: "lbl"
+    }, "\u0426\u0435\u043B\u044C \u0434\u043E\u0441\u0442\u0438\u0433\u043D\u0443\u0442\u0430?"), React.createElement(Segmented, {
+      value: goalDone,
+      onChange: setGoalDone,
+      accent: "var(--alt)",
+      options: [{
+        v: true,
+        l: 'Да',
+        i: Check
+      }, {
+        v: false,
+        l: 'Нет',
+        i: X
+      }]
+    })), React.createElement("div", {
+      className: "mt-5"
+    }, React.createElement("span", {
+      className: "lbl"
+    }, "\u041A\u0430\u043A \u0434\u0435\u0440\u0436\u0430\u043B\u043E\u0441\u044C \u0432\u043D\u0438\u043C\u0430\u043D\u0438\u0435"), React.createElement("div", {
+      className: "grid grid-cols-5 gap-1.5"
+    }, [5, 4, 3, 2, 1].map(n => React.createElement("button", {
+      key: n,
+      type: "button",
+      onClick: () => {
+        sfx('score');
+        setScore(score === n ? null : n);
+      },
+      className: "flex flex-col items-center gap-1.5 py-1",
+      style: {
+        opacity: score == null || score === n ? 1 : 0.35,
+        transition: 'opacity .15s'
+      }
+    }, React.createElement(ScoreBox, {
+      score: n,
+      size: 46
+    }), React.createElement("span", {
+      className: "text-[11.5px] font-semibold",
+      style: {
+        color: score === n ? SCORE_COLOR[n] : 'rgba(255,255,255,.55)'
+      }
+    }, FOCUS_SCORE[n]))))), a.parked.length > 0 && React.createElement("div", {
+      className: "mt-5"
+    }, React.createElement("span", {
+      className: "lbl"
+    }, "\u041C\u044B\u0441\u043B\u0438 \u043D\u0430 \u043F\u043E\u0442\u043E\u043C \xB7 ", a.parked.length), React.createElement("div", {
+      className: "space-y-2"
+    }, a.parked.map(p => React.createElement(ParkedRow, {
+      key: p.id,
+      p: p,
+      onDone: () => patch(x => ({
+        ...x,
+        parked: x.parked.filter(y => y.id !== p.id)
+      }))
+    }))), React.createElement("div", {
+      className: "text-[12px] text-white/40 f-read mt-1.5"
+    }, "\u041D\u0435\u0440\u0430\u0437\u043E\u0431\u0440\u0430\u043D\u043D\u044B\u0435 \u043E\u0441\u0442\u0430\u043D\u0443\u0442\u0441\u044F \u0432\u043E \u0432\u043A\u043B\u0430\u0434\u043A\u0435 \xAB\u0424\u043E\u043A\u0443\u0441\xBB.")), React.createElement("div", {
+      className: "mt-5 mb-2 p-3 text-[13px] leading-snug f-read",
+      style: {
+        boxShadow: 'inset 0 0 0 1px rgba(var(--alt-rgb),.3)',
+        borderRadius: UI.mono ? 14 : 0,
+        color: 'rgba(255,255,255,.75)'
+      }
+    }, a.planMin < lv.min ? `Сессия короче уровня (${lv.min} мин) — на прогресс не влияет.` : !isCleanSession(draft) ? `Не чистая сессия${a.stoppedAt ? ': прервана' : a.leaves ? ': были выходы из приложения' : ': больше 3 отвлечений'}. Серия чистых сессий начнётся заново.` : preview.up ? `Чистая сессия! Уровень повышается: дальше сессии по ${preview.level.min} мин.` : lv.min >= FOCUS_MAX ? 'Чистая сессия! Это максимальный уровень.' : `Чистая сессия! До нового уровня: ${preview.level.streak}/${FOCUS_CLEAN_RUN}.`)), React.createElement("div", {
+      className: "grid grid-cols-[1fr_2fr] gap-2 pt-3"
+    }, React.createElement(Btn, {
+      variant: "dark",
+      snd: "none",
+      onClick: discard
+    }, "\u0423\u0434\u0430\u043B\u0438\u0442\u044C"), React.createElement(Btn, {
+      icon: Save,
+      snd: "none",
+      onClick: save
+    }, "\u0417\u0430\u043F\u0438\u0441\u0430\u0442\u044C"))));
+  }
+  const showReasons = reasonTill > Date.now();
+  return React.createElement("div", {
+    className: "fixed inset-0 z-[80] focus-bg flex justify-center"
+  }, React.createElement("div", {
+    className: wrap,
+    style: pads
+  }, React.createElement("div", {
+    className: "flex items-start gap-3"
+  }, React.createElement("div", {
+    className: "flex-1 min-w-0"
+  }, React.createElement("div", {
+    className: "micro deco"
+  }, "NEURAL LINK // ACTIVE"), React.createElement("div", {
+    className: "text-[15px] font-semibold uppercase tracking-wider txt-alt glow-alt truncate mt-0.5"
+  }, nice(title || 'Фокус-сессия'))), React.createElement(IconBtn, {
+    icon: X,
+    title: "\u0417\u0430\u0432\u0435\u0440\u0448\u0438\u0442\u044C",
+    onClick: stop
+  })), a.goal && React.createElement("div", {
+    className: "mt-3 text-[16px] text-white/85 f-read leading-snug",
+    style: {
+      borderLeft: '3px solid var(--alt)',
+      paddingLeft: 10
+    }
+  }, a.goal), React.createElement("div", {
+    className: "flex-1 flex flex-col items-center justify-center relative"
+  }, flash && React.createElement("div", {
+    key: flash.k,
+    className: "f-alert cut absolute top-0 left-0 right-0 px-4 py-3 text-center z-10"
+  }, React.createElement("div", {
+    className: "font-bold tracking-[.12em] uppercase text-[15px]"
+  }, UI.mono ? 'Ты выходил из приложения' : 'Связь прервана'), React.createElement("div", {
+    className: "text-[12.5px] mt-0.5 opacity-80"
+  }, "\u0412\u043D\u0435 \u0441\u0435\u0441\u0441\u0438\u0438 ", fmtClock(flash.away), " \xB7 \u0432\u044B\u0445\u043E\u0434 \u2116", flash.n)), React.createElement("div", {
+    className: "relative",
+    style: {
+      width: 260,
+      height: 260
+    }
+  }, React.createElement(FocusRing, {
+    p: elapsed / plan
+  }), React.createElement("div", {
+    className: "absolute inset-0 flex flex-col items-center justify-center"
+  }, React.createElement("div", {
+    className: "f-time",
+    style: {
+      fontSize: plan - elapsed >= 3600e3 ? 44 : 58
+    }
+  }, fmtClock(plan - elapsed)), React.createElement("div", {
+    className: "micro mt-3",
+    style: {
+      color: 'rgba(255,255,255,.45)'
+    }
+  }, "\u0418\u0417 ", a.planMin, " \u041C\u0418\u041D"))), React.createElement("div", {
+    className: "flex gap-5 mt-5 f-mono text-[12px] tracking-wider text-white/55 uppercase"
+  }, React.createElement("span", null, "\u041E\u0442\u0432\u043B\u0435\u0447\u0435\u043D\u0438\u0439: ", React.createElement("b", {
+    className: "text-white/90"
+  }, a.distractions)), React.createElement("span", null, "\u0412\u044B\u0445\u043E\u0434\u043E\u0432: ", React.createElement("b", {
+    style: {
+      color: a.leaves ? '#FF5A5A' : 'rgba(255,255,255,.9)'
+    }
+  }, a.leaves)))), React.createElement("div", {
+    className: "min-h-[92px] flex items-end"
+  }, thought != null ? React.createElement("div", {
+    className: "flex gap-2 w-full"
+  }, React.createElement("input", {
+    autoFocus: true,
+    className: "inp flex-1 min-w-0",
+    value: thought,
+    maxLength: 200,
+    placeholder: "\u041C\u044B\u0441\u043B\u044C, \u043A \u043A\u043E\u0442\u043E\u0440\u043E\u0439 \u0432\u0435\u0440\u043D\u0451\u0448\u044C\u0441\u044F \u043F\u043E\u0441\u043B\u0435 \u0441\u0435\u0441\u0441\u0438\u0438",
+    onChange: e => setThought(e.target.value),
+    onKeyDown: e => {
+      if (e.key === 'Enter') park();
+      if (e.key === 'Escape') setThought(null);
+    }
+  }), React.createElement(Btn, {
+    small: true,
+    snd: "none",
+    icon: Check,
+    onClick: park
+  }, "OK")) : showReasons ? React.createElement("div", {
+    className: "w-full"
+  }, React.createElement("div", {
+    className: "micro mb-1.5",
+    style: {
+      color: 'rgba(255,255,255,.5)'
+    }
+  }, "\u0427\u0422\u041E \u041E\u0422\u0412\u041B\u0415\u041A\u041B\u041E?"), React.createElement("div", {
+    className: "flex flex-wrap gap-1.5"
+  }, FOCUS_REASONS.map(([k, n]) => React.createElement("button", {
+    key: k,
+    type: "button",
+    className: "f-chip cut",
+    onClick: () => pickReason(k)
+  }, n)))) : React.createElement("div", {
+    className: "w-full text-center text-[12.5px] text-white/35 f-read leading-snug pb-1"
+  }, "\u041F\u043E\u0439\u043C\u0430\u043B \u0441\u0435\u0431\u044F \u043D\u0430 \u043F\u043E\u0441\u0442\u043E\u0440\u043E\u043D\u043D\u0438\u0445 \u043C\u044B\u0441\u043B\u044F\u0445 \u2014 \u043D\u0430\u0436\u043C\u0438 \xAB\u041E\u0442\u0432\u043B\u0451\u043A\u0441\u044F\xBB \u0438 \u0432\u0435\u0440\u043D\u0438\u0441\u044C \u043A \u0446\u0435\u043B\u0438")), React.createElement("div", {
+    className: "grid grid-cols-2 gap-2 mt-3"
+  }, React.createElement(Btn, {
+    variant: "ghost",
+    icon: RotateCcw,
+    snd: "none",
+    onClick: distract,
+    style: {
+      paddingTop: 16,
+      paddingBottom: 16
+    }
+  }, "\u041E\u0442\u0432\u043B\u0451\u043A\u0441\u044F"), React.createElement(Btn, {
+    variant: "ghost",
+    icon: StickyNote,
+    onClick: () => setThought(thought == null ? '' : null),
+    style: {
+      paddingTop: 16,
+      paddingBottom: 16
+    }
+  }, "\u041C\u044B\u0441\u043B\u044C"))));
+}
+function FocusScreen() {
+  const {
+    data,
+    up,
+    openFocus,
+    undoable
+  } = useApp();
+  const f = data.focus,
+    lv = f.level;
+  const [sheet, setSheet] = useState(null);
+  const now = new Date(),
+    todayK = dKey(now);
+  const byDay = useMemo(() => {
+    const o = {};
+    f.sessions.forEach(s => {
+      const k = dKey(new Date(s.start));
+      (o[k] = o[k] || []).push(s);
+    });
+    return o;
+  }, [f.sessions]);
+  const days = Array.from({
+    length: 7
+  }, (_, i) => dKey(addDays(now, i - 6)));
+  const dayMin = days.map(k => (byDay[k] || []).reduce((x, s) => x + focusMin(s), 0));
+  const maxMin = Math.max(30, ...dayMin);
+  const week = days.flatMap(k => byDay[k] || []);
+  const today = byDay[todayK] || [];
+  const sum = list => list.reduce((x, s) => x + focusMin(s), 0);
+  const avgScore = list => calcAvg(list.map(s => s.score));
+  const top = topReason(week);
+  const record = f.sessions.reduce((x, s) => Math.max(x, focusMin(s)), 0);
+  const recent = [...f.sessions].sort((x, y) => String(y.start).localeCompare(String(x.start))).slice(0, 15);
+  const missionTitle = s => {
+    const m = data.missions.find(x => x.id === s.missionId);
+    return m ? m.title : s.title;
+  };
+  const sheetS = sheet && f.sessions.find(s => s.id === sheet);
+  const cell = (v, l) => React.createElement("div", {
+    key: l,
+    className: "stat-cell cut"
+  }, React.createElement("div", {
+    className: "f-orb text-[18px] font-bold txt-alt glow-alt leading-none"
+  }, v), React.createElement("div", {
+    className: "f-mono text-[9.5px] tracking-widest text-white/50 uppercase mt-1.5"
+  }, l));
+  const atMax = lv.min >= FOCUS_MAX;
+  return React.createElement("div", {
+    className: "pb-8"
+  }, React.createElement(ScreenHeader, {
+    code: "NEURAL LINK 2.0 // FOCUS.EXE",
+    title: "\u0424\u043E\u043A\u0443\u0441",
+    sub: "\u0422\u0440\u0435\u043D\u0438\u0440\u043E\u0432\u043A\u0430 \u043A\u043E\u043D\u0446\u0435\u043D\u0442\u0440\u0430\u0446\u0438\u0438: \u043E\u0434\u043D\u0430 \u0446\u0435\u043B\u044C, \u043D\u043E\u043B\u044C \u043F\u0435\u0440\u0435\u043A\u043B\u044E\u0447\u0435\u043D\u0438\u0439"
+  }), React.createElement("div", {
+    className: "px-4 mt-4"
+  }, React.createElement(Frame, {
+    cut: 18,
+    color: "rgba(var(--alt-rgb),.5)",
+    mc: "transparent",
+    mb: "#111113"
+  }, React.createElement("div", {
+    className: "p-4"
+  }, React.createElement("div", {
+    className: "flex items-center gap-4"
+  }, React.createElement("div", {
+    className: "w-[64px] h-[64px] shrink-0 flex items-center justify-center cut",
+    style: {
+      '--cut': '12px',
+      background: 'rgba(var(--alt-rgb),.1)',
+      boxShadow: UI.mono ? 'none' : 'inset 0 0 0 1px rgba(var(--alt-rgb),.5)',
+      borderRadius: UI.mono ? 20 : 0
+    }
+  }, React.createElement(Brain, {
+    size: 34,
+    className: "txt-alt",
+    style: {
+      filter: UI.mono ? 'none' : 'drop-shadow(0 0 6px var(--alt))'
+    }
+  })), React.createElement("div", {
+    className: "min-w-0 flex-1"
+  }, React.createElement("div", {
+    className: "micro deco"
+  }, "IMPLANT.LEVEL"), React.createElement("div", {
+    className: "sec-title text-[19px]"
+  }, UI.mono ? `Уровень ${focusLevelNo(lv.min)}` : `Имплант · ур. ${focusLevelNo(lv.min)}`), React.createElement("div", {
+    className: "text-[13px] text-white/60 f-read mt-1"
+  }, "\u0421\u0435\u0441\u0441\u0438\u044F \u0443\u0440\u043E\u0432\u043D\u044F: ", React.createElement("b", {
+    className: "text-white/90"
+  }, lv.min, " \u043C\u0438\u043D")))), React.createElement("div", {
+    className: "flex items-center gap-2.5 mt-4"
+  }, Array.from({
+    length: FOCUS_CLEAN_RUN
+  }, (_, i) => React.createElement("i", {
+    key: i,
+    className: `f-dot ${i < lv.streak ? 'on' : ''}`
+  })), React.createElement("span", {
+    className: "text-[12.5px] text-white/55 f-read ml-1"
+  }, atMax ? 'Максимальный уровень' : `Чистые сессии подряд: ${lv.streak}/${FOCUS_CLEAN_RUN}`)), React.createElement("div", {
+    className: "text-[12px] text-white/40 f-read mt-2 leading-snug"
+  }, "\u0427\u0438\u0441\u0442\u0430\u044F \u0441\u0435\u0441\u0441\u0438\u044F \u2014 \u0434\u043E \u043A\u043E\u043D\u0446\u0430, \u0431\u0435\u0437 \u0432\u044B\u0445\u043E\u0434\u043E\u0432 \u0438\u0437 \u043F\u0440\u0438\u043B\u043E\u0436\u0435\u043D\u0438\u044F \u0438 \u043D\u0435 \u0431\u043E\u043B\u044C\u0448\u0435 3 \u043E\u0442\u0432\u043B\u0435\u0447\u0435\u043D\u0438\u0439. ", FOCUS_CLEAN_RUN, " \u043F\u043E\u0434\u0440\u044F\u0434 \u0434\u043E\u0431\u0430\u0432\u043B\u044F\u044E\u0442 \u043A \u0443\u0440\u043E\u0432\u043D\u044E 5 \u043C\u0438\u043D\u0443\u0442."), React.createElement(Btn, {
+    className: "w-full mt-4",
+    icon: Play,
+    snd: "open",
+    onClick: () => openFocus('')
+  }, "\u041D\u0430\u0447\u0430\u0442\u044C \u0441\u0435\u0441\u0441\u0438\u044E")))), React.createElement("div", {
+    className: "px-4 mt-5"
+  }, React.createElement(SectionHeader, {
+    name: "\u0421\u0435\u0433\u043E\u0434\u043D\u044F",
+    count: today.length
+  }), React.createElement("div", {
+    className: "grid grid-cols-3 gap-2 mt-2.5"
+  }, cell(fmtMin(sum(today)), 'Фокус'), cell(today.length, plural(today.length, 'Сессия', 'Сессии', 'Сессий')), cell(avgScore(today) != null ? avgScore(today).toFixed(1) : '—', 'Оценка'))), React.createElement("div", {
+    className: "px-4 mt-5"
+  }, React.createElement(SectionHeader, {
+    name: "7 \u0434\u043D\u0435\u0439",
+    count: week.length
+  }), React.createElement(Frame, {
+    cut: 14,
+    className: "mt-2.5",
+    color: "rgba(var(--main-rgb),.35)"
+  }, React.createElement("div", {
+    className: "p-3"
+  }, React.createElement("div", {
+    className: "grid grid-cols-7 gap-1 items-end",
+    style: {
+      height: 110
+    }
+  }, days.map((k, i) => React.createElement("div", {
+    key: k,
+    className: "flex flex-col justify-end h-full"
+  }, dayMin[i] > 0 && React.createElement("div", {
+    className: "text-center f-mono text-[10px] text-white/60 mb-1"
+  }, Math.round(dayMin[i])), React.createElement("div", {
+    className: "f-bar",
+    style: {
+      height: `${Math.round(dayMin[i] / maxMin * 80)}%`,
+      opacity: dayMin[i] ? 1 : 0.25
+    }
+  })))), React.createElement("div", {
+    className: "grid grid-cols-7 gap-1 mt-1.5"
+  }, days.map(k => React.createElement("div", {
+    key: k,
+    className: "text-center f-mono text-[10px] uppercase",
+    style: {
+      color: k === todayK ? 'var(--warn)' : 'rgba(255,255,255,.45)'
+    }
+  }, WD[dow(parseKey(k))]))))), React.createElement("div", {
+    className: "grid grid-cols-2 gap-2 mt-2"
+  }, cell(fmtMin(sum(week)), 'Фокус за неделю'), cell(week.length ? round1(week.reduce((x, s) => x + s.distractions, 0) / week.length) : '—', 'Отвлечений за сессию'), cell(top ? REASON_NAME[top] : '—', 'Главный враг'), cell(record ? fmtMin(record) : '—', 'Рекорд сессии'))), f.inbox.length > 0 && React.createElement("div", {
+    className: "px-4 mt-5"
+  }, React.createElement(SectionHeader, {
+    name: "\u041C\u044B\u0441\u043B\u0438 \u043D\u0430 \u043F\u043E\u0442\u043E\u043C",
+    count: f.inbox.length
+  }), React.createElement("div", {
+    className: "space-y-2 mt-2.5"
+  }, f.inbox.map(p => React.createElement(ParkedRow, {
+    key: p.id,
+    p: p,
+    onDone: () => up('focus', x => ({
+      ...x,
+      inbox: x.inbox.filter(y => y.id !== p.id)
+    }))
+  })))), React.createElement("div", {
+    className: "px-4 mt-5"
+  }, React.createElement(SectionHeader, {
+    name: "\u0418\u0441\u0442\u043E\u0440\u0438\u044F",
+    count: f.sessions.length
+  }), React.createElement("div", {
+    className: "space-y-2 mt-2.5"
+  }, recent.map(s => {
+    const t = missionTitle(s),
+      d = new Date(s.start);
+    return React.createElement("button", {
+      key: s.id,
+      type: "button",
+      className: "block w-full text-left",
+      onClick: () => {
+        sfx();
+        setSheet(s.id);
+      }
+    }, React.createElement(Frame, {
+      cut: 12,
+      color: "rgba(var(--main-rgb),.3)"
+    }, React.createElement("div", {
+      className: "flex items-center gap-3 p-3"
+    }, React.createElement(ScoreBox, {
+      score: typeof s.score === 'number' ? s.score : undefined
+    }), React.createElement("div", {
+      className: "flex-1 min-w-0"
+    }, React.createElement("div", {
+      className: "m-title text-[15px] truncate"
+    }, nice(s.goal || t || 'Фокус-сессия')), React.createElement("div", {
+      className: "text-[12px] text-white/50 f-read mt-0.5 truncate"
+    }, d.getDate(), " ", MONTHS_GEN[d.getMonth()], " \xB7 ", pad(d.getHours()), ":", pad(d.getMinutes()), s.goal && t ? ` · ${nice(t)}` : '')), React.createElement("div", {
+      className: "shrink-0 text-right"
+    }, React.createElement("div", {
+      className: "f-orb text-[14px] font-bold",
+      style: {
+        color: s.completed ? 'var(--alt)' : '#FF8A3D'
+      }
+    }, Math.round(focusMin(s)), React.createElement("span", {
+      className: "text-white/40 text-[11px]"
+    }, "/", s.planMin)), React.createElement("div", {
+      className: "f-mono text-[10px] text-white/45 mt-0.5"
+    }, s.completed ? `${s.distractions} ОТВЛ.` : 'ПРЕРВАНА', s.leaves ? ` · ${s.leaves} ВЫХ.` : '')))));
+  }), !f.sessions.length && React.createElement(Empty, {
+    icon: Brain,
+    title: "\u0421\u0435\u0441\u0441\u0438\u0439 \u043F\u043E\u043A\u0430 \u043D\u0435\u0442",
+    text: "\u041D\u0430\u0447\u043D\u0438 \u0441 \u043A\u043E\u0440\u043E\u0442\u043A\u043E\u0439: 10\u201315 \u043C\u0438\u043D\u0443\u0442 \u043D\u0430 \u043E\u0434\u043D\u0443 \u0437\u0430\u0434\u0430\u0447\u0443"
+  }))), sheetS && React.createElement(Sheet, {
+    title: `СЕССИЯ // ${fmtDT(sheetS.start)}`,
+    onClose: () => setSheet(null),
+    items: [sheetS.missionId && data.missions.some(m => m.id === sheetS.missionId && !m.done) && {
+      label: 'Ещё сессия по этой миссии',
+      icon: Play,
+      on: () => openFocus(sheetS.missionId)
+    }, {
+      label: 'Удалить запись',
+      icon: Trash2,
+      danger: true,
+      on: () => undoable('Сессия удалена', ['focus'], () => up('focus', x => ({
+        ...x,
+        sessions: x.sessions.filter(y => y.id !== sheetS.id)
+      })))
+    }]
+  }));
+}
 function SetBlock({
   n,
   title,
@@ -8009,6 +9119,13 @@ const TABS = [{
   mLabel: 'Итоги',
   mIcon: CalendarDays
 }, {
+  id: 'focus',
+  label: 'ФОКУС',
+  sub: 'НЕЙРОЛИНК',
+  icon: Brain,
+  mLabel: 'Фокус',
+  mIcon: Target
+}, {
   id: 'timer',
   label: 'ОТСЧЁТ',
   sub: 'ВРЕМЕНИ',
@@ -8036,6 +9153,10 @@ function App() {
   const [dialog, setDialog] = useState(null);
   const [toastMsg, setToastMsg] = useState(null);
   const [rate, setRate] = useState(null);
+  const [focusSetup, setFocusSetup] = useState(null);
+  const openFocus = useCallback(missionId => setFocusSetup({
+    missionId: missionId || ''
+  }), []);
   const dataRef = useRef(data);
   dataRef.current = data;
   const uiRef = useRef({});
@@ -8300,7 +9421,7 @@ function App() {
     return false;
   }, [ask, up]);
   const runChecks = useCallback(async () => {
-    if (uiRef.current.dialog || uiRef.current.rate) return;
+    if (uiRef.current.dialog || uiRef.current.rate || dataRef.current.focus.active) return;
     const now = new Date();
     let d = dataRef.current;
     if (d.settings.retro && !session.current.retroAsked) {
@@ -8453,8 +9574,9 @@ function App() {
     replaceAll,
     undoable,
     markBackup,
-    cloudOn
-  }), [data, up, ask, toast, replaceAll, undoable, markBackup, cloudOn]);
+    cloudOn,
+    openFocus
+  }), [data, up, ask, toast, replaceAll, undoable, markBackup, cloudOn, openFocus]);
   return React.createElement(AppCtx.Provider, {
     value: ctx
   }, React.createElement("div", {
@@ -8471,7 +9593,7 @@ function App() {
       date,
       source
     })
-  }), tab === 'timer' && React.createElement(CountdownScreen, null), tab === 'system' && React.createElement(SettingsScreen, {
+  }), tab === 'focus' && React.createElement(FocusScreen, null), tab === 'timer' && React.createElement(CountdownScreen, null), tab === 'system' && React.createElement(SettingsScreen, {
     forceEvening: forceEvening,
     simulateSkip: simulateSkip
   })), React.createElement("nav", {
@@ -8496,6 +9618,11 @@ function App() {
     date: rate.date,
     source: rate.source,
     onClose: () => setRate(null)
+  }), focusSetup && !data.focus.active && React.createElement(FocusSetup, {
+    missionId: focusSetup.missionId,
+    onClose: () => setFocusSetup(null)
+  }), data.focus.active && React.createElement(FocusSession, {
+    key: data.focus.active.id
   }), dialog && React.createElement(Dialog, {
     key: dialog.k,
     d: dialog,

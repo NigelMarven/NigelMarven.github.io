@@ -1,4 +1,4 @@
-/* CJ_BUILD 20261017-011146 */
+/* CJ_BUILD 20261017-011920 */
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
 const {
   useState,
@@ -61,7 +61,8 @@ const {
   Flame,
   Snowflake,
   ImagePlus,
-  Minus
+  Minus,
+  Share2
 } = LucideReact;
 const BETA = typeof window !== 'undefined' && !!window.CJ_BETA;
 const MAIN_KEY = 'cyberjournal2077.v1';
@@ -1246,19 +1247,56 @@ async function saveFile(filename, text) {
     return 'error';
   }
 }
-const exportBackup = async data => {
+const backupText = async (data, pretty = true) => {
   let images = {};
   try {
     images = await collectImages(data);
   } catch (e) {}
-  return saveFile(`cyberjournal-backup-${dKey(new Date())}.json`, JSON.stringify({
+  return JSON.stringify({
     app: 'cyberjournal2077',
     version: APP_VERSION,
     exportedAt: new Date().toISOString(),
     data,
     images
-  }, null, 2));
+  }, null, pretty ? 2 : 0);
 };
+const exportBackup = async data => saveFile(`cyberjournal-backup-${dKey(new Date())}.json`, await backupText(data));
+const canShareFiles = () => {
+  try {
+    return !window.claude && !!navigator.canShare && navigator.canShare({
+      files: [new File(['{}'], 'a.txt', {
+        type: 'text/plain'
+      })]
+    });
+  } catch (e) {
+    return false;
+  }
+};
+async function sendBackup(data, ask) {
+  if (!canShareFiles()) return exportBackup(data);
+  const file = new File([await backupText(data, false)], `cyberjournal-backup-${dKey(new Date())}.txt`, {
+    type: 'text/plain'
+  });
+  const share = async () => {
+    try {
+      await navigator.share({
+        files: [file],
+        title: 'CyberJournal · бэкап'
+      });
+      return 'saved';
+    } catch (e) {
+      return e && e.name === 'AbortError' ? 'declined' : e && e.name === 'NotAllowedError' ? 'again' : 'error';
+    }
+  };
+  let res = await share();
+  if (res === 'again') res = (await ask({
+    title: 'Бэкап готов',
+    code: 'SYS // BACKUP.SHARE',
+    text: 'Файл собран. Нажми «Отправить» и выбери, куда сохранить: Telegram, Google Диск и т. п.',
+    ok: 'Отправить'
+  })) === true ? await share() : 'declined';
+  return res === 'again' ? 'error' : res;
+}
 const hasContent = d => d.missions.length + d.shards.length + d.timers.length + Object.keys(d.ratings).length + d.focus.sessions.length > 0;
 const daysSince = iso => {
   const t = Date.parse(iso);
@@ -8763,13 +8801,14 @@ function SettingsScreen({
     }));
     return o;
   }, [data.shards]);
-  const exportJSON = async () => {
-    const res = await exportBackup(data);
+  const shareOK = useMemo(canShareFiles, []);
+  const exportJSON = async share => {
+    const res = share ? await sendBackup(data, ask) : await exportBackup(data);
     if (res === 'saved') {
       markBackup();
       sfx('save');
-      toast('Бэкап выгружен в .json');
-    } else if (res === 'declined') toast('Сохранение отменено');else {
+      toast(share ? 'Бэкап отправлен' : 'Бэкап выгружен в .json');
+    } else if (res === 'declined') toast(share ? 'Отправка отменена' : 'Сохранение отменено');else {
       sfx('error');
       toast('Не удалось сохранить файл');
     }
@@ -9356,18 +9395,25 @@ function SettingsScreen({
     }]
   })), React.createElement("div", {
     className: "grid gap-2"
-  }, React.createElement(Btn, {
+  }, shareOK && React.createElement(Btn, {
+    icon: Share2,
+    onClick: () => exportJSON(true),
+    snd: "none"
+  }, "\u041E\u0442\u043F\u0440\u0430\u0432\u0438\u0442\u044C \u0431\u044D\u043A\u0430\u043F \xB7 Telegram, \u0414\u0438\u0441\u043A\u2026"), React.createElement(Btn, {
+    variant: shareOK ? 'ghost' : 'main',
     icon: Download,
-    onClick: exportJSON,
+    onClick: () => exportJSON(false),
     snd: "none"
   }, "\u042D\u043A\u0441\u043F\u043E\u0440\u0442 \u0434\u0430\u043D\u043D\u044B\u0445 (.json)"), React.createElement(Btn, {
     variant: "ghost",
     icon: Upload,
     onClick: () => fileRef.current && fileRef.current.click()
-  }, "\u0418\u043C\u043F\u043E\u0440\u0442 \u0434\u0430\u043D\u043D\u044B\u0445 (.json)"), React.createElement("input", {
+  }, "\u0418\u043C\u043F\u043E\u0440\u0442 \u0434\u0430\u043D\u043D\u044B\u0445 (.json, .txt)"), shareOK && React.createElement("div", {
+    className: "text-[12px] text-white/40 f-read leading-snug -mt-0.5"
+  }, "\xAB\u041E\u0442\u043F\u0440\u0430\u0432\u0438\u0442\u044C\xBB \u043E\u0442\u043A\u0440\u044B\u0432\u0430\u0435\u0442 \u043C\u0435\u043D\u044E \xAB\u041F\u043E\u0434\u0435\u043B\u0438\u0442\u044C\u0441\u044F\xBB: \u0443\u0434\u043E\u0431\u043D\u043E \u0441\u043E\u0445\u0440\u0430\u043D\u044F\u0442\u044C \u0431\u044D\u043A\u0430\u043F \u0432 Telegram \xAB\u0418\u0437\u0431\u0440\u0430\u043D\u043D\u043E\u0435\xBB \u0438\u043B\u0438 \u043D\u0430 Google \u0414\u0438\u0441\u043A. \u0424\u0430\u0439\u043B \u0443\u0445\u043E\u0434\u0438\u0442 \u043A\u0430\u043A .txt \u2014 \u0438\u043C\u043F\u043E\u0440\u0442 \u0435\u0433\u043E \u043F\u043E\u043D\u0438\u043C\u0430\u0435\u0442."), React.createElement("input", {
     ref: fileRef,
     type: "file",
-    accept: "application/json,.json",
+    accept: "application/json,.json,text/plain,.txt",
     hidden: true,
     onChange: e => {
       const f = e.target.files && e.target.files[0];
@@ -9782,19 +9828,20 @@ function App() {
           ...m,
           backupAskedOn: today
         }));
+        const share = canShareFiles();
         const ans = await ask({
           title: 'Пора сделать бэкап',
           code: 'SYS // BACKUP.CHECK',
-          text: `${last ? `Последний экспорт был ${age} ${plural(age, 'день', 'дня', 'дней')} назад.` : 'Экспорта данных ещё не было.'}\n\nВсе записи хранятся только в памяти этого браузера. Сохрани файл .json в надёжное место (например, на Google Диск), чтобы не потерять их.`,
-          ok: 'Экспорт сейчас',
+          text: `${last ? `Последний экспорт был ${age} ${plural(age, 'день', 'дня', 'дней')} назад.` : 'Экспорта данных ещё не было.'}\n\nВсе записи хранятся только в памяти этого браузера. ${share ? 'Отправь бэкап в надёжное место: Telegram «Избранное» или Google Диск' : 'Сохрани файл .json в надёжное место (например, на Google Диск)'}, чтобы не потерять их.`,
+          ok: share ? 'Отправить' : 'Экспорт сейчас',
           cancel: 'Позже'
         });
         if (ans === true) {
-          const res = await exportBackup(dataRef.current);
+          const res = share ? await sendBackup(dataRef.current, ask) : await exportBackup(dataRef.current);
           if (res === 'saved') {
             markBackup();
             sfx('save');
-            toast('Бэкап выгружен в .json');
+            toast(share ? 'Бэкап отправлен' : 'Бэкап выгружен в .json');
           } else if (res !== 'declined') {
             sfx('error');
             toast('Не удалось сохранить файл');

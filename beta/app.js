@@ -1,4 +1,4 @@
-/* CJ_BUILD BETA-20261017-003745 */
+/* CJ_BUILD BETA-20261017-005712 */
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
 const {
   useState,
@@ -57,11 +57,15 @@ const {
   FileText,
   Brain,
   Target,
-  StickyNote
+  StickyNote,
+  Flame,
+  Snowflake,
+  ImagePlus
 } = LucideReact;
 const BETA = typeof window !== 'undefined' && !!window.CJ_BETA;
 const MAIN_KEY = 'cyberjournal2077.v1';
-const LS_KEY = BETA ? 'cyberjournal2077.beta' : MAIN_KEY;
+const BETA_KEY = 'cyberjournal2077.beta';
+const LS_KEY = BETA ? BETA_KEY : MAIN_KEY;
 const APP_VERSION = '1.0.0';
 const UI = {
   mono: false
@@ -587,6 +591,10 @@ function mapImages(d, fn) {
       ...x,
       bgUrl: m(x.bgUrl)
     } : x),
+    focus: d.focus.bg ? {
+      ...d.focus,
+      bg: m(d.focus.bg)
+    } : d.focus,
     settings: avatar && !String(avatar).startsWith('preset:') ? {
       ...d.settings,
       avatar: m(avatar)
@@ -660,16 +668,17 @@ const DEFAULT_TAGS = () => [{
   name: 'итоги',
   color: '#59FF00'
 }];
-const FOCUS_LEVEL = {
-  min: 15,
-  streak: 0
-};
+const FOCUS_GOAL = 25;
 const emptyFocus = () => ({
   sessions: [],
   inbox: [],
-  level: {
-    ...FOCUS_LEVEL
-  },
+  goals: [{
+    from: '2000-01-01',
+    min: FOCUS_GOAL
+  }],
+  lastMin: 25,
+  bg: '',
+  bgDim: 'mid',
   active: null
 });
 const emptyState = () => ({
@@ -702,10 +711,9 @@ function normalizeFocus(f) {
   };
   if (!Array.isArray(out.sessions)) out.sessions = [];
   if (!Array.isArray(out.inbox)) out.inbox = [];
-  out.level = {
-    ...FOCUS_LEVEL,
-    ...(out.level || {})
-  };
+  if (!Array.isArray(out.goals) || !out.goals.length) out.goals = emptyFocus().goals;
+  if (typeof out.bg !== 'string') out.bg = '';
+  delete out.level;
   const a = out.active;
   out.active = a && typeof a === 'object' && a.startAt && a.endAt ? {
     distractions: 0,
@@ -1142,13 +1150,9 @@ function makeDemo() {
   });
   st.focus = {
     ...emptyFocus(),
-    level: {
-      min: 20,
-      streak: 1
-    },
     sessions: [fs(-6, 10, 'm_eng', 'ПРОКАЧАТЬ АНГЛИЙСКИЙ', 'Разобрать 20 новых слов', 15, 15, 2, {
       mind: 1
-    }, 0, 4), fs(-5, 19, 'm_corpo', 'THE CORPO-RAT', 'Черновик отчёта', 15, 9, 5, {
+    }, 0, 4), fs(-5, 19, 'm_corpo', 'THE CORPO-RAT', 'Черновик отчёта', 15, 15, 5, {
       phone: 3,
       noise: 1
     }, 2, 2), fs(-4, 11, 'm_eng', 'ПРОКАЧАТЬ АНГЛИЙСКИЙ', 'Подкаст + конспект', 15, 15, 1, {
@@ -1157,10 +1161,15 @@ function makeDemo() {
       phone: 2
     }, 0, 4), fs(-2, 10, '', '', 'Прочитать главу книги', 20, 20, 2, {
       mind: 2
-    }, 0, 4), fs(-1, 20, 'm_corpo', 'THE CORPO-RAT', 'Финальная правка отчёта', 20, 14, 4, {
+    }, 0, 4), fs(-1, 20, 'm_corpo', 'THE CORPO-RAT', 'Финальная правка отчёта', 20, 20, 4, {
       tired: 2,
       phone: 1
     }, 1, 3)],
+    goals: [{
+      from: '2000-01-01',
+      min: 15
+    }],
+    lastMin: 20,
     inbox: [{
       id: uid('fi'),
       text: 'Купить кабель USB-C',
@@ -1452,9 +1461,6 @@ textarea.inp{resize:vertical;line-height:1.5;}
 .f-alert{--cut:10px;background:rgba(255,42,42,.14);box-shadow:inset 0 0 0 1px #FF2A2A,0 0 24px rgba(255,42,42,.35);color:#FF5A5A;animation:dlgin .25s ease-out;}
 .f-chip{--cut:7px;padding:8px 12px;font-weight:700;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--alt);box-shadow:inset 0 0 0 1px rgba(var(--alt-rgb),.55);background:rgba(var(--alt-rgb),.06);}
 .f-chip:active{filter:brightness(1.4);}
-.f-bar{position:relative;width:100%;max-width:26px;margin:0 auto;background:var(--alt);box-shadow:0 0 8px rgba(var(--alt-rgb),.6);min-height:2px;}
-.f-dot{width:12px;height:12px;transform:rotate(45deg);box-shadow:inset 0 0 0 1.5px rgba(var(--alt-rgb),.6);}
-.f-dot.on{background:var(--alt);box-shadow:0 0 8px var(--alt);}
 `;
 const MONO_CSS = `
 .cj-root.ui-mono{font-family:'Inter',system-ui,sans-serif;color:#F2F2F7;background:#000;}
@@ -1557,9 +1563,6 @@ const MONO_CSS = `
 .ui-mono .f-time{font-family:'Unbounded','Inter',sans-serif;font-weight:500;letter-spacing:-.02em;text-shadow:none;}
 .ui-mono .f-alert{border-radius:16px;background:rgba(255,69,58,.16);box-shadow:none;color:#FF6961;animation:mdlg .2s ease-out;}
 .ui-mono .f-chip{border-radius:999px;box-shadow:none;background:#1C1C1E;color:#F2F2F7;text-transform:none;letter-spacing:0;font-weight:600;font-size:14px;}
-.ui-mono .f-bar{border-radius:6px;box-shadow:none;}
-.ui-mono .f-dot{transform:none;border-radius:50%;box-shadow:none;background:#2C2C2E;}
-.ui-mono .f-dot.on{background:var(--alt);box-shadow:none;}
 `;
 const AppCtx = createContext(null);
 const useApp = () => useContext(AppCtx);
@@ -7391,8 +7394,14 @@ const FOCUS_SCORE = {
   2: 'Рассеян',
   1: 'Провал'
 };
-const FOCUS_MAX = 90;
-const FOCUS_CLEAN_RUN = 3;
+const FOCUS_GOALS = [15, 25, 45, 60, 90];
+const FREEZE_EVERY = 7,
+  FREEZE_MAX = 2;
+const BG_DIM = {
+  low: 0.35,
+  mid: 0.55,
+  high: 0.75
+};
 const FOCUS_LEFT_KEY = `${LS_KEY}.focusLeft`;
 const readLeft = () => {
   try {
@@ -7413,36 +7422,55 @@ const fmtClock = ms => {
     h = Math.floor(s / 3600);
   return h ? `${h}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}` : `${pad(Math.floor(s / 60))}:${pad(s % 60)}`;
 };
-const focusLevelNo = min => Math.max(1, Math.round((min - FOCUS_LEVEL.min) / 5) + 1);
-const isCleanSession = s => s.completed && !s.leaves && s.distractions <= 3;
-function nextFocusLevel(level, s) {
-  if (s.planMin < level.min) return {
-    level,
-    up: false
+function focusStreak(focus, todayK = dKey(new Date())) {
+  const goals = [...focus.goals].sort((a, b) => String(a.from).localeCompare(String(b.from)));
+  const goalOf = k => {
+    let g = FOCUS_GOAL;
+    for (const x of goals) {
+      if (x.from <= k) g = x.min;else break;
+    }
+    return g;
   };
-  if (!isCleanSession(s)) return {
-    level: {
-      ...level,
-      streak: 0
-    },
-    up: false
+  const mins = {};
+  focus.sessions.forEach(s => {
+    const k = dKey(new Date(s.start));
+    mins[k] = (mins[k] || 0) + focusMin(s);
+  });
+  const met = k => Math.round(mins[k] || 0) >= goalOf(k);
+  const first = Object.keys(mins).sort()[0];
+  let n = 0,
+    best = 0,
+    freezes = 0;
+  const frozen = new Set();
+  const take = () => {
+    n += 1;
+    if (n % FREEZE_EVERY === 0) freezes = Math.min(FREEZE_MAX, freezes + 1);
+    best = Math.max(best, n);
   };
-  const streak = level.streak + 1;
-  if (streak >= FOCUS_CLEAN_RUN && level.min < FOCUS_MAX) return {
-    level: {
-      min: Math.min(FOCUS_MAX, level.min + 5),
-      streak: 0
-    },
-    up: true
-  };
+  if (first) {
+    for (let d = parseKey(first); dKey(d) < todayK; d = addDays(d, 1)) {
+      const k = dKey(d);
+      if (met(k)) take();else if (n > 0 && freezes > 0) {
+        freezes -= 1;
+        frozen.add(k);
+      } else n = 0;
+    }
+  }
+  const todayDone = met(todayK);
+  if (todayDone) take();
   return {
-    level: {
-      ...level,
-      streak: Math.min(streak, FOCUS_CLEAN_RUN)
-    },
-    up: false
+    n,
+    best,
+    freezes,
+    frozen,
+    mins,
+    goalOf,
+    todayDone,
+    todayMin: mins[todayK] || 0,
+    goal: goalOf(todayK)
   };
 }
+const dayWord = n => plural(n, 'день', 'дня', 'дней');
 const topReason = sessions => {
   const sum = {};
   sessions.forEach(s => Object.entries(s.reasons || {}).forEach(([k, v]) => {
@@ -7535,7 +7563,8 @@ function FocusSetup({
     data,
     up
   } = useApp();
-  const lv = data.focus.level;
+  const st = focusStreak(data.focus);
+  const left = Math.max(0, st.goal - Math.round(st.todayMin));
   const missions = data.missions.filter(m => !m.done);
   const stepOf = id => {
     const m = data.missions.find(x => x.id === id);
@@ -7544,8 +7573,8 @@ function FocusSetup({
   };
   const [mid, setMid] = useState(missions.some(m => m.id === missionId) ? missionId : '');
   const [goal, setGoal] = useState(() => stepOf(missionId));
-  const [dur, setDur] = useState(lv.min);
-  const durs = [...new Set([...FOCUS_DURS, lv.min])].sort((a, b) => a - b);
+  const [dur, setDur] = useState(data.focus.lastMin || 25);
+  const durs = [...new Set([...FOCUS_DURS, dur])].sort((a, b) => a - b);
   const pickMission = id => {
     if (!goal.trim() || goal === stepOf(mid)) setGoal(stepOf(id));
     setMid(id);
@@ -7556,6 +7585,7 @@ function FocusSetup({
     readLeft();
     up('focus', f => ({
       ...f,
+      lastMin: dur,
       active: {
         id: uid('fs'),
         missionId: mid,
@@ -7616,20 +7646,13 @@ function FocusSetup({
       sfx('tab');
       setDur(v);
     },
-    className: `wd-chip cut relative ${dur === v ? 'on' : ''}`,
+    className: `wd-chip cut ${dur === v ? 'on' : ''}`,
     style: {
       minWidth: 52
     }
-  }, v, v === lv.min && React.createElement("span", {
-    className: "absolute -top-1.5 -right-1.5 text-[9px] leading-none px-1 py-0.5 font-bold",
-    style: {
-      background: 'var(--warn)',
-      color: '#000',
-      borderRadius: UI.mono ? 6 : 0
-    }
-  }, "\u0423\u0420")))), React.createElement("div", {
+  }, v))), React.createElement("div", {
     className: "text-[12px] text-white/40 f-read mt-2 leading-snug"
-  }, "\xAB\u0423\u0420\xBB \u2014 \u0434\u043B\u0438\u0442\u0435\u043B\u044C\u043D\u043E\u0441\u0442\u044C \u0442\u0432\u043E\u0435\u0433\u043E \u0443\u0440\u043E\u0432\u043D\u044F (", lv.min, " \u043C\u0438\u043D). \u0421\u0435\u0441\u0441\u0438\u0438 \u043A\u043E\u0440\u043E\u0447\u0435 \u0443\u0440\u043E\u0432\u043D\u044F \u043D\u0430 \u043F\u0440\u043E\u0433\u0440\u0435\u0441\u0441 \u043D\u0435 \u0432\u043B\u0438\u044F\u044E\u0442.")));
+  }, st.todayDone ? `Цель дня (${st.goal} мин) уже выполнена.` : dur >= left ? `Этой сессии хватит, чтобы закрыть цель дня (осталось ${left} мин).` : `До цели дня осталось ${left} мин.`)));
 }
 function FocusRing({
   p,
@@ -7673,6 +7696,22 @@ function FocusRing({
     strokeDashoffset: c * (1 - clamp(p, 0, 1)),
     style: {
       transition: 'stroke-dashoffset 1s linear'
+    }
+  }));
+}
+function FocusBackdrop({
+  bg,
+  dim,
+  extra = 0
+}) {
+  if (!bg) return null;
+  return React.createElement(React.Fragment, null, React.createElement(Img, {
+    src: bg,
+    className: "absolute inset-0 w-full h-full object-cover"
+  }), React.createElement("div", {
+    className: "absolute inset-0",
+    style: {
+      background: `linear-gradient(180deg,rgba(0,0,0,${Math.min(0.92, (BG_DIM[dim] || BG_DIM.mid) + extra)}),rgba(0,0,0,${Math.min(0.95, (BG_DIM[dim] || BG_DIM.mid) + extra + 0.15)}))`
     }
   }));
 }
@@ -7827,12 +7866,12 @@ function FocusSession() {
       toast('Сессия удалена');
     }
   };
-  const save = () => {
-    const m = data.missions.find(x => x.id === a.missionId);
-    const s = {
+  const record = () => {
+    const mm = data.missions.find(x => x.id === a.missionId);
+    return {
       id: a.id,
       missionId: a.missionId || '',
-      title: m ? m.title : a.title || '',
+      title: mm ? mm.title : a.title || '',
       goal: a.goal,
       start: new Date(a.startAt).toISOString(),
       planMin: a.planMin,
@@ -7845,10 +7884,17 @@ function FocusSession() {
       completed: !a.stoppedAt,
       goalDone
     };
-    const {
-      level,
-      up: lvUp
-    } = nextFocusLevel(data.focus.level, s);
+  };
+  const streakNow = () => {
+    const s = record(),
+      day = dKey(new Date(a.startAt));
+    return [focusStreak(data.focus, day), focusStreak({
+      ...data.focus,
+      sessions: [...data.focus.sessions, s]
+    }, day), s];
+  };
+  const save = () => {
+    const [before, after, s] = streakNow();
     const at = new Date().toISOString();
     readLeft();
     up('focus', f => ({
@@ -7858,11 +7904,10 @@ function FocusSession() {
         ...p,
         at
       }))],
-      level,
       active: null
     }));
     sfx('save');
-    toast(lvUp ? `Уровень повышен · сессии по ${level.min} мин` : a.parked.length ? 'Сессия записана · мысли во вкладке «Фокус»' : 'Сессия записана');
+    toast(after.todayDone && !before.todayDone ? `Цель дня выполнена · серия ${after.n} ${dayWord(after.n)}` : a.parked.length ? 'Сессия записана · мысли во вкладке «Фокус»' : 'Сессия записана');
   };
   const discard = async () => {
     const ok = await ask({
@@ -7886,24 +7931,21 @@ function FocusSession() {
   const elapsed = Math.max(0, Math.min(now, end) - a.startAt);
   const plan = a.planMin * 60e3;
   const reasonsSet = Object.values(a.reasons).reduce((x, y) => x + y, 0);
-  const wrap = 'w-full max-w-[480px] h-full flex flex-col px-5';
+  const wrap = 'relative w-full max-w-[480px] h-full flex flex-col px-5';
   const pads = {
     paddingTop: 'calc(16px + env(safe-area-inset-top))',
     paddingBottom: 'calc(16px + env(safe-area-inset-bottom))'
   };
   if (over) {
-    const draft = {
-      completed: !a.stoppedAt,
-      leaves: a.leaves,
-      distractions: a.distractions,
-      planMin: a.planMin
-    };
-    const lv = data.focus.level;
-    const preview = nextFocusLevel(lv, draft);
+    const [before, after] = streakNow();
     const mins = Math.max(0, (end - a.startAt - a.away) / 60e3);
     return React.createElement("div", {
       className: "fixed inset-0 z-[80] focus-bg flex justify-center"
-    }, React.createElement("div", {
+    }, React.createElement(FocusBackdrop, {
+      bg: data.focus.bg,
+      dim: data.focus.bgDim,
+      extra: over ? 0.15 : 0
+    }), React.createElement("div", {
       className: wrap,
       style: pads
     }, React.createElement("div", {
@@ -7995,13 +8037,19 @@ function FocusSession() {
     }))), React.createElement("div", {
       className: "text-[12px] text-white/40 f-read mt-1.5"
     }, "\u041D\u0435\u0440\u0430\u0437\u043E\u0431\u0440\u0430\u043D\u043D\u044B\u0435 \u043E\u0441\u0442\u0430\u043D\u0443\u0442\u0441\u044F \u0432\u043E \u0432\u043A\u043B\u0430\u0434\u043A\u0435 \xAB\u0424\u043E\u043A\u0443\u0441\xBB.")), React.createElement("div", {
-      className: "mt-5 mb-2 p-3 text-[13px] leading-snug f-read",
+      className: "mt-5 mb-2 p-3 flex items-center gap-3 text-[13px] leading-snug f-read",
       style: {
         boxShadow: 'inset 0 0 0 1px rgba(var(--alt-rgb),.3)',
         borderRadius: UI.mono ? 14 : 0,
         color: 'rgba(255,255,255,.75)'
       }
-    }, a.planMin < lv.min ? `Сессия короче уровня (${lv.min} мин) — на прогресс не влияет.` : !isCleanSession(draft) ? `Не чистая сессия${a.stoppedAt ? ': прервана' : a.leaves ? ': были выходы из приложения' : ': больше 3 отвлечений'}. Серия чистых сессий начнётся заново.` : preview.up ? `Чистая сессия! Уровень повышается: дальше сессии по ${preview.level.min} мин.` : lv.min >= FOCUS_MAX ? 'Чистая сессия! Это максимальный уровень.' : `Чистая сессия! До нового уровня: ${preview.level.streak}/${FOCUS_CLEAN_RUN}.`)), React.createElement("div", {
+    }, React.createElement(Flame, {
+      size: 22,
+      className: "shrink-0",
+      style: {
+        color: after.todayDone ? 'var(--warn)' : 'rgba(255,255,255,.35)'
+      }
+    }), React.createElement("span", null, after.todayDone && !before.todayDone ? `Цель дня выполнена! Серия: ${after.n} ${dayWord(after.n)}.` : before.todayDone ? `Цель дня уже была выполнена. Сегодня ${fmtMin(after.todayMin)} фокуса, серия ${after.n} ${dayWord(after.n)}.` : `До цели дня осталось ${fmtMin(Math.max(0, after.goal - Math.round(after.todayMin)))}: сегодня ${Math.round(after.todayMin)} из ${after.goal} мин.`))), React.createElement("div", {
       className: "grid grid-cols-[1fr_2fr] gap-2 pt-3"
     }, React.createElement(Btn, {
       variant: "dark",
@@ -8016,7 +8064,11 @@ function FocusSession() {
   const showReasons = reasonTill > Date.now();
   return React.createElement("div", {
     className: "fixed inset-0 z-[80] focus-bg flex justify-center"
-  }, React.createElement("div", {
+  }, React.createElement(FocusBackdrop, {
+    bg: data.focus.bg,
+    dim: data.focus.bgDim,
+    extra: over ? 0.15 : 0
+  }), React.createElement("div", {
     className: wrap,
     style: pads
   }, React.createElement("div", {
@@ -8131,6 +8183,85 @@ function FocusSession() {
     }
   }, "\u041C\u044B\u0441\u043B\u044C"))));
 }
+function FocusBgModal({
+  onClose
+}) {
+  const {
+    data,
+    up
+  } = useApp();
+  const f = data.focus;
+  const set = p => up('focus', x => ({
+    ...x,
+    ...p
+  }));
+  return React.createElement(Modal, {
+    onClose: onClose,
+    title: "\u0424\u043E\u043D \u0441\u0435\u0441\u0441\u0438\u0438",
+    code: "NEURAL LINK // BACKDROP",
+    footer: React.createElement(Btn, {
+      className: "flex-1",
+      icon: Check,
+      onClick: onClose
+    }, "\u0413\u043E\u0442\u043E\u0432\u043E")
+  }, React.createElement("div", {
+    className: "relative h-[230px] overflow-hidden focus-bg cut mb-4 flex flex-col items-center justify-center",
+    style: {
+      '--cut': '14px',
+      borderRadius: UI.mono ? 18 : 0,
+      boxShadow: 'inset 0 0 0 1px rgba(255,255,255,.12)'
+    }
+  }, React.createElement(FocusBackdrop, {
+    bg: f.bg,
+    dim: f.bgDim
+  }), React.createElement("div", {
+    className: "relative f-time",
+    style: {
+      fontSize: 48
+    }
+  }, "25:00"), React.createElement("div", {
+    className: "relative micro mt-2",
+    style: {
+      color: 'rgba(255,255,255,.55)'
+    }
+  }, "\u041F\u0420\u0415\u0414\u041F\u0420\u041E\u0421\u041C\u041E\u0422\u0420")), React.createElement(Field, {
+    label: "\u0424\u043E\u0442\u043E"
+  }, React.createElement(ImageInput, {
+    value: f.bg,
+    onChange: v => set({
+      bg: v
+    }),
+    noPreview: true
+  }), f.bg && React.createElement(Btn, {
+    small: true,
+    variant: "dangerGhost",
+    icon: X,
+    className: "w-full mt-2",
+    onClick: () => set({
+      bg: ''
+    })
+  }, "\u0423\u0431\u0440\u0430\u0442\u044C \u0444\u043E\u0442\u043E")), f.bg && React.createElement(Field, {
+    label: "\u0417\u0430\u0442\u0435\u043C\u043D\u0435\u043D\u0438\u0435"
+  }, React.createElement(Segmented, {
+    value: f.bgDim,
+    onChange: v => set({
+      bgDim: v
+    }),
+    accent: "var(--alt)",
+    options: [{
+      v: 'low',
+      l: 'Слабое'
+    }, {
+      v: 'mid',
+      l: 'Среднее'
+    }, {
+      v: 'high',
+      l: 'Сильное'
+    }]
+  })), React.createElement("div", {
+    className: "text-[12px] text-white/40 f-read leading-snug"
+  }, "\u0424\u043E\u0442\u043E \u043F\u043E\u043A\u0430\u0437\u044B\u0432\u0430\u0435\u0442\u0441\u044F \u043D\u0430 \u044D\u043A\u0440\u0430\u043D\u0435 \u0438\u0434\u0443\u0449\u0435\u0439 \u0441\u0435\u0441\u0441\u0438\u0438. \u0421\u043F\u043E\u043A\u043E\u0439\u043D\u0430\u044F \u043A\u0430\u0440\u0442\u0438\u043D\u043A\u0430 \u0431\u0435\u0437 \u043C\u0435\u043B\u043A\u0438\u0445 \u0434\u0435\u0442\u0430\u043B\u0435\u0439 \u043E\u0442\u0432\u043B\u0435\u043A\u0430\u0435\u0442 \u043C\u0435\u043D\u044C\u0448\u0435 \u0432\u0441\u0435\u0433\u043E."));
+}
 function FocusScreen() {
   const {
     data,
@@ -8138,11 +8269,12 @@ function FocusScreen() {
     openFocus,
     undoable
   } = useApp();
-  const f = data.focus,
-    lv = f.level;
+  const f = data.focus;
   const [sheet, setSheet] = useState(null);
+  const [bgEdit, setBgEdit] = useState(false);
   const now = new Date(),
     todayK = dKey(now);
+  const st = useMemo(() => focusStreak(f, todayK), [f, todayK]);
   const byDay = useMemo(() => {
     const o = {};
     f.sessions.forEach(s => {
@@ -8154,12 +8286,25 @@ function FocusScreen() {
   const days = Array.from({
     length: 7
   }, (_, i) => dKey(addDays(now, i - 6)));
-  const dayMin = days.map(k => (byDay[k] || []).reduce((x, s) => x + focusMin(s), 0));
-  const maxMin = Math.max(30, ...dayMin);
   const week = days.flatMap(k => byDay[k] || []);
   const today = byDay[todayK] || [];
   const sum = list => list.reduce((x, s) => x + focusMin(s), 0);
-  const avgScore = list => calcAvg(list.map(s => s.score));
+  const ws = data.settings.weekStart;
+  const gridStart = addDays(now, -((now.getDay() - ws + 7) % 7) - 28);
+  const grid = Array.from({
+    length: 35
+  }, (_, i) => addDays(gridStart, i));
+  const wdh = ws === 1 ? WD : ['Вс', ...WD.slice(0, 6)];
+  const left = Math.max(0, st.goal - Math.round(st.todayMin));
+  const goalOpts = [...new Set([...FOCUS_GOALS, st.goal])].sort((a, b) => a - b);
+  const setGoal = v => up('focus', x => ({
+    ...x,
+    goals: [...x.goals.filter(g => g.from !== todayK), {
+      from: todayK,
+      min: v
+    }]
+  }));
+  const ICE = '#7FD4FF';
   const top = topReason(week);
   const record = f.sessions.reduce((x, s) => Math.max(x, focusMin(s)), 0);
   const recent = [...f.sessions].sort((x, y) => String(y.start).localeCompare(String(x.start))).slice(0, 15);
@@ -8176,7 +8321,6 @@ function FocusScreen() {
   }, v), React.createElement("div", {
     className: "f-mono text-[9.5px] tracking-widest text-white/50 uppercase mt-1.5"
   }, l));
-  const atMax = lv.min >= FOCUS_MAX;
   return React.createElement("div", {
     className: "pb-8"
   }, React.createElement(ScreenHeader, {
@@ -8198,54 +8342,138 @@ function FocusScreen() {
     className: "w-[64px] h-[64px] shrink-0 flex items-center justify-center cut",
     style: {
       '--cut': '12px',
-      background: 'rgba(var(--alt-rgb),.1)',
-      boxShadow: UI.mono ? 'none' : 'inset 0 0 0 1px rgba(var(--alt-rgb),.5)',
+      background: st.n ? 'rgba(var(--warn-rgb),.12)' : 'rgba(255,255,255,.05)',
+      boxShadow: UI.mono ? 'none' : `inset 0 0 0 1px ${st.n ? 'rgba(var(--warn-rgb),.55)' : 'rgba(255,255,255,.15)'}`,
       borderRadius: UI.mono ? 20 : 0
     }
-  }, React.createElement(Brain, {
+  }, React.createElement(Flame, {
     size: 34,
-    className: "txt-alt",
     style: {
-      filter: UI.mono ? 'none' : 'drop-shadow(0 0 6px var(--alt))'
+      color: st.n ? 'var(--warn)' : 'rgba(255,255,255,.3)',
+      filter: UI.mono || !st.n ? 'none' : 'drop-shadow(0 0 6px var(--warn))'
     }
   })), React.createElement("div", {
     className: "min-w-0 flex-1"
   }, React.createElement("div", {
     className: "micro deco"
-  }, "IMPLANT.LEVEL"), React.createElement("div", {
-    className: "sec-title text-[19px]"
-  }, UI.mono ? `Уровень ${focusLevelNo(lv.min)}` : `Имплант · ур. ${focusLevelNo(lv.min)}`), React.createElement("div", {
-    className: "text-[13px] text-white/60 f-read mt-1"
-  }, "\u0421\u0435\u0441\u0441\u0438\u044F \u0443\u0440\u043E\u0432\u043D\u044F: ", React.createElement("b", {
-    className: "text-white/90"
-  }, lv.min, " \u043C\u0438\u043D")))), React.createElement("div", {
-    className: "flex items-center gap-2.5 mt-4"
+  }, "STREAK.PROTOCOL"), React.createElement("div", {
+    className: "flex items-baseline gap-2"
+  }, React.createElement("span", {
+    className: "st-score text-[38px]",
+    style: {
+      color: st.n ? 'var(--warn)' : 'rgba(255,255,255,.4)',
+      textShadow: UI.mono || !st.n ? 'none' : '0 0 14px rgba(var(--warn-rgb),.5)'
+    }
+  }, st.n), React.createElement("span", {
+    className: "sec-title text-[17px]"
+  }, dayWord(st.n), " \u043F\u043E\u0434\u0440\u044F\u0434")), React.createElement("div", {
+    className: "text-[12.5px] text-white/50 f-read mt-0.5"
+  }, "\u0420\u0435\u043A\u043E\u0440\u0434: ", st.best, " ", dayWord(st.best)))), React.createElement("div", {
+    className: "flex items-baseline justify-between mt-4"
+  }, React.createElement("span", {
+    className: "lbl",
+    style: {
+      marginBottom: 0
+    }
+  }, "\u0421\u0435\u0433\u043E\u0434\u043D\u044F"), React.createElement("span", {
+    className: "f-mono text-[13px] text-white/80"
+  }, Math.round(st.todayMin), " / ", st.goal, " \u043C\u0438\u043D")), React.createElement("div", {
+    className: "mt-1.5 h-2 overflow-hidden",
+    style: {
+      background: 'rgba(255,255,255,.08)',
+      borderRadius: UI.mono ? 4 : 0
+    }
+  }, React.createElement("div", {
+    className: "h-full",
+    style: {
+      width: `${Math.min(100, st.todayMin / st.goal * 100)}%`,
+      background: st.todayDone ? 'var(--warn)' : 'var(--alt)',
+      boxShadow: UI.mono ? 'none' : '0 0 8px var(--alt)',
+      borderRadius: UI.mono ? 4 : 0,
+      transition: 'width .3s'
+    }
+  })), React.createElement("div", {
+    className: "text-[12.5px] f-read mt-1.5",
+    style: {
+      color: st.todayDone ? 'var(--warn)' : 'rgba(255,255,255,.55)'
+    }
+  }, st.todayDone ? 'Цель дня выполнена — серия продлена' : `Ещё ${left} мин сегодня, чтобы ${st.n ? 'продлить' : 'начать'} серию`, today.length > 0 && React.createElement("span", {
+    className: "text-white/40"
+  }, " \xB7 ", today.length, " ", plural(today.length, 'сессия', 'сессии', 'сессий'))), React.createElement("div", {
+    className: "flex items-center gap-2 mt-3"
   }, Array.from({
-    length: FOCUS_CLEAN_RUN
-  }, (_, i) => React.createElement("i", {
+    length: FREEZE_MAX
+  }, (_, i) => React.createElement(Snowflake, {
     key: i,
-    className: `f-dot ${i < lv.streak ? 'on' : ''}`
+    size: 18,
+    style: {
+      color: i < st.freezes ? ICE : 'rgba(255,255,255,.15)',
+      filter: i < st.freezes && !UI.mono ? `drop-shadow(0 0 4px ${ICE})` : 'none'
+    }
   })), React.createElement("span", {
     className: "text-[12.5px] text-white/55 f-read ml-1"
-  }, atMax ? 'Максимальный уровень' : `Чистые сессии подряд: ${lv.streak}/${FOCUS_CLEAN_RUN}`)), React.createElement("div", {
-    className: "text-[12px] text-white/40 f-read mt-2 leading-snug"
-  }, "\u0427\u0438\u0441\u0442\u0430\u044F \u0441\u0435\u0441\u0441\u0438\u044F \u2014 \u0434\u043E \u043A\u043E\u043D\u0446\u0430, \u0431\u0435\u0437 \u0432\u044B\u0445\u043E\u0434\u043E\u0432 \u0438\u0437 \u043F\u0440\u0438\u043B\u043E\u0436\u0435\u043D\u0438\u044F \u0438 \u043D\u0435 \u0431\u043E\u043B\u044C\u0448\u0435 3 \u043E\u0442\u0432\u043B\u0435\u0447\u0435\u043D\u0438\u0439. ", FOCUS_CLEAN_RUN, " \u043F\u043E\u0434\u0440\u044F\u0434 \u0434\u043E\u0431\u0430\u0432\u043B\u044F\u044E\u0442 \u043A \u0443\u0440\u043E\u0432\u043D\u044E 5 \u043C\u0438\u043D\u0443\u0442."), React.createElement(Btn, {
+  }, "\u0417\u0430\u043C\u043E\u0440\u043E\u0437\u043A\u0438: ", st.freezes, " \u0438\u0437 ", FREEZE_MAX, st.freezes < FREEZE_MAX ? ` · ещё одна через ${FREEZE_EVERY - st.n % FREEZE_EVERY} ${dayWord(FREEZE_EVERY - st.n % FREEZE_EVERY)} серии` : '')), React.createElement("div", {
+    className: "text-[12px] text-white/40 f-read mt-1 leading-snug"
+  }, "\u0417\u0430\u043C\u043E\u0440\u043E\u0437\u043A\u0430 \u0442\u0440\u0430\u0442\u0438\u0442\u0441\u044F \u0441\u0430\u043C\u0430, \u0435\u0441\u043B\u0438 \u043F\u0440\u043E\u043F\u0443\u0441\u0442\u0438\u0448\u044C \u0434\u0435\u043D\u044C, \u0438 \u0441\u0435\u0440\u0438\u044F \u043D\u0435 \u043F\u0440\u0435\u0440\u0432\u0451\u0442\u0441\u044F. \u0414\u0430\u0451\u0442\u0441\u044F \u0437\u0430 \u043A\u0430\u0436\u0434\u044B\u0435 ", FREEZE_EVERY, " \u0434\u043D\u0435\u0439 \u0441\u0435\u0440\u0438\u0438."), React.createElement("span", {
+    className: "lbl mt-4"
+  }, "\u0426\u0435\u043B\u044C \u0432 \u0434\u0435\u043D\u044C, \u043C\u0438\u043D"), React.createElement(Segmented, {
+    value: st.goal,
+    onChange: setGoal,
+    accent: "var(--alt)",
+    options: goalOpts.map(v => ({
+      v,
+      l: String(v)
+    }))
+  }), React.createElement(Btn, {
     className: "w-full mt-4",
     icon: Play,
     snd: "open",
     onClick: () => openFocus('')
   }, "\u041D\u0430\u0447\u0430\u0442\u044C \u0441\u0435\u0441\u0441\u0438\u044E")))), React.createElement("div", {
+    className: "px-4 mt-3"
+  }, React.createElement("button", {
+    type: "button",
+    className: "block w-full text-left",
+    onClick: () => {
+      sfx('open');
+      setBgEdit(true);
+    }
+  }, React.createElement(Frame, {
+    cut: 12,
+    color: "rgba(var(--main-rgb),.3)"
+  }, React.createElement("div", {
+    className: "flex items-center gap-3 p-2.5"
+  }, f.bg ? React.createElement(Img, {
+    src: f.bg,
+    thumb: true,
+    className: "w-11 h-11 object-cover cut shrink-0",
+    style: {
+      '--cut': '6px',
+      borderRadius: UI.mono ? 10 : 0
+    }
+  }) : React.createElement("span", {
+    className: "w-11 h-11 shrink-0 flex items-center justify-center cut txt-alt",
+    style: {
+      '--cut': '6px',
+      background: 'rgba(var(--alt-rgb),.08)',
+      borderRadius: UI.mono ? 10 : 0
+    }
+  }, React.createElement(ImagePlus, {
+    size: 20
+  })), React.createElement("span", {
+    className: "flex-1 min-w-0"
+  }, React.createElement("span", {
+    className: "block text-[15px] font-semibold text-white/90"
+  }, "\u0424\u043E\u043D \u044D\u043A\u0440\u0430\u043D\u0430 \u0441\u0435\u0441\u0441\u0438\u0438"), React.createElement("span", {
+    className: "block text-[12px] text-white/45 f-read"
+  }, f.bg ? 'Своё фото' : 'Стандартный · можно поставить своё фото')), React.createElement(ChevronRight, {
+    size: 18,
+    className: "text-white/40 shrink-0"
+  }))))), React.createElement("div", {
     className: "px-4 mt-5"
   }, React.createElement(SectionHeader, {
-    name: "\u0421\u0435\u0433\u043E\u0434\u043D\u044F",
-    count: today.length
-  }), React.createElement("div", {
-    className: "grid grid-cols-3 gap-2 mt-2.5"
-  }, cell(fmtMin(sum(today)), 'Фокус'), cell(today.length, plural(today.length, 'Сессия', 'Сессии', 'Сессий')), cell(avgScore(today) != null ? avgScore(today).toFixed(1) : '—', 'Оценка'))), React.createElement("div", {
-    className: "px-4 mt-5"
-  }, React.createElement(SectionHeader, {
-    name: "7 \u0434\u043D\u0435\u0439",
-    count: week.length
+    name: "\u041A\u0430\u043B\u0435\u043D\u0434\u0430\u0440\u044C \u0441\u0435\u0440\u0438\u0438",
+    count: st.n
   }), React.createElement(Frame, {
     cut: 14,
     className: "mt-2.5",
@@ -8253,31 +8481,74 @@ function FocusScreen() {
   }, React.createElement("div", {
     className: "p-3"
   }, React.createElement("div", {
-    className: "grid grid-cols-7 gap-1 items-end",
+    className: "grid grid-cols-7 gap-1.5"
+  }, wdh.map(w => React.createElement("div", {
+    key: w,
+    className: "text-center f-mono text-[10px] uppercase pb-0.5",
     style: {
-      height: 110
+      color: 'rgba(255,255,255,.4)'
     }
-  }, days.map((k, i) => React.createElement("div", {
-    key: k,
-    className: "flex flex-col justify-end h-full"
-  }, dayMin[i] > 0 && React.createElement("div", {
-    className: "text-center f-mono text-[10px] text-white/60 mb-1"
-  }, Math.round(dayMin[i])), React.createElement("div", {
-    className: "f-bar",
+  }, w)), grid.map(d => {
+    const k = dKey(d),
+      m = st.mins[k] || 0,
+      g = st.goalOf(k),
+      done = Math.round(m) >= g,
+      fz = st.frozen.has(k),
+      fut = k > todayK;
+    const bg = fut ? 'transparent' : done ? 'var(--alt)' : m > 0 ? `rgba(var(--alt-rgb),${(0.15 + 0.35 * Math.min(1, m / g)).toFixed(2)})` : fz ? 'rgba(127,212,255,.12)' : 'rgba(255,255,255,.05)';
+    return React.createElement("div", {
+      key: k,
+      className: "relative aspect-square flex items-center justify-center cut",
+      title: `${fmtDay(k)}: ${Math.round(m)} мин`,
+      style: {
+        '--cut': '5px',
+        background: bg,
+        borderRadius: UI.mono ? 7 : 0,
+        boxShadow: k === todayK ? 'inset 0 0 0 1.5px var(--warn)' : fut ? 'inset 0 0 0 1px rgba(255,255,255,.06)' : 'none'
+      }
+    }, fz ? React.createElement(Snowflake, {
+      size: 14,
+      style: {
+        color: ICE
+      }
+    }) : React.createElement("span", {
+      className: "f-mono text-[10.5px]",
+      style: {
+        color: done ? '#000' : fut ? 'rgba(255,255,255,.18)' : 'rgba(255,255,255,.55)'
+      }
+    }, d.getDate()));
+  })), React.createElement("div", {
+    className: "flex flex-wrap justify-center gap-x-3 gap-y-1 mt-3 f-mono text-[10px] text-white/50"
+  }, React.createElement("span", {
+    className: "flex items-center gap-1"
+  }, React.createElement("i", {
+    className: "inline-block w-2.5 h-2.5",
     style: {
-      height: `${Math.round(dayMin[i] / maxMin * 80)}%`,
-      opacity: dayMin[i] ? 1 : 0.25
+      background: 'var(--alt)',
+      borderRadius: UI.mono ? 3 : 0
     }
-  })))), React.createElement("div", {
-    className: "grid grid-cols-7 gap-1 mt-1.5"
-  }, days.map(k => React.createElement("div", {
-    key: k,
-    className: "text-center f-mono text-[10px] uppercase",
+  }), "\u0446\u0435\u043B\u044C \u0432\u044B\u043F\u043E\u043B\u043D\u0435\u043D\u0430"), React.createElement("span", {
+    className: "flex items-center gap-1"
+  }, React.createElement("i", {
+    className: "inline-block w-2.5 h-2.5",
     style: {
-      color: k === todayK ? 'var(--warn)' : 'rgba(255,255,255,.45)'
+      background: 'rgba(var(--alt-rgb),.35)',
+      borderRadius: UI.mono ? 3 : 0
     }
-  }, WD[dow(parseKey(k))]))))), React.createElement("div", {
-    className: "grid grid-cols-2 gap-2 mt-2"
+  }), "\u0447\u0430\u0441\u0442\u0438\u0447\u043D\u043E"), React.createElement("span", {
+    className: "flex items-center gap-1"
+  }, React.createElement(Snowflake, {
+    size: 11,
+    style: {
+      color: ICE
+    }
+  }), "\u0437\u0430\u043C\u043E\u0440\u043E\u0437\u043A\u0430"))))), React.createElement("div", {
+    className: "px-4 mt-5"
+  }, React.createElement(SectionHeader, {
+    name: "7 \u0434\u043D\u0435\u0439",
+    count: week.length
+  }), React.createElement("div", {
+    className: "grid grid-cols-2 gap-2 mt-2.5"
   }, cell(fmtMin(sum(week)), 'Фокус за неделю'), cell(week.length ? round1(week.reduce((x, s) => x + s.distractions, 0) / week.length) : '—', 'Отвлечений за сессию'), cell(top ? REASON_NAME[top] : '—', 'Главный враг'), cell(record ? fmtMin(record) : '—', 'Рекорд сессии'))), f.inbox.length > 0 && React.createElement("div", {
     className: "px-4 mt-5"
   }, React.createElement(SectionHeader, {
@@ -8355,6 +8626,8 @@ function FocusScreen() {
         sessions: x.sessions.filter(y => y.id !== sheetS.id)
       })))
     }]
+  }), bgEdit && React.createElement(FocusBgModal, {
+    onClose: () => setBgEdit(false)
   }));
 }
 function SetBlock({
@@ -9384,7 +9657,12 @@ function App() {
     const t = setTimeout(async () => {
       if (migrating.current) return;
       try {
-        const used = new Set([...listImages(bootData.current), ...listImages(dataRef.current)].filter(isIdb).map(v => v.slice(4)));
+        let beta = [];
+        try {
+          const b = localStorage.getItem(BETA_KEY);
+          if (b) beta = listImages(normalize(JSON.parse(b)));
+        } catch (e) {}
+        const used = new Set([...listImages(bootData.current), ...listImages(dataRef.current), ...beta].filter(isIdb).map(v => v.slice(4)));
         const old = Date.now() - 3 * 864e5;
         const dead = (await imgList()).filter(r => !used.has(String(r.id).replace(/\.t$/, '')) && r.at < old).map(r => r.id);
         if (dead.length) await imgDel(dead);

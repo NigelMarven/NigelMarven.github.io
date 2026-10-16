@@ -1,8 +1,9 @@
-/* CJ_BUILD 20261016-025906 */
+/* CJ_BUILD 20261016-030717 */
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
 const {
   useState,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useCallback,
@@ -1215,20 +1216,18 @@ textarea.inp{resize:vertical;line-height:1.5;}
 .nav-b.on{color:var(--main);text-shadow:0 0 8px rgba(var(--main-rgb),.7);}
 .nav-b.on::before{content:'';position:absolute;top:-1px;left:22%;right:22%;height:3px;background:var(--main);box-shadow:0 0 12px var(--main);}
 .nav-b.on svg{filter:drop-shadow(0 0 5px var(--main));}
-/* Переход между вкладками: экран проявляется сверху вниз (развёртка) со сдвигом в сторону перехода
-   и коротким дрожанием. fill-mode backwards — после анимации на main не остаётся transform/clip-path,
-   иначе модальные окна (position:fixed) обрезались бы по его границам. */
-.tab-in{animation:tabin .26s cubic-bezier(.2,.7,.3,1) backwards;}
-@keyframes tabin{
-  0%{opacity:0;transform:translateX(calc(var(--dir) * 14px));clip-path:inset(0 0 100% 0);}
-  35%{opacity:1;transform:translateX(calc(var(--dir) * -3px));clip-path:inset(0 0 40% 0);}
-  55%{transform:translateX(calc(var(--dir) * 2px));clip-path:inset(0 0 0 0);}
-  70%{transform:translateX(calc(var(--dir) * -1px));}
-  100%{opacity:1;transform:none;clip-path:inset(0 0 0 0);}
+/* Переход между вкладками: видимые блоки экрана проявляются по очереди (класс и задержку ставит App).
+   Используется translate, а не transform, и нет clip-path — чтобы не сбивать -translate-* и скошенные углы .cut.
+   fill-mode backwards — после анимации ничего не остаётся. */
+.cj-rise{animation:cjrise .34s cubic-bezier(.25,.8,.35,1) backwards;}
+@keyframes cjrise{
+  0%{opacity:0;translate:0 8px;filter:grayscale(.85) brightness(1.25);}
+  60%{opacity:1;filter:none;}
+  100%{opacity:1;translate:0 0;}
 }
-.nav-b.on::before{animation:navon .3s steps(6) backwards;}
-@keyframes navon{0%{opacity:0;transform:scaleX(.2)}33%{opacity:1}50%{opacity:.3;transform:scaleX(.7)}66%{opacity:1}100%{opacity:1;transform:none}}
-@media (prefers-reduced-motion:reduce){.tab-in,.nav-b.on::before{animation:none;}}
+.nav-b.on::before{animation:navon .3s ease-out backwards;}
+@keyframes navon{from{opacity:0;transform:scaleX(.2)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.cj-rise,.nav-b.on::before{animation:none;}}
 /* статистика */
 .st-score{font-family:'Orbitron','Russo One',sans-serif;font-weight:900;line-height:1;letter-spacing:.02em;font-variant-numeric:tabular-nums;}
 .seg-bar{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;}
@@ -6369,6 +6368,42 @@ function SettingsScreen({
     onClose: () => setAvEdit(false)
   }));
 }
+function revealBlocks(main) {
+  const box = main.getBoundingClientRect(),
+    items = [];
+  const walk = (el, depth) => {
+    const r = el.getBoundingClientRect();
+    if (!r.height || r.top >= box.bottom || r.bottom <= box.top) return;
+    if (depth < 6 && r.height > 260 && getComputedStyle(el).display !== 'grid') {
+      if (el.children.length === 1) {
+        walk(el.children[0], depth);
+        return;
+      }
+      if (el.children.length > 1) {
+        Array.from(el.children).forEach(c => walk(c, depth + 1));
+        return;
+      }
+    }
+    items.push(el);
+  };
+  Array.from(main.children).forEach(c => walk(c, 1));
+  const step = Math.min(40, 420 / Math.max(1, items.length));
+  items.forEach((el, i) => {
+    const delay = Math.round(i * step);
+    let timer = null;
+    const end = e => {
+      if (e && e.target !== el) return;
+      clearTimeout(timer);
+      el.classList.remove('cj-rise');
+      el.style.animationDelay = '';
+      el.removeEventListener('animationend', end);
+    };
+    el.style.animationDelay = `${delay}ms`;
+    el.classList.add('cj-rise');
+    el.addEventListener('animationend', end);
+    timer = setTimeout(end, delay + 600);
+  });
+}
 const TABS = [{
   id: 'missions',
   label: 'МИССИИ',
@@ -6419,17 +6454,26 @@ function App() {
   SFX.on = !!data.settings.sound;
   SFX.vib = !!data.settings.haptics;
   const th = THEMES[data.settings.theme] || THEMES.classic;
-  const tabDir = useRef(0);
+  const switched = useRef(false);
+  const mainRef = useRef(null);
   const setTab = t => {
     if (t === tab) return;
     sfx('tab');
-    const idx = id => TABS.findIndex(x => x.id === id);
-    tabDir.current = idx(t) > idx(tab) ? 1 : -1;
+    switched.current = true;
     setTabRaw(t);
     try {
       localStorage.setItem(`${LS_KEY}.tab`, t);
     } catch (e) {}
   };
+  useLayoutEffect(() => {
+    const main = mainRef.current;
+    if (!switched.current || !main) return undefined;
+    try {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return undefined;
+    } catch (e) {}
+    const raf = requestAnimationFrame(() => revealBlocks(main));
+    return () => cancelAnimationFrame(raf);
+  }, [tab]);
   const toast = useCallback((msg, action) => {
     setToastMsg({
       msg,
@@ -6803,10 +6847,8 @@ function App() {
     className: "mx-auto max-w-[480px] h-full flex flex-col relative"
   }, React.createElement("main", {
     key: tab,
-    className: `flex-1 min-h-0 relative ${tab === 'timer' ? 'overflow-hidden' : 'overflow-y-auto overscroll-contain'} ${tabDir.current ? 'tab-in' : ''}`,
-    style: {
-      '--dir': tabDir.current || 1
-    }
+    ref: mainRef,
+    className: `flex-1 min-h-0 relative ${tab === 'timer' ? 'overflow-hidden' : 'overflow-y-auto overscroll-contain'}`
   }, tab === 'missions' && React.createElement(MissionsScreen, null), tab === 'stats' && React.createElement(StatsScreen, {
     openRate: (date, source) => setRate({
       date,

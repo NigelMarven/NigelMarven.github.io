@@ -1,4 +1,4 @@
-/* CJ_BUILD 20261016-030717 */
+/* CJ_BUILD 20261016-105046 */
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
 const {
   useState,
@@ -3113,7 +3113,45 @@ function MissionDetail({
     onClick: onDelete
   }, "\u0423\u0434\u0430\u043B\u0438\u0442\u044C")))));
 }
-const STATUS_PRESETS = ['DANGER: LOW', 'DANGER: MODERATE', 'DANGER: HIGH', 'DANGER: VERY HIGH', 'PRIORITY: MAX', 'REWARD: '];
+const DANGER_LEVELS = [{
+  status: 'DANGER: LOW',
+  color: '#00F0FF'
+}, {
+  status: 'DANGER: MODERATE',
+  color: ''
+}, {
+  status: 'DANGER: HIGH',
+  color: '#FF8A3D'
+}, {
+  status: 'DANGER: VERY HIGH',
+  color: '#FF2A2A'
+}];
+function DangerIcon({
+  level,
+  color
+}) {
+  return React.createElement("svg", {
+    width: "34",
+    height: "24",
+    viewBox: "0 0 34 24",
+    "aria-hidden": "true"
+  }, [0, 1, 2, 3].map(i => {
+    const h = 6 + i * 5,
+      x = 2 + i * 8;
+    const on = i < level;
+    return React.createElement("polygon", {
+      key: i,
+      points: `${x + 3},${24 - h} ${x + 7},${24 - h} ${x + 4},24 ${x},24`,
+      strokeOpacity: on ? 1 : 0.35,
+      strokeWidth: "1",
+      style: {
+        fill: on ? color : 'none',
+        stroke: color,
+        filter: on ? `drop-shadow(0 0 3px ${color})` : 'none'
+      }
+    });
+  }));
+}
 const BADGE_SHAPES = [['diamond', 'Ромб'], ['square', 'Квадрат'], ['triangle', 'Треугольник'], ['circle', 'Круг'], ['none', 'Нет']];
 function MissionEditor({
   initial,
@@ -3215,22 +3253,34 @@ function MissionEditor({
     }),
     placeholder: "DANGER: MODERATE"
   }), React.createElement("div", {
-    className: "flex flex-wrap gap-1.5 mt-2"
-  }, STATUS_PRESETS.map(p => React.createElement("button", {
-    key: p,
-    type: "button",
-    className: "tag cut",
-    style: {
-      '--tc': 'var(--warn)',
-      '--cut': '5px'
-    },
-    onClick: () => {
-      sfx();
-      set({
-        status: p
-      });
-    }
-  }, p)))), React.createElement(Field, {
+    className: "flex gap-2 mt-2"
+  }, DANGER_LEVELS.map((d, i) => {
+    const col = d.color || 'var(--warn)',
+      active = m.status === d.status;
+    return React.createElement("button", {
+      key: d.status,
+      type: "button",
+      title: d.status,
+      "aria-label": d.status,
+      "aria-pressed": active,
+      className: "cut flex-1 flex items-center justify-center py-2",
+      style: {
+        '--cut': '7px',
+        background: active ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.35)',
+        boxShadow: `inset 0 0 0 1px ${active ? col : 'rgba(255,255,255,.14)'}`
+      },
+      onClick: () => {
+        sfx();
+        set({
+          status: d.status,
+          statusColor: d.color
+        });
+      }
+    }, React.createElement(DangerIcon, {
+      level: i + 1,
+      color: col
+    }));
+  }))), React.createElement(Field, {
     label: "\u0426\u0432\u0435\u0442 \u043F\u043E\u0434\u043F\u0438\u0441\u0438"
   }, React.createElement(ColorRow, {
     value: m.statusColor,

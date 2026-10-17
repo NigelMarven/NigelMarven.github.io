@@ -1,4 +1,4 @@
-/* CJ_BUILD 20261017-125215 */
+/* CJ_BUILD 20261017-135106 */
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
 const {
   useState,
@@ -2131,6 +2131,14 @@ textarea.inp{resize:vertical;line-height:1.5;}
 .nav-b.on::before{animation:navon .3s ease-out backwards;}
 @keyframes navon{from{opacity:0;transform:scaleX(.2)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.cj-rise,.nav-b.on::before{animation:none;}}
+/* перетаскивание миссий (useMissionDrag): копия строки за пальцем, линия или рамка места вставки */
+.drag-src{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
+.drag-ghost{position:fixed;left:0;top:0;z-index:85;pointer-events:none;opacity:.94;filter:drop-shadow(0 12px 22px rgba(0,0,0,.65));will-change:transform;}
+.drag-mark{position:fixed;z-index:86;pointer-events:none;border-radius:3px;}
+.drag-mark[data-kind=line]{background:var(--alt);box-shadow:0 0 12px var(--alt);}
+.drag-mark[data-kind=box]{box-shadow:inset 0 0 0 2px var(--alt),0 0 16px rgba(var(--alt-rgb),.45);}
+.ui-mono .drag-mark[data-kind=box]{border-radius:14px;}
+body.cj-dragging,body.cj-dragging *{cursor:grabbing !important;}
 /* широкий экран (ПК, планшет боком): боковое меню, две колонки, окна по центру. Класс cj-wide ставит App */
 .side{width:232px;flex-shrink:0;display:flex;flex-direction:column;background:linear-gradient(180deg,rgba(10,8,14,.94),rgba(5,4,8,.99));border-right:1px solid rgba(var(--main-rgb),.45);box-shadow:6px 0 24px rgba(var(--main-rgb),.12);position:relative;z-index:20;}
 .side-logo{padding:24px 20px 20px;}
@@ -5562,15 +5570,249 @@ function ArchiveHeader({
     strokeLinejoin: "round"
   })))));
 }
+function useMissionDrag(onDrop, onStart) {
+  const [drag, setDrag] = useState(null);
+  const st = useRef(null);
+  const ghostRef = useRef(null),
+    markRef = useRef(null);
+  const cb = useRef({});
+  cb.current = {
+    onDrop,
+    onStart
+  };
+  const h = useRef(null);
+  if (!h.current) {
+    const findTarget = y => {
+      const s = st.current;
+      const rows = [...document.querySelectorAll('[data-drag-row]')].filter(el => el.dataset.mid !== s.id);
+      for (const hd of document.querySelectorAll('[data-drag-sec]')) {
+        const r = hd.getBoundingClientRect();
+        if (y >= r.top && y <= r.bottom) {
+          const first = rows.find(el => el.dataset.sec === hd.dataset.sec);
+          return {
+            sec: hd.dataset.sec,
+            beforeId: first ? first.dataset.mid : null,
+            box: r
+          };
+        }
+      }
+      let best = null,
+        bd = Infinity;
+      for (const el of rows) {
+        const r = el.getBoundingClientRect();
+        const d = y < r.top ? r.top - y : y > r.bottom ? y - r.bottom : 0;
+        if (d < bd) {
+          bd = d;
+          best = {
+            el,
+            r
+          };
+        }
+      }
+      if (!best || bd > 90) return null;
+      const {
+          el,
+          r
+        } = best,
+        sec = el.dataset.sec;
+      if (y < r.top + r.height / 2) return {
+        sec,
+        beforeId: el.dataset.mid,
+        line: r.top - 5,
+        left: r.left,
+        width: r.width
+      };
+      const same = rows.filter(x => x.dataset.sec === sec),
+        next = same[same.indexOf(el) + 1];
+      return {
+        sec,
+        beforeId: next ? next.dataset.mid : null,
+        line: r.bottom + 5,
+        left: r.left,
+        width: r.width
+      };
+    };
+    const paint = () => {
+      const s = st.current,
+        g = ghostRef.current,
+        mk = markRef.current;
+      if (g) g.style.transform = `translate(${s.x - s.offX}px, ${s.y - s.offY}px) rotate(1.2deg)`;
+      if (!mk) return;
+      const t = s.target;
+      if (!t) {
+        mk.style.display = 'none';
+        return;
+      }
+      mk.style.display = 'block';
+      if (t.box) {
+        mk.dataset.kind = 'box';
+        Object.assign(mk.style, {
+          left: `${t.box.left}px`,
+          top: `${t.box.top}px`,
+          width: `${t.box.width}px`,
+          height: `${t.box.height}px`
+        });
+      } else {
+        mk.dataset.kind = 'line';
+        Object.assign(mk.style, {
+          left: `${t.left}px`,
+          top: `${t.line - 1.5}px`,
+          width: `${t.width}px`,
+          height: '3px'
+        });
+      }
+    };
+    const tick = () => {
+      const s = st.current;
+      if (!s || !s.active) return;
+      const sc = s.scroller;
+      if (sc) {
+        const cr = sc.getBoundingClientRect(),
+          edge = 70;
+        const v = s.y < cr.top + edge ? -Math.ceil((cr.top + edge - s.y) / 5) : s.y > cr.bottom - edge ? Math.ceil((s.y - cr.bottom + edge) / 5) : 0;
+        if (v) sc.scrollTop += v;
+      }
+      s.target = findTarget(s.y);
+      paint();
+      s.raf = requestAnimationFrame(tick);
+    };
+    const swallowClick = () => {
+      const f = ev => {
+        ev.stopPropagation();
+        ev.preventDefault();
+      };
+      window.addEventListener('click', f, true);
+      setTimeout(() => window.removeEventListener('click', f, true), 350);
+    };
+    const cleanup = () => {
+      const s = st.current;
+      if (!s) return;
+      clearTimeout(s.timer);
+      cancelAnimationFrame(s.raf);
+      window.removeEventListener('pointermove', h.current.move);
+      window.removeEventListener('pointerup', h.current.up);
+      window.removeEventListener('pointercancel', h.current.cancel);
+      window.removeEventListener('keydown', h.current.key);
+      document.body.classList.remove('cj-dragging');
+      st.current = null;
+      if (s.active) setDrag(null);
+    };
+    const activate = () => {
+      const s = st.current;
+      if (!s || s.active) return;
+      s.active = true;
+      sfx('open');
+      document.body.classList.add('cj-dragging');
+      if (cb.current.onStart) cb.current.onStart(s.id);
+      setDrag({
+        id: s.id,
+        w: s.w
+      });
+      s.raf = requestAnimationFrame(tick);
+    };
+    const move = e => {
+      const s = st.current;
+      if (!s) return;
+      s.x = e.clientX;
+      s.y = e.clientY;
+      if (!s.active && Math.hypot(s.x - s.x0, s.y - s.y0) > 8) {
+        if (s.touch) cleanup();else activate();
+      }
+    };
+    const up = () => {
+      const s = st.current;
+      if (!s) return;
+      if (s.active) {
+        swallowClick();
+        s.target = findTarget(s.y);
+        if (s.target) cb.current.onDrop(s.id, s.target.sec, s.target.beforeId);
+      }
+      cleanup();
+    };
+    const cancel = () => {
+      const s = st.current;
+      if (s && s.active) swallowClick();
+      cleanup();
+    };
+    const key = e => {
+      if (e.key === 'Escape') cancel();
+    };
+    const down = (e, id) => {
+      if (st.current || e.pointerType === 'mouse' && e.button !== 0) return;
+      const row = e.currentTarget,
+        r = row.getBoundingClientRect();
+      st.current = {
+        id,
+        x: e.clientX,
+        y: e.clientY,
+        x0: e.clientX,
+        y0: e.clientY,
+        offX: e.clientX - r.left,
+        offY: e.clientY - r.top,
+        w: r.width,
+        active: false,
+        touch: e.pointerType !== 'mouse',
+        target: null,
+        scroller: row.closest('main'),
+        raf: 0,
+        timer: e.pointerType !== 'mouse' ? setTimeout(activate, 320) : 0
+      };
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', up);
+      window.addEventListener('pointercancel', cancel);
+      window.addEventListener('keydown', key);
+    };
+    h.current = {
+      move,
+      up,
+      cancel,
+      key,
+      down,
+      cleanup
+    };
+  }
+  useEffect(() => {
+    const block = e => {
+      if (st.current && st.current.active) e.preventDefault();
+    };
+    document.addEventListener('touchmove', block, {
+      passive: false
+    });
+    return () => {
+      document.removeEventListener('touchmove', block);
+      h.current.cleanup();
+    };
+  }, []);
+  const bind = (id, sec) => ({
+    'data-drag-row': '',
+    'data-mid': id,
+    'data-sec': sec,
+    onPointerDown: e => h.current.down(e, id),
+    onContextMenu: e => {
+      if (st.current) e.preventDefault();
+    }
+  });
+  return {
+    drag,
+    bind,
+    ghostRef,
+    markRef
+  };
+}
 function MissionRow({
   m,
   open,
-  onToggle
+  onToggle,
+  drag,
+  dim
 }) {
   const done = m.steps.filter(s => s.done).length;
-  return React.createElement("div", {
-    className: `flex items-stretch gap-1.5 ${m.done && !open ? 'opacity-75' : ''}`
-  }, React.createElement("div", {
+  return React.createElement("div", _extends({}, drag || {}, {
+    className: `flex items-stretch gap-1.5 ${drag ? 'drag-src' : ''} ${m.done && !open ? 'opacity-75' : ''}`,
+    style: dim ? {
+      opacity: 0.3
+    } : undefined
+  }), React.createElement("div", {
     className: "w-8 shrink-0 flex items-center justify-center"
   }, React.createElement(ChipIcon, {
     active: open,
@@ -6493,6 +6735,38 @@ function MissionsScreen() {
     });
     setOpenId(null);
   };
+  const dropMission = (id, secId, beforeId) => {
+    const m0 = data.missions.find(x => x.id === id);
+    if (!m0) return;
+    up('missions', ms => {
+      const m = ms.find(x => x.id === id);
+      if (!m) return ms;
+      const rest = ms.filter(x => x.id !== id);
+      let i = beforeId ? rest.findIndex(x => x.id === beforeId) : -1;
+      if (i < 0) {
+        let last = -1;
+        rest.forEach((x, k) => {
+          if (x.sectionId === secId && !x.done) last = k;
+        });
+        i = last >= 0 ? last + 1 : rest.length;
+      }
+      return [...rest.slice(0, i), {
+        ...m,
+        sectionId: secId
+      }, ...rest.slice(i)];
+    });
+    up('sections', ss => ss.map(x => x.id === secId && x.collapsed ? {
+      ...x,
+      collapsed: false
+    } : x));
+    sfx('save');
+    if (m0.sectionId !== secId) {
+      const sec = data.sections.find(x => x.id === secId);
+      toast(`Перемещено в ${sec ? nice(sec.name) : 'раздел'}`);
+    }
+  };
+  const mDrag = useMissionDrag(dropMission, () => setOpenId(null));
+  const dragM = mDrag.drag && data.missions.find(x => x.id === mDrag.drag.id);
   const saveShard = s => {
     up('shards', ss => ss.some(x => x.id === s.id) ? ss.map(x => x.id === s.id ? s : x) : [s, ...ss]);
     sfx('save');
@@ -6576,6 +6850,9 @@ function MissionsScreen() {
     const collapsed = sec.collapsed && !ql;
     return React.createElement("div", {
       key: sec.id
+    }, React.createElement("div", {
+      "data-drag-sec": "",
+      "data-sec": sec.id
     }, React.createElement(SectionHeader, {
       name: sec.name,
       count: list.length,
@@ -6591,13 +6868,15 @@ function MissionsScreen() {
         type: 'section',
         id: sec.id
       })
-    }), !collapsed && React.createElement("div", {
+    })), !collapsed && React.createElement("div", {
       className: "mt-2.5 space-y-2.5"
     }, list.length ? list.map(m => React.createElement("div", {
       key: m.id
     }, React.createElement(MissionRow, {
       m: m,
       open: openId === m.id,
+      drag: mDrag.bind(m.id, sec.id),
+      dim: mDrag.drag && mDrag.drag.id === m.id,
       onToggle: () => {
         sfx(openId === m.id ? 'close' : 'open');
         setOpenId(openId === m.id ? null : m.id);
@@ -6614,6 +6893,8 @@ function MissionsScreen() {
       onToggleDone: () => toggleDone(m)
     }))) : React.createElement("button", {
       type: "button",
+      "data-drag-sec": "",
+      "data-sec": sec.id,
       onClick: () => {
         sfx('open');
         setEditM(blankMission(sec.id));
@@ -6795,7 +7076,22 @@ function MissionsScreen() {
         toast(`Перемещено в ${s.name}`);
       }
     }))
-  }), editM && React.createElement(MissionEditor, {
+  }), dragM && React.createElement(React.Fragment, null, React.createElement("div", {
+    ref: mDrag.ghostRef,
+    className: "drag-ghost",
+    style: {
+      width: mDrag.drag.w
+    }
+  }, React.createElement(MissionRow, {
+    m: dragM,
+    open: false
+  })), React.createElement("div", {
+    ref: mDrag.markRef,
+    className: "drag-mark",
+    style: {
+      display: 'none'
+    }
+  })), editM && React.createElement(MissionEditor, {
     initial: editM,
     onSave: saveMission,
     onClose: () => setEditM(null)

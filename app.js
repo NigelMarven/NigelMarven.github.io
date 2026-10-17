@@ -1,4 +1,4 @@
-/* CJ_BUILD 20261017-111252 */
+/* CJ_BUILD 20261017-125215 */
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
 const {
   useState,
@@ -3283,12 +3283,21 @@ function sunPath(n, r, R, hw) {
   }
   return `${d}A${r} ${r} 0 0 1 ${pt(-Math.PI / 2 - hw, r)} Z`;
 }
+function starPath(n, R, r, jitter = 0) {
+  let d = '';
+  for (let i = 0; i < n * 2; i++) {
+    const a = -Math.PI / 2 + i * Math.PI / n;
+    const rad = i % 2 ? r : R - (i % 4 === 2 ? jitter : 0);
+    d += `${i ? 'L' : 'M'}${(32 + rad * Math.cos(a)).toFixed(2)} ${(32 + rad * Math.sin(a)).toFixed(2)} `;
+  }
+  return `${d}Z`;
+}
 const TOON_FRAMES = {
   oct: p => React.createElement("path", _extends({
-    d: sunPath(8, 21.5, 31, 0.27)
+    d: starPath(8, 31, 19, 2.5)
   }, p)),
   hex: p => React.createElement("path", _extends({
-    d: sunPath(12, 23, 30.5, 0.17)
+    d: sunPath(10, 20, 31, 0.27)
   }, p)),
   shield: p => React.createElement("path", _extends({
     d: "M9 6 H55 Q58 6 58 9 V35 Q58 41 52 46 L34.5 59.5 Q32 61.5 29.5 59.5 L12 46 Q6 41 6 35 V9 Q6 6 9 6 Z"
@@ -3328,604 +3337,1124 @@ const TY = '#FFD43B',
   TBR = '#B9773F',
   TGR = '#C9CED6',
   TD = '#2B2B33';
-const noSign = React.createElement(React.Fragment, null, ol('M16 3.5 a12.5 12.5 0 1 1 -0.01 0 Z', TR, 2.6), ol('M7.2 7.2 L24.8 24.8', TR, 2.6));
-const TOON = {
-  donut: c => React.createElement(React.Fragment, null, React.createElement("circle", {
-    cx: "15",
-    cy: "17",
-    r: "12",
-    fill: "#D9934E"
-  }), React.createElement("polygon", {
-    points: blobPts(15, 17, 9.4, 1.1, 7),
-    fill: TV
-  }), React.createElement("circle", {
-    cx: "15",
-    cy: "17",
-    r: "3.6",
-    fill: c
-  }), React.createElement("g", {
-    strokeWidth: "1.7"
+const spark = (cx, cy, r) => {
+  const q = r * 0.2;
+  return `M${cx} ${cy - r} Q${cx + q} ${cy - q} ${cx + r} ${cy} Q${cx + q} ${cy + q} ${cx} ${cy + r} Q${cx - q} ${cy + q} ${cx - r} ${cy} Q${cx - q} ${cy - q} ${cx} ${cy - r} Z`;
+};
+const zPath = (x, y, s) => `M${x} ${y} h${s} l${-s} ${s} h${s}`;
+let LAYER_N = 0;
+const layer = (d, fill, inner) => {
+  const id = `tly${++LAYER_N}`;
+  return React.createElement(React.Fragment, null, React.createElement("defs", null, React.createElement("clipPath", {
+    id: id
   }, React.createElement("path", {
-    d: "M8.5 13 l1.8 -1",
-    stroke: TW
+    d: d
+  }))), React.createElement("path", {
+    d: d,
+    fill: fill,
+    stroke: "none"
+  }), React.createElement("g", {
+    clipPath: `url(#${id})`
+  }, inner), React.createElement("path", {
+    d: d
+  }));
+};
+const noBadge = (x = 48.5, y = 15) => React.createElement(React.Fragment, null, React.createElement("circle", {
+  cx: x,
+  cy: y,
+  r: "8",
+  fill: TR
+}), React.createElement("path", {
+  d: `M${x - 3.3} ${y - 3.3} l6.6 6.6 M${x + 3.3} ${y - 3.3} l-6.6 6.6`,
+  strokeWidth: "2.6"
+}));
+function starAt(cx, cy, n, R, r) {
+  let d = '';
+  for (let i = 0; i < n * 2; i++) {
+    const a = -Math.PI / 2 + i * Math.PI / n,
+      rad = i % 2 ? r : R;
+    d += `${i ? 'L' : 'M'}${(cx + rad * Math.cos(a)).toFixed(2)} ${(cy + rad * Math.sin(a)).toFixed(2)} `;
+  }
+  return `${d}Z`;
+}
+const circ = (cx, cy, r) => `M${cx - r} ${cy} a${r} ${r} 0 1 0 ${2 * r} 0 a${r} ${r} 0 1 0 ${-2 * r} 0`;
+const foot = fill => React.createElement("g", {
+  strokeWidth: "2.2"
+}, React.createElement("path", {
+  d: "M1 0 C7 0 9.5 5 9 10 C8.5 14 6.5 16 6.5 20 C6.5 24 4 27 0 27 C-4 27 -6.5 24 -6 19.5 C-5.5 15 -7.5 12 -7.5 8 C-7.5 3 -4.5 0 1 0 Z",
+  fill: fill
+}), React.createElement("path", {
+  d: "M5.6 4.4 C7 7 7.2 10 6.2 12.6",
+  stroke: "#DADDE3",
+  strokeWidth: "2.4"
+}), React.createElement("circle", {
+  cx: "-4.2",
+  cy: "-6",
+  r: "4.3",
+  fill: fill
+}), React.createElement("circle", {
+  cx: "2.2",
+  cy: "-8.2",
+  r: "3.3",
+  fill: fill
+}), React.createElement("circle", {
+  cx: "7",
+  cy: "-6.4",
+  r: "2.8",
+  fill: fill
+}), React.createElement("circle", {
+  cx: "10.4",
+  cy: "-3",
+  r: "2.4",
+  fill: fill
+}), React.createElement("circle", {
+  cx: "12",
+  cy: "1.2",
+  r: "2",
+  fill: fill
+}));
+const TOON = {
+  donut: (c, mini) => React.createElement(React.Fragment, null, React.createElement("circle", {
+    cx: "31.5",
+    cy: "33",
+    r: "21",
+    fill: "#C9863F"
   }), React.createElement("path", {
-    d: "M19.5 11 l1.6 1.2",
-    stroke: TB
+    d: "M14 29 A18 18 0 0 1 25.5 15.4",
+    stroke: "#E6AC6B",
+    strokeWidth: "2.2"
+  }), React.createElement("polygon", {
+    points: blobPts(32.3, 32.6, 18.2, 1.6, 9),
+    fill: "#C79BF2"
   }), React.createElement("path", {
-    d: "M21.5 19.5 l-.6 1.9",
-    stroke: TY
-  }), React.createElement("path", {
-    d: "M10 21.5 l1.8 .8",
-    stroke: TG
-  }), React.createElement("path", {
-    d: "M14.5 9.4 l1.9 -.2",
-    stroke: TP
-  }), React.createElement("path", {
-    d: "M17.5 24 l1.8 -.6",
-    stroke: TW
-  })), React.createElement("circle", {
-    cx: "25.5",
-    cy: "7",
-    r: "4.6",
+    d: "M19.6 27.5 A13.5 13.5 0 0 1 28 20",
+    stroke: "#E6D2FB",
+    strokeWidth: "2.6"
+  }), React.createElement("circle", {
+    cx: "32.3",
+    cy: "33",
+    r: "6",
+    fill: c
+  }), !mini && React.createElement(React.Fragment, null, ol('M18 30.4 l1.8 -4.8', TB, 2.8), ol('M24 21.2 l4.8 -1.8', TW, 2.8), ol('M36.2 20.4 l4.2 2.8', TP, 2.8), ol('M44.6 30.2 l.6 5', TG, 2.8), ol('M40.4 44.6 l3.8 -3.2', '#3DDCCB', 2.8), ol('M26.4 45.6 l5 .9', TW, 2.8), ol('M20.4 41.8 l-1.9 -4.4', TG, 2.8)), React.createElement("circle", {
+    cx: "47.5",
+    cy: "17",
+    r: "7",
     fill: TR
   }), React.createElement("path", {
-    d: "M23.8 5.3 l3.4 3.4 M27.2 5.3 l-3.4 3.4",
-    strokeWidth: "1.5"
+    d: "M44.6 14.1 l5.8 5.8 M50.4 14.1 l-5.8 5.8",
+    strokeWidth: "2.4"
   })),
-  apple: () => React.createElement(React.Fragment, null, ol('M16 10 C16 7.5 16.5 5.5 18 4', TBR, 1.6), React.createElement("path", {
-    d: "M16 10 C12 7 5 8.5 5 16 C5 23 9.5 28 13 28 C14.3 28 15 27.3 16 27.3 C17 27.3 17.7 28 19 28 C22.5 28 27 23 27 16 C27 8.5 20 7 16 10 Z",
-    fill: TR
+  sleep: (c, mini) => React.createElement(React.Fragment, null, React.createElement("circle", {
+    cx: "30",
+    cy: "35.5",
+    r: "19.5",
+    fill: "#FFC83D"
   }), React.createElement("path", {
-    d: "M17.5 7 C18 3.5 22 2.5 25 3.5 C24 6.5 21 8 17.5 7 Z",
-    fill: TG
+    d: "M16.2 32 A14.5 14.5 0 0 1 22.5 23",
+    stroke: "#FFE39A",
+    strokeWidth: "2.8"
+  }), React.createElement("path", {
+    d: "M19.5 35.5 q4.2 4 8.4 0 M32.5 35.5 q4.2 4 8.4 0",
+    strokeWidth: "2.4"
   }), React.createElement("ellipse", {
-    cx: "10",
-    cy: "15",
-    rx: "1.5",
-    ry: "3",
-    fill: TW,
-    stroke: "none",
-    transform: "rotate(20 10 15)"
-  })),
-  water: () => React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M16 3 C16 3 6 14.5 6 20.5 A10 10 0 0 0 26 20.5 C26 14.5 16 3 16 3 Z",
-    fill: TB
-  }), React.createElement("path", {
-    d: "M10.5 20 a5.5 5.5 0 0 0 4 5",
-    stroke: TW,
+    cx: "30.5",
+    cy: "45.5",
+    rx: "2.4",
+    ry: "2.9",
+    fill: "#6B2E0E",
     strokeWidth: "2"
-  })),
-  coffee: () => React.createElement(React.Fragment, null, ol('M11 2.5 c-1.5 2 1.5 3 0 5.5', TW, 1.4), ol('M16.5 2 c-1.5 2 1.5 3 0 5.5', TW, 1.4), React.createElement("ellipse", {
-    cx: "15",
-    cy: "27",
-    rx: "12",
-    ry: "2.6",
+  }), mini ? React.createElement("g", {
+    transform: "rotate(-8 47 12)"
+  }, ol(zPath(41, 6, 12), TW, 3.8)) : React.createElement(React.Fragment, null, React.createElement("g", {
+    transform: "rotate(-8 31 19)"
+  }, ol(zPath(27.5, 15.5, 7.5), TW, 3.2)), React.createElement("g", {
+    transform: "rotate(-8 40 12)"
+  }, ol(zPath(35.5, 7.5, 9.5), TW, 3.6)), React.createElement("g", {
+    transform: "rotate(-8 50 6)"
+  }, ol(zPath(44.5, 0, 12), TW, 4)))),
+  run: (c, mini) => React.createElement(React.Fragment, null, React.createElement("g", {
+    transform: "translate(1 3) rotate(-12 34 36)"
+  }, React.createElement("path", {
+    d: "M20 27 C14 20 10 13 9 5 C15 8 20 14 23 22 Z",
     fill: TW
-  }), ol('M23 14.5 h1.5 a3.2 3.2 0 0 1 0 6.4 h-1.8', TW, 1.8), React.createElement("path", {
-    d: "M5 11.5 h19 v7.5 a8 8 0 0 1 -8 8 h-3 a8 8 0 0 1 -8 -8 z",
+  }), React.createElement("path", {
+    d: "M19 29 C12 26 6 21 3 14 C9 15.5 15 19 21 25 Z",
     fill: TW
+  }), React.createElement("path", {
+    d: "M18.5 32 C12 32 6.5 29.5 3.5 24.5 C9 24.5 14 26 19.5 28.5 Z",
+    fill: "#E4E7EC"
+  }), layer('M15 40 C14 34 15 28 17.5 24.5 C20.5 26 25 26 27.5 23.5 C28.5 21.5 29.5 19.8 31.5 19.5 C36 25 42 29.5 49 31.5 C54 32.8 58 34 59.5 36.5 C58.5 38.5 56 40 52 40 Z', TW, React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M48.5 31 C54 32.6 60 34 61 37 C60 40 56 41 52 41 C52.6 36.4 51 33.4 48.5 31 Z",
+    fill: "#DADDE3",
+    stroke: "none"
+  }), React.createElement("path", {
+    d: "M13 41 C12 34 13 28 16 23 L19.6 26 C18.2 30.4 17.8 35 18.6 41 Z",
+    fill: "#DADDE3",
+    stroke: "none"
+  }))), React.createElement("path", {
+    d: "M18 25 C20.5 27.4 25.5 27.4 28 23.8 C25.5 24.8 21 24.8 18 25 Z",
+    fill: "#3A3A44",
+    strokeWidth: "1.6"
+  }), React.createElement("path", {
+    d: "M29.4 21.6 C29.8 19 31.2 17.4 33 17.8",
+    strokeWidth: "2"
+  }), React.createElement("path", {
+    d: "M19.5 35.6 C29 36.6 39 34.6 46.5 30 C41.5 36.5 31 39.4 19.5 38.4 Z",
+    fill: TO,
+    strokeWidth: "1.8"
+  }), React.createElement("path", {
+    d: "M33.8 23.2 l-2.8 2.4 M37.3 25.8 l-2.8 2.4 M40.9 27.9 l-2.8 2.4 M44.4 29.7 l-2.6 2.2",
+    strokeWidth: "1.9"
+  }), React.createElement("path", {
+    d: "M15 40 H52 C56 40 58.5 38.5 59.5 36.5 C60.5 40 59 46 53 46 H19 C15.5 46 14 43.5 15 40 Z",
+    fill: TW
+  }), React.createElement("path", {
+    d: "M18 43.2 H53.5 C55.8 43.2 57.6 42.2 58.6 40.6",
+    stroke: TO,
+    strokeWidth: "2.2"
+  })), !mini && React.createElement("g", {
+    fill: TW,
+    strokeWidth: "1.8"
+  }, React.createElement("path", {
+    d: spark(31, 7, 4.2)
+  }), React.createElement("path", {
+    d: spark(52, 12, 5)
+  }), React.createElement("path", {
+    d: spark(7, 48, 3.6)
+  }), React.createElement("path", {
+    d: spark(58, 52, 3.4)
+  }))),
+  apple: (c, mini) => React.createElement(React.Fragment, null, ol('M32 19 C32 13.5 33 9.5 36.5 6.5', TBR, 3), layer('M32 18 C24 12 10 15 10 30 C10 44 19 54 26 54 C28.6 54 30 52.6 32 52.6 C34 52.6 35.4 54 38 54 C45 54 54 44 54 30 C54 15 40 12 32 18 Z', TR, React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M46 20.5 C52.6 24.6 55 31.6 53.4 38.6 C51.6 46.4 45.4 52.4 39 54.4 C45.4 47 49 37.6 46 20.5 Z",
+    fill: "#D93636",
+    stroke: "none"
   }), React.createElement("ellipse", {
-    cx: "14.5",
-    cy: "11.8",
-    rx: "9.5",
-    ry: "1.9",
+    cx: "19.5",
+    cy: "29",
+    rx: "3",
+    ry: "6.2",
+    fill: "#FFB3B3",
+    stroke: "none",
+    transform: "rotate(18 19.5 29)"
+  }), React.createElement("circle", {
+    cx: "22.4",
+    cy: "39.6",
+    r: "1.7",
+    fill: "#FFB3B3",
+    stroke: "none"
+  }))), React.createElement("path", {
+    d: "M35 13.5 C36 6.5 44 4 50.5 6 C48.5 12.5 42 15.5 35 13.5 Z",
+    fill: TG
+  }), React.createElement("path", {
+    d: "M37.5 12.2 C41 10.2 44.2 8.6 47.6 7.6",
+    strokeWidth: "1.6"
+  }), !mini && React.createElement("path", {
+    d: spark(55, 15, 4.2),
+    fill: TW,
+    strokeWidth: "1.8"
+  })),
+  water: (c, mini) => React.createElement(React.Fragment, null, layer('M32 5 C32 5 12 27.5 12 40 A20 20 0 0 0 52 40 C52 27.5 32 5 32 5 Z', TB, React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M45 29.5 C49.6 34.6 52 38.6 52 42 C52 52.4 44 60 34 60 C43 55 47.6 45.6 45 29.5 Z",
+    fill: "#2E95E0",
+    stroke: "none"
+  }), React.createElement("path", {
+    d: "M19.6 39.6 A12.5 12.5 0 0 0 26.8 51.4",
+    stroke: TW,
+    strokeWidth: "3.4"
+  }), React.createElement("circle", {
+    cx: "21.6",
+    cy: "32.8",
+    r: "1.9",
+    fill: TW,
+    stroke: "none"
+  }))), !mini && React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M8.5 13 C8.5 13 3.8 18.6 3.8 21.4 A4.7 4.7 0 0 0 13.2 21.4 C13.2 18.6 8.5 13 8.5 13 Z",
+    fill: "#B5E2FF",
+    strokeWidth: "2"
+  }), React.createElement("path", {
+    d: "M55.5 15 C55.5 15 52 19.2 52 21.3 A3.5 3.5 0 0 0 59 21.3 C59 19.2 55.5 15 55.5 15 Z",
+    fill: "#B5E2FF",
+    strokeWidth: "2"
+  }))),
+  coffee: (c, mini) => React.createElement(React.Fragment, null, !mini && React.createElement(React.Fragment, null, ol('M21.5 4 c-3 4 3 6 0 10', TW, 2.6), ol('M30.5 2.5 c-3 4 3 6 0 10', TW, 2.6), ol('M39.5 4 c-3 4 3 6 0 10', TW, 2.6)), React.createElement("ellipse", {
+    cx: "31",
+    cy: "54.5",
+    rx: "24.5",
+    ry: "5.6",
+    fill: TW
+  }), ol('M46 27.5 h3 a6.8 6.8 0 0 1 0 13.6 h-3.6', TW, 3.8), layer('M10 21.5 h38 v15.5 a16 16 0 0 1 -16 16 h-6 a16 16 0 0 1 -16 -16 z', TW, React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M8 30.6 h42 v5 h-42 z",
+    fill: TP,
+    stroke: "none"
+  }), React.createElement("path", {
+    d: "M40 21.5 h9 v15.5 a17 17 0 0 1 -14 16.7 C41.6 47.6 42.4 38.4 40 21.5 Z",
+    fill: "#DADDE3",
+    stroke: "none",
+    opacity: ".9"
+  }), React.createElement("path", {
+    d: "M15.6 39 C16.4 43 18.4 46 21.4 48",
+    stroke: "#EEF0F3",
+    strokeWidth: "2.6"
+  }))), React.createElement("ellipse", {
+    cx: "29",
+    cy: "22",
+    rx: "19",
+    ry: "3.9",
     fill: TBR
   }), React.createElement("path", {
-    d: "M6.5 16.5 h16",
-    stroke: TP,
+    d: "M18 21.4 C22 20.4 27 20.2 31 20.6",
+    stroke: "#D9A06B",
+    strokeWidth: "1.8"
+  })),
+  sun: (c, mini) => React.createElement(React.Fragment, null, ol('M32 13 V7.5 M32 55 v5.5 M11 34 H5.5 M53 34 h5.5 M46.9 19.1 l3.9 -3.9 M17.1 19.1 l-3.9 -3.9 M46.9 48.9 l3.9 3.9 M17.1 48.9 l-3.9 3.9', TO, 3.6), React.createElement("circle", {
+    cx: "32",
+    cy: "34",
+    r: "17",
+    fill: TY
+  }), React.createElement("path", {
+    d: "M20.6 28.6 A12.4 12.4 0 0 1 26.6 21.8",
+    stroke: "#FFF0A8",
+    strokeWidth: "3"
+  }), React.createElement("circle", {
+    cx: "26",
+    cy: "32",
+    r: "2.3",
+    fill: OL,
+    stroke: "none"
+  }), React.createElement("circle", {
+    cx: "38",
+    cy: "32",
+    r: "2.3",
+    fill: OL,
+    stroke: "none"
+  }), React.createElement("circle", {
+    cx: "26.8",
+    cy: "31.2",
+    r: ".8",
+    fill: TW,
+    stroke: "none"
+  }), React.createElement("circle", {
+    cx: "38.8",
+    cy: "31.2",
+    r: ".8",
+    fill: TW,
+    stroke: "none"
+  }), React.createElement("path", {
+    d: "M25.4 38.4 Q32 45.8 38.6 38.4 Z",
+    fill: "#7A2E12",
     strokeWidth: "2.2"
-  })),
-  sleep: () => React.createElement(React.Fragment, null, React.createElement("circle", {
-    cx: "14",
-    cy: "19",
-    r: "10.5",
-    fill: "#FFC94A"
-  }), React.createElement("path", {
-    d: "M8.2 18 q2 1.8 4 0 M15.8 18 q2 1.8 4 0",
-    strokeWidth: "1.4"
   }), React.createElement("ellipse", {
-    cx: "14",
-    cy: "23.8",
-    rx: "1.4",
-    ry: "1.7",
-    fill: "#7A3B12"
-  }), ol('M11.5 6.5 h2.6 l-2.6 3 h2.6', TW, 1.5), ol('M17 2.8 h3.6 l-3.6 4.2 h3.6', TW, 1.8), ol('M23 -1 h5 l-5 6 h5', TW, 2.1)),
-  sun: () => React.createElement(React.Fragment, null, ol('M16 1.5 v4 M16 26.5 v4 M1.5 16 h4 M26.5 16 h4 M5.7 5.7 l2.8 2.8 M23.5 23.5 l2.8 2.8 M26.3 5.7 l-2.8 2.8 M8.5 23.5 l-2.8 2.8', TO, 2), React.createElement("circle", {
-    cx: "16",
-    cy: "16",
-    r: "8.5",
-    fill: TY
-  }), React.createElement("circle", {
-    cx: "13",
-    cy: "14",
-    r: "1",
-    fill: OL
-  }), React.createElement("circle", {
-    cx: "19",
-    cy: "14",
-    r: "1",
-    fill: OL
-  }), React.createElement("path", {
-    d: "M12.5 17.5 q3.5 3.5 7 0",
-    strokeWidth: "1.4"
+    cx: "21.2",
+    cy: "38.6",
+    rx: "2.7",
+    ry: "1.6",
+    fill: "#FF8FA3",
+    stroke: "none"
+  }), React.createElement("ellipse", {
+    cx: "42.8",
+    cy: "38.6",
+    rx: "2.7",
+    ry: "1.6",
+    fill: "#FF8FA3",
+    stroke: "none"
   })),
-  dumbbell: () => React.createElement(React.Fragment, null, ol('M6 16 h20', TGR, 2.4), React.createElement("rect", {
-    x: "2.5",
-    y: "8.5",
-    width: "5",
-    height: "15",
-    rx: "1.6",
+  dumbbell: (c, mini) => React.createElement(React.Fragment, null, React.createElement("g", {
+    transform: "rotate(-20 32 32)"
+  }, ol('M15 32 h34', TGR, 4.4), React.createElement("rect", {
+    x: "5",
+    y: "15",
+    width: "11",
+    height: "34",
+    rx: "3.4",
     fill: TR
   }), React.createElement("rect", {
-    x: "7",
-    y: "11",
-    width: "3.6",
-    height: "10",
-    rx: "1.2",
+    x: "15",
+    y: "20.5",
+    width: "7.5",
+    height: "23",
+    rx: "2.4",
     fill: TO
   }), React.createElement("rect", {
-    x: "24.5",
-    y: "8.5",
-    width: "5",
-    height: "15",
-    rx: "1.6",
+    x: "48",
+    y: "15",
+    width: "11",
+    height: "34",
+    rx: "3.4",
     fill: TR
   }), React.createElement("rect", {
-    x: "21.4",
-    y: "11",
-    width: "3.6",
-    height: "10",
-    rx: "1.2",
+    x: "41.5",
+    y: "20.5",
+    width: "7.5",
+    height: "23",
+    rx: "2.4",
     fill: TO
-  })),
-  run: () => React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M3.5 21 L4 11.5 c2 1.5 5 1.5 7 -1 l3.5 3.5 c2 1.5 4 2 7 2.3 c4 .5 7.5 1.8 7.5 4.2 v.5 Z",
-    fill: TB
   }), React.createElement("path", {
-    d: "M3 21 h26.5 v2 c0 1.2 -1 2 -2.3 2 H5 c-1.2 0 -2 -.8 -2 -2 Z",
-    fill: TW
+    d: "M8.6 19.5 v10 M51.6 19.5 v10",
+    stroke: "#FFA3A3",
+    strokeWidth: "2.4"
   }), React.createElement("path", {
-    d: "M12 14.5 l2 -1.3 M14.6 16.4 l2 -1.3 M17.2 17.9 l2 -1.1",
-    stroke: TW,
-    strokeWidth: "1.3"
+    d: "M13.2 43.6 v1.8 M56.2 43.6 v1.8",
+    stroke: "#C93A3A",
+    strokeWidth: "2.4"
+  })), !mini && React.createElement("path", {
+    d: spark(52, 8, 4.6),
+    fill: TW,
+    strokeWidth: "1.8"
+  })),
+  steps: (c, mini) => React.createElement(React.Fragment, null, React.createElement("g", {
+    transform: "translate(21 33) rotate(-12) scale(-1.05 1.05)"
+  }, foot(TW)), React.createElement("g", {
+    transform: "translate(42 12) rotate(12) scale(1.05)"
+  }, foot(TW))),
+  bolt: (c, mini) => React.createElement(React.Fragment, null, layer('M39 3 L13 37 H29 L24 61 L51 26 H35 Z', TY, React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M51 26 L24 61 L33.5 40.5 L44.5 28.5 Z M39 3 L35 26 H31.6 L36.2 7.4 Z",
+    fill: "#F2A900",
+    stroke: "none"
   }), React.createElement("path", {
-    d: "M6 17.5 q4 -1.2 7.5 1",
-    strokeWidth: "1.3"
-  })),
-  steps: () => React.createElement(React.Fragment, null, React.createElement("ellipse", {
-    cx: "10",
-    cy: "11",
-    rx: "4.2",
-    ry: "6.2",
-    fill: TW
-  }), React.createElement("ellipse", {
-    cx: "10",
-    cy: "21.8",
-    rx: "2.9",
-    ry: "2.7",
-    fill: TW
-  }), React.createElement("ellipse", {
-    cx: "22",
-    cy: "15",
-    rx: "4.2",
-    ry: "6.2",
-    fill: TW
-  }), React.createElement("ellipse", {
-    cx: "22",
-    cy: "25.8",
-    rx: "2.9",
-    ry: "2.7",
-    fill: TW
-  })),
-  bolt: () => React.createElement("path", {
-    d: "M18.5 2 L6.5 18 h8 l-2.2 12 L25.5 13 h-8.2 Z",
-    fill: TY
-  }),
-  heart: () => React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M16 27 C6 20 3 15 3 10.5 C3 6.5 6 4 9.5 4 C12.5 4 14.5 6 16 8 C17.5 6 19.5 4 22.5 4 C26 4 29 6.5 29 10.5 C29 15 26 20 16 27 Z",
-    fill: TR
-  }), ol('M7 14.5 h4.5 l2 -4 l3 8 l2 -4 h6', TW, 1.5)),
-  pill: () => React.createElement("g", {
-    transform: "rotate(-40 16 16)"
+    d: "M36 11.5 L22 30",
+    stroke: "#FFF3B0",
+    strokeWidth: "3.2"
+  }))), !mini && React.createElement("g", {
+    fill: TW,
+    strokeWidth: "1.8"
   }, React.createElement("path", {
-    d: "M16 10 H10 a6 6 0 0 0 0 12 H16 Z",
-    fill: TR
+    d: spark(12, 15, 4.6)
   }), React.createElement("path", {
-    d: "M16 10 H22 a6 6 0 0 1 0 12 H16 Z",
-    fill: TW
+    d: spark(53, 46, 4.2)
   }), React.createElement("path", {
-    d: "M8.5 13 h3.5",
+    d: spark(55, 10, 2.8)
+  }))),
+  heart: (c, mini) => React.createElement(React.Fragment, null, layer('M32 56 C14 44 7 34 7 23 C7 14.5 13.5 9 21 9 C26 9 29.5 12 32 15.5 C34.5 12 38 9 43 9 C50.5 9 57 14.5 57 23 C57 34 50 44 32 56 Z', TR, React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M48 12 C54 15 58 20 58 26 C58 36 49 45 33 57 C45 46 52 36 52 27 C52 21 50.6 16 48 12 Z",
+    fill: "#D93636",
+    stroke: "none"
+  }), React.createElement("path", {
+    d: "M13.6 20.6 A8 8 0 0 1 19.6 14.2",
+    stroke: "#FFB3B3",
+    strokeWidth: "3.2"
+  }))), ol('M12 31 h9 l4 -8 l6 15 l4 -9 h17', TW, 3)),
+  pill: (c, mini) => React.createElement(React.Fragment, null, React.createElement("g", {
+    transform: "rotate(-40 29 30)"
+  }, layer('M29 19 H18 a11 11 0 0 0 0 22 H29 Z', TR, React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M5 35 H29 V44 H5 Z",
+    fill: "#D93636",
+    stroke: "none"
+  }), React.createElement("path", {
+    d: "M14.6 24.4 h8.4",
+    stroke: "#FFB3B3",
+    strokeWidth: "3"
+  }))), layer('M29 19 H40 a11 11 0 0 1 0 22 H29 Z', TW, React.createElement("path", {
+    d: "M29 35 H54 V44 H29 Z",
+    fill: "#DADDE3",
+    stroke: "none"
+  }))), !mini && React.createElement(React.Fragment, null, layer('M40 47.5 v3.2 a9 4.8 0 0 0 18 0 v-3.2', '#4FA6E8', null), React.createElement("ellipse", {
+    cx: "49",
+    cy: "47.5",
+    rx: "9",
+    ry: "4.8",
+    fill: "#8FD3FF"
+  }), React.createElement("path", {
+    d: "M44.4 47.5 h9.2",
+    strokeWidth: "1.8"
+  }), React.createElement("path", {
+    d: spark(13, 13, 4),
+    fill: TW,
+    strokeWidth: "1.8"
+  }))),
+  lotus: (c, mini) => React.createElement(React.Fragment, null, layer('M7 50.5 a25 6.8 0 1 0 50 0 a25 6.8 0 1 0 -50 0', TG, React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M5 52 C20 55 44 55 59 52 V60 H5 Z",
+    fill: "#3FAF4A",
+    stroke: "none"
+  }), React.createElement("path", {
+    d: "M32 50.5 L15 47.6 M32 50.5 L49 47.6 M32 50.5 L24 45",
+    stroke: "#3FAF4A",
+    strokeWidth: "1.6"
+  }))), React.createElement("path", {
+    d: "M32 47 C22 47 10 41 7 31 C17 30.5 26 36 32 43 Z",
+    fill: "#FF5FA8"
+  }), React.createElement("path", {
+    d: "M32 47 C42 47 54 41 57 31 C47 30.5 38 36 32 43 Z",
+    fill: "#FF5FA8"
+  }), layer('M32 47 C24 43 19 33 21 21 C27 25 31.5 33 32 43 Z', '#FF86C0', React.createElement("path", {
+    d: "M30 44 C29 36 26.5 30 22.5 25 L33 26 V46 Z",
+    fill: "#F46BAE",
+    stroke: "none"
+  })), layer('M32 47 C40 43 45 33 43 21 C37 25 32.5 33 32 43 Z', '#FF86C0', React.createElement("path", {
+    d: "M34 44 C35 36 37.5 30 41.5 25 L31 26 V46 Z",
+    fill: "#F46BAE",
+    stroke: "none"
+  })), layer('M32 47 C26 40 25 27 32 11 C39 27 38 40 32 47 Z', '#FFB3D6', React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M33.2 46 C37.4 40 38 28 33 14 L40 14 V46 Z",
+    fill: "#FF9CC9",
+    stroke: "none"
+  }), React.createElement("path", {
+    d: "M31 24 C29.9 27.8 29.7 31.6 30.5 35.4",
     stroke: TW,
-    strokeWidth: "1.5"
-  })),
-  lotus: () => React.createElement(React.Fragment, null, ol('M5 28.5 h22', TB, 1.8), React.createElement("path", {
-    d: "M16 26 C10 26 4.5 22 3.5 16.5 C9 16.5 13.5 19.5 16 23 Z",
-    fill: "#FF6FB0"
+    strokeWidth: "2.4"
+  }))), React.createElement("ellipse", {
+    cx: "32",
+    cy: "46.4",
+    rx: "9.5",
+    ry: "3.6",
+    fill: "#E0559A"
+  }), !mini && React.createElement(React.Fragment, null, React.createElement("path", {
+    d: spark(14, 17, 3.8),
+    fill: TW,
+    strokeWidth: "1.8"
   }), React.createElement("path", {
-    d: "M16 26 C22 26 27.5 22 28.5 16.5 C23 16.5 18.5 19.5 16 23 Z",
-    fill: "#FF6FB0"
-  }), React.createElement("path", {
-    d: "M16 25 C12 20.5 12 12 16 5.5 C20 12 20 20.5 16 25 Z",
-    fill: "#FFA3CF"
-  })),
-  brain: () => React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M16 6 C13 3 7 4 7 9 C3 10 3 16 6 17.5 C4 21 6.5 26 10.5 25.5 C11.5 28.5 15 28.5 16 26 Z",
-    fill: "#FF9EC4"
-  }), React.createElement("path", {
-    d: "M16 6 C19 3 25 4 25 9 C29 10 29 16 26 17.5 C28 21 25.5 26 21.5 25.5 C20.5 28.5 17 28.5 16 26 Z",
-    fill: "#FF9EC4"
-  }), React.createElement("path", {
-    d: "M10 12 q2 0 3 2 M9 19.5 q2.5 -1 4 1 M22 12 q-2 0 -3 2 M23 19.5 q-2.5 -1 -4 1",
+    d: spark(50, 12, 4.4),
+    fill: TW,
+    strokeWidth: "1.8"
+  }))),
+  bike: (c, mini) => React.createElement(React.Fragment, null, !mini && React.createElement("path", {
+    d: "M1.5 25 h6 M3.5 31.5 h5",
+    strokeWidth: "2.6"
+  }), ol(circ(15, 41, 10.5), TD, mini ? 5 : 3.6), ol(circ(49, 41, 10.5), TD, mini ? 5 : 3.6), !mini && React.createElement("path", {
+    d: "M15 33 v16 M7 41 h16 M49 33 v16 M41 41 h16",
     strokeWidth: "1.3"
+  }), ol('M15 41 L27 24 L33 41 Z M27 24 H45 L33 41 M45 24 L49 41', TR, mini ? 4.6 : 3.4), ol('M45 24 L43 16.5 h6.5', TGR, 3), React.createElement("path", {
+    d: "M21.5 19.5 h10 a2.2 2.2 0 0 1 0 4.4 h-7.6 a2.8 2.8 0 0 1 -2.4 -4.4 z",
+    fill: TD
+  }), ol('M27 24 v-0.5', TGR, 3), React.createElement("circle", {
+    cx: "15",
+    cy: "41",
+    r: "2.4",
+    fill: TGR
+  }), React.createElement("circle", {
+    cx: "49",
+    cy: "41",
+    r: "2.4",
+    fill: TGR
+  }), React.createElement("circle", {
+    cx: "33",
+    cy: "41",
+    r: "3.6",
+    fill: TGR
   })),
-  book: () => React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M2 9 V27 C6.5 25.8 11.5 26.2 16 29 C20.5 26.2 25.5 25.8 30 27 V9 Z",
+  brain: (c, mini) => {
+    const inner = side => React.createElement(React.Fragment, null, React.createElement("path", {
+      d: "M0 41 C16 47 48 47 64 41 V64 H0 Z",
+      fill: "#F27FAE",
+      stroke: "none"
+    }), side < 0 ? React.createElement("path", {
+      d: "M19.5 23.5 C22.5 22.5 25.5 24 26 27.5 M17 38.5 C20.5 36.5 24.5 37.5 25.5 41 M27.4 15.6 C25.4 18.2 25.8 20.8 27.8 22",
+      strokeWidth: "2"
+    }) : React.createElement("path", {
+      d: "M44.5 23.5 C41.5 22.5 38.5 24 38 27.5 M47 38.5 C43.5 36.5 39.5 37.5 38.5 41 M36.6 15.6 C38.6 18.2 38.2 20.8 36.2 22",
+      strokeWidth: "2"
+    }), side < 0 && React.createElement("path", {
+      d: "M17.6 20 C19 16.4 22 14.4 25.6 14",
+      stroke: "#FFD3E5",
+      strokeWidth: "2.6"
+    }));
+    return React.createElement(React.Fragment, null, layer('M32 11 C26 5 14 7 14 17 C6 19 6 31 12 34 C8 41 13 51 21 50 C23 56 30 56 32 51 Z', '#FF9EC4', inner(-1)), layer('M32 11 C38 5 50 7 50 17 C58 19 58 31 52 34 C56 41 51 51 43 50 C41 56 34 56 32 51 Z', '#FF9EC4', inner(1)), !mini && React.createElement("g", {
+      fill: TW,
+      strokeWidth: "1.8"
+    }, React.createElement("path", {
+      d: spark(56, 9, 4.4)
+    }), React.createElement("path", {
+      d: spark(8, 53, 3.6)
+    })));
+  },
+  book: (c, mini) => React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M4 18 V52 C13 49.6 23 50.4 32 56 C41 50.4 51 49.6 60 52 V18 Z",
     fill: TB
+  }), layer('M32 16 C24 10 14 10 7 12 V48 C15 46 24 47 32 53 Z', TW, React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M26 12 C29 13.6 31 15 32 16.4 V54 C30.4 52 28.4 50.6 26 49.6 Z",
+    fill: "#E4E7EC",
+    stroke: "none"
   }), React.createElement("path", {
-    d: "M16 8 C12 5 7 5 3.5 6 V24.5 C7.5 23.5 12 24 16 27 Z",
-    fill: TW
+    d: "M11.5 20 q6.5 -1.4 12.5 1.4 M11.5 27 q6.5 -1.4 12.5 1.4 M11.5 34 q6.5 -1.4 12.5 1.4 M11.5 41 q4.5 -1 8.5 .8",
+    strokeWidth: "1.8"
+  }))), layer('M32 16 C40 10 50 10 57 12 V48 C49 46 40 47 32 53 Z', TW, React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M38 12 C35 13.6 33 15 32 16.4 V54 C33.6 52 35.6 50.6 38 49.6 Z",
+    fill: "#E4E7EC",
+    stroke: "none"
   }), React.createElement("path", {
-    d: "M16 8 C20 5 25 5 28.5 6 V24.5 C24.5 23.5 20 24 16 27 Z",
-    fill: TW
-  }), React.createElement("path", {
-    d: "M6.5 10.5 q3.5 -.8 6.5 .8 M6.5 14.5 q3.5 -.8 6.5 .8 M19 11.3 q3 -1.6 6.5 -.8 M19 15.3 q3 -1.6 6.5 -.8",
-    strokeWidth: "1.1"
+    d: "M40 21.4 q6 -2.8 12.5 -1.4 M40 28.4 q6 -2.8 12.5 -1.4 M40 35.4 q6 -2.8 12.5 -1.4",
+    strokeWidth: "1.8"
+  }))), React.createElement("path", {
+    d: "M45.5 10.4 h6 V25 l-3 -2.8 l-3 2.8 Z",
+    fill: TR
+  }), !mini && React.createElement("path", {
+    d: spark(10, 6, 3.8),
+    fill: TW,
+    strokeWidth: "1.8"
   })),
-  pen: () => React.createElement("g", {
-    transform: "rotate(-45 16 16)"
+  pen: (c, mini) => React.createElement(React.Fragment, null, layer('M13 8 h31 a5 5 0 0 1 5 5 v40 a5 5 0 0 1 -5 5 h-31 z', TV, React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M41 6 h12 v54 h-12 z",
+    fill: "#9B70F0",
+    stroke: "none"
+  }), React.createElement("path", {
+    d: "M17.5 13 V53",
+    stroke: "#C9AEFF",
+    strokeWidth: "2.4"
+  }))), React.createElement("rect", {
+    x: "21",
+    y: "16",
+    width: "19",
+    height: "9",
+    rx: "2",
+    fill: TW
+  }), React.createElement("path", {
+    d: "M24.5 20.5 h12",
+    strokeWidth: "1.8"
+  }), ol('M8.5 15 h9 M8.5 23 h9 M8.5 31 h9 M8.5 39 h9 M8.5 47 h9', TGR, 2.6), React.createElement("g", {
+    transform: "rotate(-42 40 40)"
   }, React.createElement("path", {
-    d: "M4 12.5 h3.5 v7 H4 a1.5 1.5 0 0 1 -1.5 -1.5 v-4 a1.5 1.5 0 0 1 1.5 -1.5 z",
+    d: "M25 37 h4.5 v8 H25 a2.6 2.6 0 0 1 -2.6 -2.6 v-2.8 a2.6 2.6 0 0 1 2.6 -2.6 z",
     fill: TP
   }), React.createElement("rect", {
-    x: "7.5",
-    y: "12.5",
-    width: "2.5",
-    height: "7",
+    x: "29.5",
+    y: "37",
+    width: "4",
+    height: "8",
     fill: TGR
-  }), React.createElement("rect", {
-    x: "10",
-    y: "12.5",
-    width: "11.5",
-    height: "7",
-    fill: TY
+  }), layer('M33.5 37 h20 v8 h-20 z', TY, React.createElement("path", {
+    d: "M33.5 42.4 h20 v4 h-20 z",
+    fill: "#F2B705",
+    stroke: "none"
+  })), React.createElement("path", {
+    d: "M35.5 39.4 h16",
+    stroke: "#FFF0A8",
+    strokeWidth: "1.8"
   }), React.createElement("path", {
-    d: "M21.5 12.5 L28.5 16 L21.5 19.5 Z",
+    d: "M53.5 37 L62 41 L53.5 45 Z",
     fill: "#F2C48D"
   }), React.createElement("path", {
-    d: "M26.2 14.85 L28.5 16 L26.2 17.15 Z",
+    d: "M59.2 39.7 L62 41 L59.2 42.3 Z",
     fill: OL
+  }))),
+  globe: (c, mini) => React.createElement(React.Fragment, null, layer(circ(29, 36, 20), TB, React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M64 20 C60 46 40 60 14 57 V64 H64 Z",
+    fill: "#2E95E0",
+    stroke: "none"
+  }), React.createElement("path", {
+    d: "M13 27 c5 -4 12 -3 14 1 c2 4 -3 6 -2 10 c1 4 -3 7 -7 6 c-4 -1 -6 -6 -6 -10 z",
+    fill: TG,
+    strokeWidth: "2"
+  }), React.createElement("path", {
+    d: "M33 35 c4 -2 10 0 12 4 c2 5 -1 11 -5 13 c-3 2 -6 1 -6 -2 c0 -3 -3 -5 -3 -8 c0 -3 0 -5 2 -7 z",
+    fill: TG,
+    strokeWidth: "2"
+  }), React.createElement("path", {
+    d: "M30 19.5 c3 -1 7 0 8 2 c-2 2 -6 2 -8 -2 z",
+    fill: TG,
+    strokeWidth: "2"
+  }), React.createElement("path", {
+    d: "M14.6 25 A15.6 15.6 0 0 1 21 19",
+    stroke: "#B5E2FF",
+    strokeWidth: "2.6"
+  }))), !mini && React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M41 5 h15 a5 5 0 0 1 5 5 v8 a5 5 0 0 1 -5 5 h-7 l-5 5 v-5 h-3 a5 5 0 0 1 -5 -5 v-8 a5 5 0 0 1 5 -5 z",
+    fill: TW
+  }), React.createElement("path", {
+    d: "M45 19.6 L48.5 9.4 L52 19.6 M46.3 16 h4.4",
+    strokeWidth: "2.2"
+  }))),
+  code: (c, mini) => React.createElement(React.Fragment, null, layer('M10 9 h44 a6 6 0 0 1 6 6 v34 a6 6 0 0 1 -6 6 h-44 a6 6 0 0 1 -6 -6 v-34 a6 6 0 0 1 6 -6 z', TD, React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M0 0 h64 v19 h-64 z",
+    fill: "#454552",
+    stroke: "none"
+  }), React.createElement("path", {
+    d: "M44 19 h20 v40 h-20 z",
+    fill: "#24242B",
+    stroke: "none"
+  }))), React.createElement("path", {
+    d: "M4 19 h56"
+  }), React.createElement("circle", {
+    cx: "11.5",
+    cy: "14",
+    r: "2.1",
+    fill: TR,
+    strokeWidth: "1.4"
+  }), React.createElement("circle", {
+    cx: "18",
+    cy: "14",
+    r: "2.1",
+    fill: TY,
+    strokeWidth: "1.4"
+  }), React.createElement("circle", {
+    cx: "24.5",
+    cy: "14",
+    r: "2.1",
+    fill: TG,
+    strokeWidth: "1.4"
+  }), ol('M23 29 l-7.5 7.5 l7.5 7.5 M41 29 l7.5 7.5 l-7.5 7.5', TG, 3.4), ol('M35 27.5 l-6 18', TW, 3)),
+  target: (c, mini) => React.createElement(React.Fragment, null, layer(circ(30, 35, 21), TW, React.createElement("path", {
+    d: "M64 22 C60 46 42 60 16 58 V64 H64 Z",
+    fill: "#DADDE3",
+    stroke: "none"
+  })), React.createElement("circle", {
+    cx: "30",
+    cy: "35",
+    r: "15.4",
+    fill: TR
+  }), React.createElement("circle", {
+    cx: "30",
+    cy: "35",
+    r: "9.8",
+    fill: TW
+  }), React.createElement("circle", {
+    cx: "30",
+    cy: "35",
+    r: "4.6",
+    fill: TR
+  }), ol('M30 35 L52.5 12.5', TBR, 3.2), React.createElement("path", {
+    d: "M52 13 L49.6 4.4 L56 8 Z",
+    fill: TO
+  }), React.createElement("path", {
+    d: "M52 13 L60.6 15.4 L57 9 Z",
+    fill: TO
+  }), !mini && React.createElement("path", {
+    d: spark(10, 10, 4.2),
+    fill: TW,
+    strokeWidth: "1.8"
   })),
-  globe: () => React.createElement(React.Fragment, null, React.createElement("circle", {
-    cx: "16",
-    cy: "16",
-    r: "12.5",
-    fill: TB
+  clock: (c, mini) => React.createElement(React.Fragment, null, ol('M19 51 l-4.4 6.4 M41 51 l4.4 6.4', TD, 3.2), React.createElement("path", {
+    d: "M8 22.5 A10 10 0 0 1 21.5 9 Z",
+    fill: TY
   }), React.createElement("path", {
-    d: "M9 8.5 c2 -1 5 -.5 5.5 1.5 c.5 2 -2 2.5 -1.5 4.5 c.5 2 -1.5 3.5 -3.5 3 c-2 -.5 -3.5 -3 -3 -5 c.3 -1.6 1 -3.2 2.5 -4 z",
-    fill: TG
+    d: "M52 22.5 A10 10 0 0 0 38.5 9 Z",
+    fill: TY
+  }), ol('M30 13 V9', TGR, 3), React.createElement("circle", {
+    cx: "30",
+    cy: "7.4",
+    r: "2.6",
+    fill: TGR
+  }), layer(circ(30, 36, 19), TR, React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M64 24 C60 48 42 62 14 58 V64 H64 Z",
+    fill: "#D93636",
+    stroke: "none"
   }), React.createElement("path", {
-    d: "M19 14 c2 -1 5 0 6 2 c1 2.5 -.5 5.5 -2.5 7 c-1.5 1 -3 .5 -3 -1 c0 -1.5 -1.5 -2.5 -1.5 -4 c0 -1.6 0 -3.2 1 -4 z",
-    fill: TG
+    d: "M14.2 28.4 A17 17 0 0 1 20 20.8",
+    stroke: "#FF9A9A",
+    strokeWidth: "2.6"
+  }))), layer(circ(30, 36, 14), TW, React.createElement("path", {
+    d: "M16 36 A14 14 0 0 1 44 36 A16 16 0 0 0 16 36 Z",
+    fill: "#E4E7EC",
+    stroke: "none"
+  })), React.createElement("path", {
+    d: "M30 24.5 v3 M30 44.5 v3 M18.5 36 h3 M38.5 36 h3",
+    strokeWidth: "2"
   }), React.createElement("path", {
-    d: "M18 5.5 c1.5 -.3 3.5 .3 4 1.4 c-1 .8 -3 .9 -4 -1.4 z",
-    fill: TG
+    d: "M30 36 V27.6 M30 36 L36.4 40",
+    strokeWidth: "2.8"
+  }), React.createElement("circle", {
+    cx: "30",
+    cy: "36",
+    r: "2",
+    fill: OL,
+    stroke: "none"
   })),
-  code: () => React.createElement(React.Fragment, null, React.createElement("rect", {
-    x: "2.5",
-    y: "5",
-    width: "27",
-    height: "22",
-    rx: "4",
+  coin: (c, mini) => React.createElement(React.Fragment, null, !mini && [47, 41, 35].map(y => React.createElement("g", {
+    key: y
+  }, React.createElement("path", {
+    d: `M4 ${y} v4.4 a10 3.6 0 0 0 20 0 V${y}`,
+    fill: "#F2A900"
+  }), React.createElement("ellipse", {
+    cx: "14",
+    cy: y,
+    rx: "10",
+    ry: "3.6",
+    fill: TY
+  }))), layer(circ(38, 30, 19.5), TY, React.createElement("path", {
+    d: "M64 18 C60 42 44 54 22 52 V64 H64 Z",
+    fill: "#F2A900",
+    stroke: "none"
+  })), React.createElement("path", {
+    d: "M23.6 25.4 A15 15 0 0 1 30 16",
+    stroke: "#FFF1A6",
+    strokeWidth: "2.4"
+  }), React.createElement("circle", {
+    cx: "38",
+    cy: "30",
+    r: "13.2",
+    fill: "#FFC81F",
+    strokeWidth: "2"
+  }), React.createElement("path", {
+    d: "M43 23.4 c-1.4 -2.4 -3.6 -3 -5.6 -3 c-3.2 0 -5.6 1.6 -5.6 4.2 c0 5.6 11.6 2.8 11.6 8.4 c0 2.8 -2.6 4.2 -6 4.2 c-2.4 0 -4.8 -1 -6 -2.6 M37.6 17.4 v25.2",
+    strokeWidth: "2.8"
+  }), !mini && React.createElement("path", {
+    d: spark(58, 52, 4.4),
+    fill: TW,
+    strokeWidth: "1.8"
+  })),
+  broom: (c, mini) => React.createElement(React.Fragment, null, React.createElement("g", {
+    transform: "rotate(32 32 34)"
+  }, ol('M32 3 V30', TBR, 4.2), layer('M22 35 h20 l6 18 c-3 4 -9 6 -16 6 c-7 0 -13 -2 -16 -6 z', TY, React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M37 30 h16 v32 h-16 z",
+    fill: "#F2B705",
+    stroke: "none"
+  }), React.createElement("path", {
+    d: "M27 40 l-2.2 15 M32 40 v17 M37 40 l2.2 15",
+    strokeWidth: "1.8"
+  }))), React.createElement("rect", {
+    x: "21",
+    y: "28",
+    width: "22",
+    height: "8",
+    rx: "2.4",
+    fill: TR
+  }), React.createElement("path", {
+    d: "M24.4 31 h7",
+    stroke: "#FFA3A3",
+    strokeWidth: "2"
+  })), !mini && React.createElement("g", {
+    fill: TW,
+    strokeWidth: "1.8"
+  }, React.createElement("path", {
+    d: spark(11, 13, 4.8)
+  }), React.createElement("path", {
+    d: spark(21, 5, 2.8)
+  }), React.createElement("path", {
+    d: spark(55, 52, 4)
+  }))),
+  plant: (c, mini) => React.createElement(React.Fragment, null, ol('M32 40 V20', '#3FAF4A', 3), layer('M32 31 C20 32 12 25 11 14 C23 13 31 20 32 31 Z', TG, React.createElement("path", {
+    d: "M14 16 C20 20 26 25 31 30",
+    stroke: "#3FAF4A",
+    strokeWidth: "1.8"
+  })), layer('M32 25 C32 13 40 6 53 6 C53 18 45 25 32 25 Z', '#8BE36B', React.createElement("path", {
+    d: "M50 9 C44 13 38 18 33 24",
+    stroke: "#5FD35F",
+    strokeWidth: "1.8"
+  })), layer('M17 41 h30 l-4 18 h-22 z', '#E2763A', React.createElement("path", {
+    d: "M37 40 h14 v22 h-14 z",
+    fill: "#C9622B",
+    stroke: "none"
+  })), layer('M16.4 36 h31.2 a2.4 2.4 0 0 1 2.4 2.4 v4.2 a2.4 2.4 0 0 1 -2.4 2.4 h-31.2 a2.4 2.4 0 0 1 -2.4 -2.4 v-4.2 a2.4 2.4 0 0 1 2.4 -2.4 z', '#F08C4E', React.createElement("path", {
+    d: "M18.4 39 h12",
+    stroke: "#FFB27D",
+    strokeWidth: "2"
+  })), !mini && React.createElement("path", {
+    d: spark(10, 44, 3.8),
+    fill: TW,
+    strokeWidth: "1.8"
+  })),
+  music: (c, mini) => React.createElement(React.Fragment, null, layer('M23.5 47.5 V13 L55 6 V41.5 H50.5 V15.5 L28 20.4 V47.5 Z', TV, React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M51.6 4 H58 V44 H51.6 Z M25 10 H29.4 V50 H25 Z",
+    fill: "#8F68E0",
+    stroke: "none"
+  }), React.createElement("path", {
+    d: "M27 15.4 L51 10.2",
+    stroke: "#D9C7FF",
+    strokeWidth: "2"
+  }))), React.createElement("g", {
+    transform: "rotate(-20 16.5 48)"
+  }, layer('M6 48 a10.5 8 0 1 0 21 0 a10.5 8 0 1 0 -21 0', TV, React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M0 51 C10 55 22 55 32 51 V60 H0 Z",
+    fill: "#8F68E0",
+    stroke: "none"
+  }), React.createElement("path", {
+    d: "M10 45.6 a6.4 4.6 0 0 1 6 -3.8",
+    stroke: "#D9C7FF",
+    strokeWidth: "2.6"
+  })))), React.createElement("g", {
+    transform: "rotate(-20 43.5 42)"
+  }, layer('M33 42 a10.5 8 0 1 0 21 0 a10.5 8 0 1 0 -21 0', TV, React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M27 45 C37 49 49 49 59 45 V54 H27 Z",
+    fill: "#8F68E0",
+    stroke: "none"
+  }), React.createElement("path", {
+    d: "M37 39.6 a6.4 4.6 0 0 1 6 -3.8",
+    stroke: "#D9C7FF",
+    strokeWidth: "2.6"
+  })))), !mini && React.createElement("g", {
+    fill: TW,
+    strokeWidth: "1.8"
+  }, React.createElement("path", {
+    d: spark(57, 52, 4.2)
+  }), React.createElement("path", {
+    d: spark(9, 14, 3.8)
+  }))),
+  eye: (c, mini) => React.createElement(React.Fragment, null, layer('M4 34 Q32 6 60 34 Q32 62 4 34 Z', TW, React.createElement("path", {
+    d: "M4 34 Q32 6 60 34 Q32 17 4 34 Z",
+    fill: "#DADDE3",
+    stroke: "none"
+  })), layer(circ(32, 34, 12), TB, React.createElement("path", {
+    d: "M18 38 C25 45 39 45 46 38 V50 H18 Z",
+    fill: "#2E95E0",
+    stroke: "none"
+  })), React.createElement("circle", {
+    cx: "32",
+    cy: "34",
+    r: "5.6",
+    fill: OL,
+    stroke: "none"
+  }), React.createElement("circle", {
+    cx: "36",
+    cy: "30",
+    r: "2.6",
+    fill: TW,
+    stroke: "none"
+  }), React.createElement("circle", {
+    cx: "28.4",
+    cy: "38",
+    r: "1.2",
+    fill: TW,
+    stroke: "none"
+  }), React.createElement("path", {
+    d: "M14 25.8 l-3.4 -5 M23 21.5 l-1.6 -5.6 M32 20 v-6 M41 21.5 l1.6 -5.6 M50 25.8 l3.4 -5",
+    strokeWidth: "2.6"
+  })),
+  chip: (c, mini) => React.createElement(React.Fragment, null, ol('M22 6 v7 M32 6 v7 M42 6 v7 M22 51 v7 M32 51 v7 M42 51 v7 M6 22 h7 M6 32 h7 M6 42 h7 M51 22 h7 M51 32 h7 M51 42 h7', TGR, 3), layer('M17 13 h30 a4 4 0 0 1 4 4 v30 a4 4 0 0 1 -4 4 h-30 a4 4 0 0 1 -4 -4 v-30 a4 4 0 0 1 4 -4 z', TD, React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M40 10 H56 V56 H10 V46 C26 46 38 36 40 10 Z",
+    fill: "#24242B",
+    stroke: "none"
+  }), React.createElement("path", {
+    d: "M16.8 26 V18.4 a1.6 1.6 0 0 1 1.6 -1.6 H26",
+    stroke: "#5A5A68",
+    strokeWidth: "2.4"
+  }))), layer('M26 23 h12 a3 3 0 0 1 3 3 v12 a3 3 0 0 1 -3 3 h-12 a3 3 0 0 1 -3 -3 v-12 a3 3 0 0 1 3 -3 z', TG, React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M20 35 H44 V44 H20 Z",
+    fill: "#3FAF4A",
+    stroke: "none"
+  }), React.createElement("path", {
+    d: "M27.6 28 h8 M27.6 32 h4.6",
+    stroke: "#2B8A36",
+    strokeWidth: "1.8"
+  }))), React.createElement("circle", {
+    cx: "19.2",
+    cy: "45",
+    r: "1.8",
+    fill: TGR,
+    stroke: "none"
+  }), !mini && React.createElement("path", {
+    d: spark(57, 7, 4),
+    fill: TW,
+    strokeWidth: "1.8"
+  })),
+  nophone: (c, mini) => React.createElement(React.Fragment, null, React.createElement("g", {
+    transform: "rotate(-12 31 33)"
+  }, layer('M20 6 h22 a5 5 0 0 1 5 5 v42 a5 5 0 0 1 -5 5 h-22 a5 5 0 0 1 -5 -5 v-42 a5 5 0 0 1 5 -5 z', TD, React.createElement("path", {
+    d: "M40 2 H50 V62 H40 Z",
+    fill: "#24242B",
+    stroke: "none"
+  })), layer('M20 13 h22 v35 h-22 z', TB, React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M18 34 L44 16 V23 L18 41 Z",
+    fill: "#8FD3FF",
+    stroke: "none"
+  }), React.createElement("path", {
+    d: "M18 50 L44 32 V52 H18 Z",
+    fill: "#2E95E0",
+    stroke: "none"
+  }))), React.createElement("path", {
+    d: "M27.4 9.6 h7.2 M28 53.2 h6",
+    stroke: "#5A5A68",
+    strokeWidth: "2"
+  })), noBadge(50, 14)),
+  nosmoke: (c, mini) => React.createElement(React.Fragment, null, React.createElement("g", {
+    transform: "rotate(-14 32 40)"
+  }, ol('M7 33 c-3 -4 3 -6 0 -10 c-2.6 -3.4 0 -6.4 2.4 -8', '#C9CED6', 3), layer('M10 36 h30 v10 h-30 z', TW, React.createElement("path", {
+    d: "M8 42.4 h34 v6 h-34 z",
+    fill: "#DADDE3",
+    stroke: "none"
+  })), layer('M40 36 h13 a2 2 0 0 1 2 2 v6 a2 2 0 0 1 -2 2 h-13 z', TO, React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M38 42.4 h20 v6 h-20 z",
+    fill: "#E8641A",
+    stroke: "none"
+  }), React.createElement("circle", {
+    cx: "45",
+    cy: "39.6",
+    r: ".9",
+    fill: "#E8641A",
+    stroke: "none"
+  }), React.createElement("circle", {
+    cx: "50",
+    cy: "40.6",
+    r: ".9",
+    fill: "#E8641A",
+    stroke: "none"
+  }))), layer('M5.6 36 h4.4 v10 h-4.4 a2.2 2.2 0 0 1 -2.2 -2.2 v-5.6 a2.2 2.2 0 0 1 2.2 -2.2 z', '#9AA0A8', React.createElement("path", {
+    d: "M0 39 h6.4 v10 h-6.4 z",
+    fill: TR,
+    stroke: "none"
+  }))), noBadge(50, 15)),
+  noalco: (c, mini) => React.createElement(React.Fragment, null, ol('M32 32 V50', '#EEF3FA', 3.4), React.createElement("path", {
+    d: "M20 53.4 a12 3.6 0 1 0 24 0 a12 3.6 0 1 0 -24 0",
+    fill: "#EEF3FA"
+  }), layer('M18 8 h28 c0 16 -5 24 -14 24 c-9 0 -14 -8 -14 -24 z', '#EEF3FA', React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M12 17 h40 v20 h-40 z",
+    fill: "#C2185B",
+    stroke: "none"
+  }), React.createElement("path", {
+    d: "M37 17 h15 v20 h-15 z",
+    fill: "#9C1048",
+    stroke: "none"
+  }), React.createElement("path", {
+    d: "M19.4 17 H44.6",
+    strokeWidth: "2"
+  }), React.createElement("path", {
+    d: "M22.6 11 C22.6 18.6 24 23.6 27 27",
+    stroke: TW,
+    strokeWidth: "2.6"
+  }))), noBadge(50, 15)),
+  game: (c, mini) => React.createElement(React.Fragment, null, layer('M18 18 h28 a13 13 0 0 1 13 13 v7 a8.4 8.4 0 0 1 -14.8 5.6 l-4 -4.6 h-16.4 l-4 4.6 a8.4 8.4 0 0 1 -14.8 -5.6 v-7 a13 13 0 0 1 13 -13 z', TV, React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M0 38 C16 42 48 42 64 38 V64 H0 Z",
+    fill: "#8F68E0",
+    stroke: "none"
+  }), React.createElement("path", {
+    d: "M11 29 C12 25.4 15 22.6 19 22",
+    stroke: "#D9C7FF",
+    strokeWidth: "2.4"
+  }))), React.createElement("path", {
+    d: "M16.6 26.6 h4.4 v4.4 h4.4 v4.4 h-4.4 v4.4 h-4.4 v-4.4 h-4.4 v-4.4 h4.4 z",
+    fill: TD,
+    strokeWidth: "2"
+  }), React.createElement("circle", {
+    cx: "44",
+    cy: "27.6",
+    r: "3",
+    fill: TR,
+    strokeWidth: "2"
+  }), React.createElement("circle", {
+    cx: "50",
+    cy: "33",
+    r: "3",
+    fill: TY,
+    strokeWidth: "2"
+  }), React.createElement("circle", {
+    cx: "38",
+    cy: "33",
+    r: "3",
+    fill: TB,
+    strokeWidth: "2"
+  }), React.createElement("circle", {
+    cx: "44",
+    cy: "38.4",
+    r: "3",
+    fill: TG,
+    strokeWidth: "2"
+  }), React.createElement("path", {
+    d: "M28.6 26.6 h2.8 M33 26.6 h2.8",
+    strokeWidth: "2"
+  }), !mini && React.createElement("g", {
+    fill: TW,
+    strokeWidth: "1.8"
+  }, React.createElement("path", {
+    d: spark(56, 9, 4.4)
+  }), React.createElement("path", {
+    d: spark(9, 11, 3)
+  }))),
+  skull: (c, mini) => React.createElement(React.Fragment, null, layer('M32 6 C18 6 9 15.6 9 28 C9 36 13 41 18 43 V53 a3 3 0 0 0 3 3 H43 a3 3 0 0 0 3 -3 V43 C51 41 55 36 55 28 C55 15.6 46 6 32 6 Z', TW, React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M44 3 C54 10 58 22 57 30 C56 40 50 44 46.4 46 V60 H64 V3 Z",
+    fill: "#DADDE3",
+    stroke: "none"
+  }))), React.createElement("path", {
+    d: "M15.5 28.5 C15.5 24 19 21.5 23 21.5 C27 21.5 28.5 24.5 28.5 28 C28.5 32 25.5 35 21.5 35 C18 35 15.5 32.5 15.5 28.5 Z",
     fill: TD
   }), React.createElement("path", {
-    d: "M2.5 10.5 h27",
-    strokeWidth: "1.5"
+    d: "M48.5 28.5 C48.5 24 45 21.5 41 21.5 C37 21.5 35.5 24.5 35.5 28 C35.5 32 38.5 35 42.5 35 C46 35 48.5 32.5 48.5 28.5 Z",
+    fill: TD
   }), React.createElement("circle", {
-    cx: "6.2",
-    cy: "7.8",
-    r: "1.1",
+    cx: "22.6",
+    cy: "28.4",
+    r: "2.2",
     fill: TR,
     stroke: "none"
   }), React.createElement("circle", {
-    cx: "9.4",
-    cy: "7.8",
-    r: "1.1",
-    fill: TY,
-    stroke: "none"
-  }), React.createElement("circle", {
-    cx: "12.6",
-    cy: "7.8",
-    r: "1.1",
-    fill: TG,
-    stroke: "none"
-  }), ol('M11 15 l-3.5 3.5 l3.5 3.5 M21 15 l3.5 3.5 l-3.5 3.5', TG, 1.8), ol('M17.5 14 l-3 9', TW, 1.6)),
-  target: () => React.createElement(React.Fragment, null, React.createElement("circle", {
-    cx: "15",
-    cy: "17",
-    r: "12.5",
-    fill: TW
-  }), React.createElement("circle", {
-    cx: "15",
-    cy: "17",
-    r: "9",
-    fill: TR
-  }), React.createElement("circle", {
-    cx: "15",
-    cy: "17",
-    r: "5.5",
-    fill: TW
-  }), React.createElement("circle", {
-    cx: "15",
-    cy: "17",
+    cx: "41.4",
+    cy: "28.4",
     r: "2.2",
-    fill: TR
-  }), ol('M15 17 L26 6', TD, 1.6), React.createElement("path", {
-    d: "M24.5 4 l2.5 -2.5 l.5 3.5 l3.5 .5 l-2.5 2.5 z",
-    fill: TY
-  })),
-  clock: () => React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M9 26 l-2.2 3 M23 26 l2.2 3",
-    strokeWidth: "2"
-  }), React.createElement("path", {
-    d: "M4.5 9.5 a4.5 4.5 0 0 1 6 -5.5 z",
-    fill: TR
-  }), React.createElement("path", {
-    d: "M27.5 9.5 a4.5 4.5 0 0 0 -6 -5.5 z",
-    fill: TR
-  }), React.createElement("circle", {
-    cx: "16",
-    cy: "17",
-    r: "10.5",
-    fill: TR
-  }), React.createElement("circle", {
-    cx: "16",
-    cy: "17",
-    r: "7.8",
-    fill: TW
-  }), React.createElement("path", {
-    d: "M16 12 v5 l3.5 2.5",
-    strokeWidth: "1.7"
-  })),
-  coin: () => React.createElement(React.Fragment, null, React.createElement("circle", {
-    cx: "16",
-    cy: "16",
-    r: "13",
-    fill: TY
-  }), React.createElement("circle", {
-    cx: "16",
-    cy: "16",
-    r: "9.5",
-    fill: "#F5B400"
-  }), React.createElement("path", {
-    d: "M19.5 12.3 c-.8 -1.4 -2.2 -1.8 -3.5 -1.8 c-2 0 -3.6 1 -3.6 2.7 c0 3.6 7.4 1.8 7.4 5.4 c0 1.8 -1.7 2.7 -3.8 2.7 c-1.5 0 -3 -.6 -3.8 -1.7 M16 8.5 v15",
-    strokeWidth: "1.7"
-  }), React.createElement("path", {
-    d: "M7 12.5 a9.5 9.5 0 0 1 4 -5",
-    stroke: TW,
-    strokeWidth: "1.4"
-  })),
-  broom: () => React.createElement(React.Fragment, null, ol('M15 13 L26.5 2.5', TBR, 2.2), React.createElement("path", {
-    d: "M9.5 15.5 h11 l3 6 c-1 3 -3 5.5 -6 7 h-7 c-2.5 -1.5 -4 -4 -4 -7 z",
-    fill: TY
-  }), React.createElement("rect", {
-    x: "9.5",
-    y: "12.8",
-    width: "11",
-    height: "3.6",
-    rx: "1",
-    fill: TR
-  }), React.createElement("path", {
-    d: "M12 21 l-.8 6.3 M15 21 v7 M18 21 l1 6.3",
-    strokeWidth: "1.1"
-  })),
-  plant: () => React.createElement(React.Fragment, null, ol('M16 18 V9', TG, 1.8), React.createElement("path", {
-    d: "M16 12.5 c-6 0 -9.5 -3.5 -9.5 -8.5 c6 0 9.5 3.5 9.5 8.5 z",
-    fill: TG
-  }), React.createElement("path", {
-    d: "M16 10.5 c0 -5 3.5 -8.5 9 -8.5 c0 5 -3.5 8.5 -9 8.5 z",
-    fill: "#8BE36B"
-  }), React.createElement("path", {
-    d: "M9 19.5 h14 l-2 9.5 h-10 z",
-    fill: "#E2763A"
-  }), React.createElement("rect", {
-    x: "7.5",
-    y: "17",
-    width: "17",
-    height: "3.8",
-    rx: "1.2",
-    fill: "#F08C4E"
-  })),
-  music: () => React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M11.5 23 V8.5 L26 5 V20",
-    strokeWidth: "2.2"
-  }), React.createElement("path", {
-    d: "M11.5 8.5 L26 5 v3.5 L11.5 12 z",
-    fill: OL
-  }), React.createElement("ellipse", {
-    cx: "8",
-    cy: "23.5",
-    rx: "4.2",
-    ry: "3.4",
-    fill: TV,
-    transform: "rotate(-20 8 23.5)"
-  }), React.createElement("ellipse", {
-    cx: "22.5",
-    cy: "20.5",
-    rx: "4.2",
-    ry: "3.4",
-    fill: TV,
-    transform: "rotate(-20 22.5 20.5)"
-  })),
-  eye: () => React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M2 16 Q16 3 30 16 Q16 29 2 16 Z",
-    fill: TW
-  }), React.createElement("circle", {
-    cx: "16",
-    cy: "16",
-    r: "6",
-    fill: TB
-  }), React.createElement("circle", {
-    cx: "16",
-    cy: "16",
-    r: "2.8",
-    fill: OL
-  }), React.createElement("circle", {
-    cx: "18",
-    cy: "13.8",
-    r: "1.3",
-    fill: TW,
+    fill: TR,
     stroke: "none"
-  })),
-  chip: () => React.createElement(React.Fragment, null, ol('M11 3.5 v4 M16 3.5 v4 M21 3.5 v4 M11 24.5 v4 M16 24.5 v4 M21 24.5 v4 M3.5 11 h4 M3.5 16 h4 M3.5 21 h4 M24.5 11 h4 M24.5 16 h4 M24.5 21 h4', TGR, 1.6), React.createElement("rect", {
-    x: "7",
-    y: "7",
-    width: "18",
-    height: "18",
-    rx: "3",
-    fill: TD
-  }), React.createElement("rect", {
-    x: "11.5",
-    y: "11.5",
-    width: "9",
-    height: "9",
-    rx: "1.5",
-    fill: TG
-  })),
-  nophone: () => React.createElement(React.Fragment, null, React.createElement("rect", {
-    x: "9.5",
-    y: "3",
-    width: "13",
-    height: "26",
-    rx: "3",
-    fill: TD
-  }), React.createElement("rect", {
-    x: "11.5",
-    y: "6.5",
-    width: "9",
-    height: "17",
-    rx: "1",
-    fill: TB
-  }), noSign),
-  nosmoke: () => React.createElement(React.Fragment, null, ol('M9 14 c-1.5 -2 1.5 -3 0 -5.5 c-1 -1.5 0 -3 1 -4', TGR, 1.5), React.createElement("rect", {
-    x: "5",
-    y: "16.5",
-    width: "16",
-    height: "5",
-    rx: "1",
-    fill: TW
-  }), React.createElement("rect", {
-    x: "21",
-    y: "16.5",
-    width: "6.5",
-    height: "5",
-    rx: "1",
-    fill: TO
-  }), React.createElement("rect", {
-    x: "3",
-    y: "16.5",
-    width: "3",
-    height: "5",
-    rx: "1",
-    fill: TR
-  }), noSign),
-  noalco: () => React.createElement(React.Fragment, null, ol('M16 15.5 v10', TW, 1.6), ol('M11 27 h10', TW, 2), React.createElement("path", {
-    d: "M9.5 4 h13 c0 7.5 -2.5 11.5 -6.5 11.5 c-4 0 -6.5 -4 -6.5 -11.5 z",
-    fill: TW
   }), React.createElement("path", {
-    d: "M10.2 8.5 h11.6 c-.6 4.4 -2.6 6.8 -5.8 6.8 c-3.2 0 -5.2 -2.4 -5.8 -6.8 z",
-    fill: "#C2185B"
-  }), noSign),
-  game: () => React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M9 9.5 h14 a6.5 6.5 0 0 1 6.5 6.5 v3.5 a4.2 4.2 0 0 1 -7.4 2.8 l-2 -2.3 h-8.2 l-2 2.3 a4.2 4.2 0 0 1 -7.4 -2.8 v-3.5 a6.5 6.5 0 0 1 6.5 -6.5 z",
-    fill: TV
+    d: "M32 37 L29.2 42.2 H34.8 Z",
+    fill: TD,
+    strokeWidth: "2"
   }), React.createElement("path", {
-    d: "M9.5 13 v6 M6.5 16 h6",
-    strokeWidth: "2.2"
-  }), React.createElement("circle", {
-    cx: "21.5",
-    cy: "14.5",
-    r: "1.7",
-    fill: TR
-  }), React.createElement("circle", {
-    cx: "24.8",
-    cy: "17.6",
-    r: "1.7",
-    fill: TY
-  })),
-  skull: () => React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M16 3 c-7 0 -12 5 -12 11.5 c0 4 2 6.5 4.5 7.5 v5 h15 v-5 c2.5 -1 4.5 -3.5 4.5 -7.5 c0 -6.5 -5 -11.5 -12 -11.5 z",
-    fill: TW
-  }), React.createElement("circle", {
-    cx: "11",
-    cy: "15",
-    r: "3",
-    fill: OL
-  }), React.createElement("circle", {
-    cx: "21",
-    cy: "15",
-    r: "3",
-    fill: OL
+    d: "M18 47.6 H46 M25.4 47.6 V56 M32 47.6 V56 M38.6 47.6 V56",
+    strokeWidth: "2"
   }), React.createElement("path", {
-    d: "M16 18.5 l-1.4 2.5 h2.8 z",
-    fill: OL
-  }), React.createElement("path", {
-    d: "M13 27 v-3 M16 27 v-3 M19 27 v-3",
-    strokeWidth: "1.2"
-  })),
-  mountain: () => React.createElement(React.Fragment, null, React.createElement("circle", {
-    cx: "26.5",
-    cy: "5.5",
-    r: "3",
-    fill: TY
-  }), React.createElement("path", {
-    d: "M12 28 L21 9 L30.5 28 Z",
-    fill: "#7E8BA3"
-  }), React.createElement("path", {
-    d: "M1.5 28 L11.5 8 L22 28 Z",
-    fill: "#A9B4C8"
-  }), React.createElement("path", {
-    d: "M8.3 14.4 L11.5 8 L14.8 14.6 l-2 -1.3 l-1.3 1.6 l-1.3 -1.6 z",
-    fill: TW
-  })),
-  bike: () => React.createElement(React.Fragment, null, React.createElement("circle", {
-    cx: "8",
-    cy: "21",
-    r: "5.6",
-    strokeWidth: "2.6"
-  }), React.createElement("circle", {
-    cx: "24",
-    cy: "21",
-    r: "5.6",
-    strokeWidth: "2.6"
-  }), ol('M8 21 L13 11.5 H21.5 L24 21 M13 11.5 L17 21 H8 M17 21 L21.5 11.5', TR, 1.8), React.createElement("path", {
-    d: "M10.5 9 h4.5",
-    strokeWidth: "2.4"
-  }), React.createElement("path", {
-    d: "M21.5 11.5 L20.5 7.5 h3.5",
+    d: "M33 6.4 L35 11.6 L32 15.4 L34.4 19.4",
     strokeWidth: "2"
   })),
-  phone: () => React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M8 4 h4 l2 6 l-3 2 c2 4 4 6 8 8 l2 -3 l6 2 v4 c0 2 -2 3 -4 3 C13 26 6 19 5 8 c0 -2 1 -4 3 -4 z",
-    fill: TG
-  }), React.createElement("path", {
-    d: "M24.5 11 c-3 -2 -4.5 -3.5 -4.5 -5.2 c0 -1.3 1 -2.3 2.2 -2.3 c1 0 1.7 .6 2.3 1.3 c.6 -.7 1.3 -1.3 2.3 -1.3 c1.2 0 2.2 1 2.2 2.3 c0 1.7 -1.5 3.2 -4.5 5.2 z",
-    fill: TR
-  })),
-  fire: () => React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M16 29.5 c-6 0 -10 -4 -10 -9 c0 -6 6 -9 6 -15.5 c4 3 6 6 6 10 c1 -1 2 -3 2 -5 c3 3 6 6.5 6 11 c0 5 -4 8.5 -10 8.5 z",
-    fill: TO
-  }), React.createElement("path", {
-    d: "M16 29.5 c-3 0 -4.5 -2 -4.5 -4.3 c0 -3 4.5 -5 4.5 -8.2 c2 2 4.5 4.2 4.5 8.2 c0 2.3 -1.5 4.3 -4.5 4.3 z",
+  mountain: (c, mini) => React.createElement(React.Fragment, null, React.createElement("circle", {
+    cx: "51",
+    cy: "14",
+    r: "7",
     fill: TY
+  }), layer('M24 56 L42 20 L60 56 Z', '#7E8BA3', React.createElement("path", {
+    d: "M42 20 L64 20 L64 60 L42 60 Z",
+    fill: "#66728A",
+    stroke: "none"
+  })), React.createElement("path", {
+    d: "M36.6 30.8 L42 20 L47.4 30.8 l-3 -2 l-2.4 3 l-2.4 -3 z",
+    fill: TW,
+    strokeWidth: "2"
+  }), layer('M4 56 L24 14 L44 56 Z', '#A9B4C8', React.createElement("path", {
+    d: "M24 14 L48 14 L48 60 L24 60 Z",
+    fill: "#8E9AB0",
+    stroke: "none"
+  })), React.createElement("path", {
+    d: "M17.4 27.8 L24 14 L30.6 27.8 l-3.4 -2.4 l-3.2 3.4 l-3.2 -3.4 z",
+    fill: TW,
+    strokeWidth: "2"
+  }), ol('M24 14 V4.6', TD, 2.2), React.createElement("path", {
+    d: "M24.6 4.6 h8.4 l-2.6 3 l2.6 3 h-8.4 z",
+    fill: TR,
+    strokeWidth: "2"
   })),
-  star: () => React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M16 3 l3.8 8.2 l9 1 l-6.7 6 l1.9 8.8 l-8 -4.6 l-8 4.6 l1.9 -8.8 l-6.7 -6 l9 -1 z",
-    fill: TY
+  phone: (c, mini) => React.createElement(React.Fragment, null, layer('M16 14 h8 l4 12 l-6 4 c4 8 8 12 16 16 l4 -6 l12 4 v8 c0 4 -4 6 -8 6 C26 58 12 44 10 22 c0 -4 2 -8 6 -8 z', TG, React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M9 22 C11 45 26 59 52 59 L52 54 C30 54 17 42 14.4 22 Z",
+    fill: "#3FAF4A",
+    stroke: "none"
   }), React.createElement("path", {
-    d: "M11 13.4 l2.2 -.3",
-    stroke: TW,
+    d: "M15.6 18.4 h5.4",
+    stroke: "#A8EFA0",
+    strokeWidth: "2.4"
+  }))), layer('M46 25 C39 20.4 36 16.6 36 13 C36 10 38.2 8 40.8 8 C42.8 8 44.6 9.2 46 11 C47.4 9.2 49.2 8 51.2 8 C53.8 8 56 10 56 13 C56 16.6 53 20.4 46 25 Z', TR, React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M49 6 C54 8 58 12 57 16 C56 20 52 23 46 27 L52 18 Z",
+    fill: "#D93636",
+    stroke: "none"
+  }))), !mini && React.createElement(React.Fragment, null, ol('M31 22 a9 9 0 0 1 6.4 6.4 M31.4 14.6 a16 16 0 0 1 14 14', TW, 2.4))),
+  fire: (c, mini) => React.createElement(React.Fragment, null, layer('M32 59 C20 59 11 51 11 40 C11 28 22 22 22 9 C30 14 35 21 35 29 C37 26 38.6 22 38.4 17.6 C46 23 53 31 53 40 C53 51 44 59 32 59 Z', TO, React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M44 24 C52 30 56 38 56 44 C56 54 46 62 34 62 C46 56 52 46 44 24 Z",
+    fill: "#E8641A",
+    stroke: "none"
+  }), React.createElement("path", {
+    d: "M16.4 40 C16.4 33.4 19.6 29 23 25",
+    stroke: "#FFC08A",
+    strokeWidth: "2.6"
+  }))), layer('M32 59 C26 59 22.4 55 22.4 50 C22.4 43 32 39 32 31 C36 35 41.6 40 41.6 49 C41.6 55 38 59 32 59 Z', TY, React.createElement("path", {
+    d: "M26.8 50 C26.8 46.6 28.6 44 30.8 41.8",
+    stroke: "#FFF3B0",
+    strokeWidth: "2.4"
+  })), !mini && React.createElement(React.Fragment, null, React.createElement("circle", {
+    cx: "51",
+    cy: "13",
+    r: "2.4",
+    fill: TY,
+    strokeWidth: "1.8"
+  }), React.createElement("circle", {
+    cx: "57.4",
+    cy: "21.4",
+    r: "1.7",
+    fill: TY,
     strokeWidth: "1.6"
-  }))
+  }), React.createElement("circle", {
+    cx: "12.4",
+    cy: "16",
+    r: "2",
+    fill: TY,
+    strokeWidth: "1.8"
+  }))),
+  star: (c, mini) => React.createElement(React.Fragment, null, layer(starAt(32, 35, 5, 26, 11.5), TY, React.createElement(React.Fragment, null, React.createElement("path", {
+    d: "M32 0 H64 V64 H32 Z",
+    fill: "#F2B705",
+    stroke: "none"
+  }), React.createElement("path", {
+    d: "M15.5 29.2 L23 28.6",
+    stroke: "#FFF3B0",
+    strokeWidth: "2.4"
+  }))), !mini && React.createElement("g", {
+    fill: TW,
+    strokeWidth: "1.8"
+  }, React.createElement("path", {
+    d: spark(55, 10, 4.4)
+  }), React.createElement("path", {
+    d: spark(9, 53, 3.6)
+  })))
 };
 function ToonSticker({
   icon,
@@ -3938,8 +4467,7 @@ function ToonSticker({
   const shape = TOON_FRAMES[frame] ? frame : 'oct';
   const outline = p => TOON_FRAMES[shape](p);
   const key = icon.startsWith('st:') ? icon.slice(3) : null;
-  const glyph = key && TOON[key] ? TOON[key](color) : null;
-  const k = shape === 'diamond' ? 1.05 : 1.32;
+  const art = key && TOON[key] ? TOON[key](color, mini) : null;
   const pic = useImgSrc(icon.startsWith('url:') ? icon.slice(4) : '', mini);
   const sw = mini ? 3.6 : 2.4;
   return React.createElement("svg", {
@@ -3972,14 +4500,13 @@ function ToonSticker({
     stroke: OL,
     strokeWidth: sw,
     strokeLinejoin: 'round'
-  }), glyph && React.createElement("g", {
-    transform: `translate(${32 - 16 * k} ${(shape === 'shield' ? 30 : 32) - 16 * k}) scale(${k})`,
+  }), art && React.createElement("g", {
     fill: "none",
     stroke: OL,
-    strokeWidth: mini ? 2 : 1.5,
+    strokeWidth: mini ? 3.2 : 2.4,
     strokeLinecap: "round",
     strokeLinejoin: "round"
-  }, glyph), icon.startsWith('em:') && React.createElement("text", {
+  }, art), icon.startsWith('em:') && React.createElement("text", {
     x: "32",
     y: "34",
     textAnchor: "middle",

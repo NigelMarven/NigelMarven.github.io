@@ -1,4 +1,4 @@
-/* CJ_BUILD 20261017-103901 */
+/* CJ_BUILD 20261017-111252 */
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
 const {
   useState,
@@ -73,8 +73,34 @@ const BETA_KEY = 'cyberjournal2077.beta';
 const LS_KEY = BETA ? BETA_KEY : MAIN_KEY;
 const APP_VERSION = '1.0.0';
 const UI = {
-  mono: false
+  mono: false,
+  wide: false
 };
+const WIDE_MQ = '(min-width: 1000px)';
+function useWide() {
+  const get = () => {
+    try {
+      return window.matchMedia(WIDE_MQ).matches;
+    } catch (e) {
+      return false;
+    }
+  };
+  const [w, setW] = useState(get);
+  useEffect(() => {
+    let mq;
+    try {
+      mq = window.matchMedia(WIDE_MQ);
+    } catch (e) {
+      return undefined;
+    }
+    const f = () => setW(mq.matches);
+    if (mq.addEventListener) mq.addEventListener('change', f);else mq.addListener(f);
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener('change', f);else mq.removeListener(f);
+    };
+  }, []);
+  return w;
+}
 const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : s;
 const nice = s => UI.mono && s && s === s.toUpperCase() ? cap(s) : s;
 const uid = (p = 'id') => `${p}_${Math.random().toString(36).slice(2, 8)}${Date.now().toString(36).slice(-4)}`;
@@ -2105,6 +2131,29 @@ textarea.inp{resize:vertical;line-height:1.5;}
 .nav-b.on::before{animation:navon .3s ease-out backwards;}
 @keyframes navon{from{opacity:0;transform:scaleX(.2)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.cj-rise,.nav-b.on::before{animation:none;}}
+/* широкий экран (ПК, планшет боком): боковое меню, две колонки, окна по центру. Класс cj-wide ставит App */
+.side{width:232px;flex-shrink:0;display:flex;flex-direction:column;background:linear-gradient(180deg,rgba(10,8,14,.94),rgba(5,4,8,.99));border-right:1px solid rgba(var(--main-rgb),.45);box-shadow:6px 0 24px rgba(var(--main-rgb),.12);position:relative;z-index:20;}
+.side-logo{padding:24px 20px 20px;}
+.side-logo b{display:block;font-family:'Orbitron',sans-serif;font-weight:900;font-size:16px;letter-spacing:.08em;color:var(--main);text-shadow:0 0 10px rgba(var(--main-rgb),.6);}
+.side-b{position:relative;display:flex;align-items:center;gap:12px;width:100%;padding:12px 20px;color:rgba(255,255,255,.5);text-align:left;transition:color .15s,background .15s;}
+.side-b .nl{display:block;font-size:15px;font-weight:700;letter-spacing:.06em;line-height:1.1;}
+.side-b .ns{display:block;font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:.12em;opacity:.7;margin-top:3px;}
+.side-b:hover{color:rgba(255,255,255,.88);background:rgba(var(--main-rgb),.06);}
+.side-b.on{color:var(--main);background:linear-gradient(90deg,rgba(var(--main-rgb),.16),transparent);text-shadow:0 0 8px rgba(var(--main-rgb),.7);}
+.side-b.on::before{content:'';position:absolute;left:0;top:8px;bottom:8px;width:3px;background:var(--main);box-shadow:0 0 12px var(--main);}
+.side-b.on svg{filter:drop-shadow(0 0 5px var(--main));}
+.side-foot{margin-top:auto;padding:16px 20px 20px;font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.1em;line-height:1.7;color:rgba(255,255,255,.4);}
+.desk{max-width:1200px;margin:0 auto;padding:8px 20px 24px;}
+.desk-cols>*{min-width:0;}
+@media (min-width:1280px){.desk-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 24px;align-items:start;}}
+@media (max-width:1279px){.cj-wide .desk-cols>*{max-width:720px;margin-left:auto;margin-right:auto;}}
+.set-cols{columns:2 400px;column-gap:20px;}
+.set-cols>*{break-inside:avoid;}
+.cj-wide .modal-panel.wide{border:1px solid rgba(var(--main-rgb),.55);box-shadow:0 0 50px rgba(var(--main-rgb),.22);animation:dlgin .2s ease-out;}
+.cj-wide .toast{bottom:28px;left:calc(50% + 116px);}
+.cj-wide main::-webkit-scrollbar{width:10px;}
+.cj-wide main::-webkit-scrollbar-thumb{background:rgba(var(--main-rgb),.28);border:3px solid transparent;background-clip:padding-box;}
+.cj-wide main{scrollbar-color:rgba(var(--main-rgb),.35) transparent;}
 /* статистика */
 .st-score{font-family:'Orbitron','Russo One',sans-serif;font-weight:900;line-height:1;letter-spacing:.02em;font-variant-numeric:tabular-nums;}
 .seg-bar{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;}
@@ -2227,6 +2276,18 @@ const MONO_CSS = `
 .ui-mono .nav-b.on{color:var(--alt);text-shadow:none;}
 .ui-mono .nav-b.on::before{display:none;}
 .ui-mono .nav-b.on svg{filter:none;}
+.ui-mono .side{background:#000;border-right:1px solid #1C1C1E;box-shadow:none;}
+.ui-mono .side-logo b{font-family:'Unbounded',sans-serif;font-weight:700;font-size:17px;letter-spacing:-.01em;color:#fff;text-shadow:none;}
+.ui-mono .side-b{width:calc(100% - 20px);margin:1px 10px;padding:11px 12px;border-radius:12px;color:#8E8E93;}
+.ui-mono .side-b .nl{font-family:'Inter',sans-serif;font-weight:600;font-size:15px;letter-spacing:0;}
+.ui-mono .side-b:hover{background:rgba(255,255,255,.05);color:#fff;}
+.ui-mono .side-b.on{color:var(--alt);background:#1C1C1E;text-shadow:none;}
+.ui-mono .side-b.on::before{display:none;}
+.ui-mono .side-b.on svg{filter:none;}
+.ui-mono .side-foot{font-family:'Inter',sans-serif;letter-spacing:0;font-size:11.5px;color:#636366;}
+.ui-mono.cj-wide .modal-panel.wide{border:1px solid #1C1C1E;border-radius:24px;box-shadow:0 20px 60px rgba(0,0,0,.7);animation:mdlg .2s ease-out;}
+.ui-mono.cj-wide main::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);border:3px solid transparent;background-clip:padding-box;}
+.ui-mono.cj-wide main{scrollbar-color:rgba(255,255,255,.2) transparent;}
 .ui-mono .seg-bar i{transform:none;border-radius:3px;height:6px;background:#2C2C2E;}
 .ui-mono .day-sel{border-radius:50%;background:rgba(255,255,255,.1);box-shadow:none;inset:2px;}
 .ui-mono .day-today{border:0;width:5px;height:5px;border-radius:50%;background:var(--alt);margin-left:-2.5px;bottom:-4px;filter:none;}
@@ -2508,8 +2569,23 @@ function Modal({
   useEffect(() => {
     sfx('open');
   }, []);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!onClose) return undefined;
+    const f = e => {
+      if (e.key !== 'Escape') return;
+      const layers = document.querySelectorAll('.modal-bg');
+      if (layers[layers.length - 1] !== ref.current) return;
+      sfx('close');
+      onClose();
+    };
+    window.addEventListener('keydown', f);
+    return () => window.removeEventListener('keydown', f);
+  }, [onClose]);
+  const wide = UI.wide;
   return React.createElement("div", {
-    className: "fixed inset-0 z-[60] flex items-end justify-center modal-bg",
+    ref: ref,
+    className: `fixed inset-0 z-[60] flex justify-center modal-bg ${wide ? 'items-center p-6' : 'items-end'}`,
     onMouseDown: e => {
       if (e.target === e.currentTarget && onClose) {
         sfx('close');
@@ -2517,10 +2593,10 @@ function Modal({
       }
     }
   }, React.createElement("div", {
-    className: "modal-panel w-full max-w-[480px] flex flex-col",
+    className: `modal-panel w-full flex flex-col ${wide ? 'wide max-w-[600px]' : 'max-w-[480px]'}`,
     style: {
-      height: full ? '100dvh' : 'auto',
-      maxHeight: full ? 'none' : '94dvh'
+      height: full ? wide ? '88vh' : '100dvh' : 'auto',
+      maxHeight: full ? 'none' : wide ? '88vh' : '94dvh'
     }
   }, React.createElement("div", {
     className: "modal-head"
@@ -2610,16 +2686,29 @@ function Sheet({
   useEffect(() => {
     sfx('open');
   }, []);
+  const ref = useRef(null);
+  useEffect(() => {
+    const f = e => {
+      const layers = document.querySelectorAll('.modal-bg');
+      if (e.key === 'Escape' && layers[layers.length - 1] === ref.current) {
+        sfx('close');
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', f);
+    return () => window.removeEventListener('keydown', f);
+  }, [onClose]);
   return React.createElement("div", {
-    className: "fixed inset-0 z-[70] modal-bg flex items-end justify-center",
+    ref: ref,
+    className: `fixed inset-0 z-[70] modal-bg flex justify-center ${UI.wide ? 'items-center' : 'items-end'}`,
     onMouseDown: e => {
       if (e.target === e.currentTarget) onClose();
     }
   }, React.createElement("div", {
-    className: "w-full max-w-[480px] p-3",
+    className: `w-full p-3 ${UI.wide ? 'max-w-[440px]' : 'max-w-[480px]'}`,
     style: {
       paddingBottom: 'calc(12px + env(safe-area-inset-bottom))',
-      animation: 'sheetin .2s ease-out'
+      animation: UI.wide ? 'dlgin .2s ease-out' : 'sheetin .2s ease-out'
     }
   }, React.createElement(Frame, {
     cut: 14,
@@ -5763,8 +5852,11 @@ function MissionsScreen() {
   const [sheet, setSheet] = useState(null);
   const ql = q.trim().toLowerCase();
   const tagById = useMemo(() => Object.fromEntries(data.tags.map(t => [t.id, t])), [data.tags]);
+  const wide = UI.wide;
+  const [qs, setQs] = useState('');
+  const qlS = wide ? qs.trim().toLowerCase() : ql;
   const matchM = m => !ql || [m.title, m.status, m.description, ...m.steps.map(s => s.text)].join(' ').toLowerCase().includes(ql);
-  const matchS = s => (!tagF || s.tags.includes(tagF)) && (!ql || [s.title, s.body, ...s.tags.map(t => tagById[t] ? tagById[t].name : '')].join(' ').toLowerCase().includes(ql));
+  const matchS = s => (!tagF || s.tags.includes(tagF)) && (!qlS || [s.title, s.body, ...s.tags.map(t => tagById[t] ? tagById[t].name : '')].join(' ').toLowerCase().includes(qlS));
   const saveMission = m => {
     const clean = {
       ...m,
@@ -5898,62 +5990,58 @@ function MissionsScreen() {
   const sheetMission = sheet && sheet.type === 'move' && data.missions.find(x => x.id === sheet.id);
   const sheetSection = sheet && sheet.type === 'section' && data.sections.find(x => x.id === sheet.id);
   const secIndex = sheetSection ? data.sections.indexOf(sheetSection) : -1;
-  return React.createElement("div", {
-    className: "pb-8"
-  }, React.createElement(ScreenHeader, {
-    code: "PROTOCOL 4520-A48 // JOURNAL.EXE",
-    title: mode === 'missions' ? 'Журнал миссий' : 'Чипы данных',
-    sub: mode === 'missions' ? `${data.missions.filter(m => !m.done).length} активных · ${data.missions.filter(m => m.done).length} завершено` : `${data.shards.length} ${plural(data.shards.length, 'запись', 'записи', 'записей')} в дневнике`
-  }), React.createElement("div", {
-    className: "px-4 mt-3"
-  }, React.createElement(Segmented, {
-    value: mode,
-    onChange: v => {
-      setMode(v);
-      setQ('');
-    },
-    options: [{
-      v: 'missions',
-      l: 'Миссии',
-      i: UI.mono ? Flag : Crosshair
-    }, {
-      v: 'shards',
-      l: 'Чипы данных',
-      i: UI.mono ? FileText : Cpu
-    }]
-  }), React.createElement("div", {
-    className: "flex gap-2 mt-3"
-  }, React.createElement("div", {
-    className: "relative flex-1 min-w-0"
-  }, React.createElement(Search, {
-    size: 16,
-    className: "absolute left-3 top-1/2 -translate-y-1/2 txt-alt opacity-70"
-  }), React.createElement("input", {
-    className: "inp",
-    style: {
-      paddingLeft: 36
-    },
-    value: q,
-    onChange: e => setQ(e.target.value),
-    placeholder: mode === 'missions' ? 'Поиск по миссиям…' : 'Поиск по записям и тегам…'
-  }), q && React.createElement("button", {
-    type: "button",
-    onClick: () => setQ(''),
-    className: "absolute right-2 top-1/2 -translate-y-1/2 text-white/50 p-1"
-  }, React.createElement(X, {
-    size: 16
-  }))), React.createElement("button", {
-    type: "button",
-    "aria-label": "\u0421\u043E\u0437\u0434\u0430\u0442\u044C",
-    className: "plus-btn cut",
-    onClick: () => {
-      sfx('open');
-      if (mode === 'missions') setEditM(blankMission((data.sections[0] || {}).id));else setEditS(blankShard());
-    }
-  }, React.createElement(Plus, {
-    size: 24,
-    strokeWidth: 2.6
-  })))), mode === 'missions' ? React.createElement("div", {
+  const activeN = data.missions.filter(m => !m.done).length;
+  const doneN = data.missions.length - activeN;
+  const shardsSub = `${data.shards.length} ${plural(data.shards.length, 'запись', 'записи', 'записей')} в дневнике`;
+  const searchRow = isM => {
+    const val = isM || !wide ? q : qs,
+      setVal = isM || !wide ? setQ : setQs;
+    return React.createElement("div", {
+      className: "flex gap-2 mt-3"
+    }, React.createElement("div", {
+      className: "relative flex-1 min-w-0"
+    }, React.createElement(Search, {
+      size: 16,
+      className: "absolute left-3 top-1/2 -translate-y-1/2 txt-alt opacity-70"
+    }), React.createElement("input", {
+      className: "inp",
+      style: {
+        paddingLeft: 36
+      },
+      value: val,
+      onChange: e => setVal(e.target.value),
+      placeholder: isM ? 'Поиск по миссиям…' : 'Поиск по записям и тегам…'
+    }), val && React.createElement("button", {
+      type: "button",
+      onClick: () => setVal(''),
+      className: "absolute right-2 top-1/2 -translate-y-1/2 text-white/50 p-1"
+    }, React.createElement(X, {
+      size: 16
+    }))), React.createElement("button", {
+      type: "button",
+      "aria-label": isM ? 'Новая миссия' : 'Новая запись',
+      title: isM ? 'Новая миссия' : 'Новая запись',
+      className: "plus-btn cut",
+      onClick: () => {
+        sfx('open');
+        if (isM) setEditM(blankMission((data.sections[0] || {}).id));else setEditS(blankShard());
+      }
+    }, React.createElement(Plus, {
+      size: 24,
+      strokeWidth: 2.6
+    })));
+  };
+  const colHead = (Icon, name, sub) => React.createElement("div", {
+    className: "px-4 mt-4 flex items-center gap-2.5 min-w-0"
+  }, React.createElement(Icon, {
+    size: 19,
+    className: "txt-alt shrink-0"
+  }), React.createElement("span", {
+    className: "sec-title text-[19px] truncate"
+  }, nice(name)), React.createElement("span", {
+    className: "text-[12px] text-white/45 f-read ml-auto shrink-0"
+  }, sub));
+  const missionsBlock = React.createElement("div", {
     className: "px-4 mt-4 space-y-3"
   }, data.sections.map(sec => {
     const list = data.missions.filter(m => !m.done && m.sectionId === sec.id && matchM(m));
@@ -6058,10 +6146,11 @@ function MissionsScreen() {
         boxShadow: 'inset 0 0 0 1px rgba(255,255,255,.08)'
       }
     }, "\u0410\u0440\u0445\u0438\u0432 \u043F\u0443\u0441\u0442. \u0417\u0430\u0432\u0435\u0440\u0448\u0438 \u043C\u0438\u0441\u0441\u0438\u044E \u2014 \u043E\u043D\u0430 \u043F\u043E\u044F\u0432\u0438\u0442\u0441\u044F \u0437\u0434\u0435\u0441\u044C")));
-  })()) : React.createElement("div", {
+  })());
+  const shardsBlock = React.createElement("div", {
     className: "px-4 mt-4"
   }, React.createElement("div", {
-    className: "flex gap-1.5 overflow-x-auto noscb pb-1 -mx-4 px-4"
+    className: `flex gap-1.5 pb-1 ${wide ? 'flex-wrap' : 'overflow-x-auto noscb -mx-4 px-4'}`
   }, React.createElement("button", {
     type: "button",
     onClick: () => {
@@ -6094,12 +6183,46 @@ function MissionsScreen() {
     }
   }))), !shards.length && React.createElement(Empty, {
     icon: Cpu,
-    title: ql || tagF ? 'Нет совпадений' : 'Чипов пока нет',
-    text: ql || tagF ? 'Сбрось фильтр или измени запрос' : 'Запиши первую мысль дня'
-  }, !ql && !tagF && React.createElement(Btn, {
+    title: qlS || tagF ? 'Нет совпадений' : 'Чипов пока нет',
+    text: qlS || tagF ? 'Сбрось фильтр или измени запрос' : 'Запиши первую мысль дня'
+  }, !qlS && !tagF && React.createElement(Btn, {
     icon: Plus,
     onClick: () => setEditS(blankShard())
-  }, "\u041D\u043E\u0432\u0430\u044F \u0437\u0430\u043F\u0438\u0441\u044C"))), sheetSection && React.createElement(Sheet, {
+  }, "\u041D\u043E\u0432\u0430\u044F \u0437\u0430\u043F\u0438\u0441\u044C")));
+  return React.createElement("div", {
+    className: "pb-8"
+  }, wide ? React.createElement(React.Fragment, null, React.createElement(ScreenHeader, {
+    code: "PROTOCOL 4520-A48 // JOURNAL.EXE",
+    title: "\u0416\u0443\u0440\u043D\u0430\u043B",
+    sub: "\u041C\u0438\u0441\u0441\u0438\u0438 \u0438 \u0447\u0438\u043F\u044B \u0434\u0430\u043D\u043D\u044B\u0445"
+  }), React.createElement("div", {
+    className: "desk-cols"
+  }, React.createElement("div", null, colHead(UI.mono ? Flag : Crosshair, 'Миссии', `${activeN} активных · ${doneN} завершено`), React.createElement("div", {
+    className: "px-4"
+  }, searchRow(true)), missionsBlock), React.createElement("div", null, colHead(UI.mono ? FileText : Cpu, 'Чипы данных', shardsSub), React.createElement("div", {
+    className: "px-4"
+  }, searchRow(false)), shardsBlock))) : React.createElement(React.Fragment, null, React.createElement(ScreenHeader, {
+    code: "PROTOCOL 4520-A48 // JOURNAL.EXE",
+    title: mode === 'missions' ? 'Журнал миссий' : 'Чипы данных',
+    sub: mode === 'missions' ? `${activeN} активных · ${doneN} завершено` : shardsSub
+  }), React.createElement("div", {
+    className: "px-4 mt-3"
+  }, React.createElement(Segmented, {
+    value: mode,
+    onChange: v => {
+      setMode(v);
+      setQ('');
+    },
+    options: [{
+      v: 'missions',
+      l: 'Миссии',
+      i: UI.mono ? Flag : Crosshair
+    }, {
+      v: 'shards',
+      l: 'Чипы данных',
+      i: UI.mono ? FileText : Cpu
+    }]
+  }), searchRow(mode === 'missions')), mode === 'missions' ? missionsBlock : shardsBlock), sheetSection && React.createElement(Sheet, {
     title: `РАЗДЕЛ // ${sheetSection.name}`,
     onClose: () => setSheet(null),
     items: [{
@@ -6217,7 +6340,8 @@ function SegBar({
 function CalendarView({
   sel,
   setSel,
-  openRate
+  openRate,
+  noDetail
 }) {
   const {
     data
@@ -6436,7 +6560,7 @@ function CalendarView({
     icon: Zap,
     snd: "open",
     onClick: () => openRate(todayK, 'manual')
-  }, todayRated ? 'Изменить оценку за сегодня' : 'Оценить сегодня')), React.createElement(DayDetail, {
+  }, todayRated ? 'Изменить оценку за сегодня' : 'Оценить сегодня')), !noDetail && React.createElement(DayDetail, {
     k: sel,
     openRate: openRate
   }), avEdit && React.createElement(AvatarEditor, {
@@ -7096,6 +7220,39 @@ function StatsScreen({
       sessionStorage.setItem('cj.stab', v);
     } catch (e) {}
   };
+  if (UI.wide) return React.createElement("div", {
+    className: "pb-8"
+  }, React.createElement(ScreenHeader, {
+    code: "BIOMONITOR 7.2 // DAILY.LOG",
+    title: "\u0421\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043A\u0430 \u0434\u043D\u044F",
+    sub: "\u0418\u0442\u043E\u0433\u0438, \u043A\u043E\u043B\u044C\u0446\u0430 \u043F\u0440\u043E\u0433\u0440\u0435\u0441\u0441\u0430 \u0438 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438 \u043F\u0440\u0438\u0432\u044B\u0447\u0435\u043A"
+  }), React.createElement("div", {
+    className: "desk-cols"
+  }, React.createElement("div", null, React.createElement(CalendarView, {
+    sel: sel,
+    setSel: setSel,
+    openRate: openRate,
+    noDetail: true
+  })), React.createElement("div", null, React.createElement("div", {
+    className: "px-4 mt-4"
+  }, React.createElement(Segmented, {
+    value: tab,
+    onChange: pick,
+    options: [{
+      v: 'cal',
+      l: 'Выбранный день',
+      i: CalendarDays
+    }, {
+      v: 'cards',
+      l: 'Каталог',
+      i: Layers
+    }]
+  })), tab === 'cal' ? React.createElement(DayDetail, {
+    k: sel,
+    openRate: openRate
+  }) : React.createElement(CardCatalog, {
+    sel: sel
+  }))));
   return React.createElement("div", {
     className: "pb-8"
   }, React.createElement(ScreenHeader, {
@@ -9037,6 +9194,8 @@ function FocusScreen() {
     title: "\u0424\u043E\u043A\u0443\u0441",
     sub: "\u0422\u0440\u0435\u043D\u0438\u0440\u043E\u0432\u043A\u0430 \u043A\u043E\u043D\u0446\u0435\u043D\u0442\u0440\u0430\u0446\u0438\u0438: \u043E\u0434\u043D\u0430 \u0446\u0435\u043B\u044C, \u043D\u043E\u043B\u044C \u043F\u0435\u0440\u0435\u043A\u043B\u044E\u0447\u0435\u043D\u0438\u0439"
   }), React.createElement("div", {
+    className: UI.wide ? 'desk-cols' : ''
+  }, React.createElement("div", null, React.createElement("div", {
     className: "px-4 mt-4"
   }, React.createElement(Frame, {
     cut: 18,
@@ -9281,8 +9440,8 @@ function FocusScreen() {
     style: {
       color: ICE
     }
-  }), "\u0437\u0430\u043C\u043E\u0440\u043E\u0437\u043A\u0430"))))), React.createElement("div", {
-    className: "px-4 mt-5"
+  }), "\u0437\u0430\u043C\u043E\u0440\u043E\u0437\u043A\u0430")))))), React.createElement("div", null, React.createElement("div", {
+    className: `px-4 ${UI.wide ? 'mt-4' : 'mt-5'}`
   }, React.createElement(SectionHeader, {
     name: "7 \u0434\u043D\u0435\u0439",
     count: week.length
@@ -9349,7 +9508,7 @@ function FocusScreen() {
     icon: Brain,
     title: "\u0421\u0435\u0441\u0441\u0438\u0439 \u043F\u043E\u043A\u0430 \u043D\u0435\u0442",
     text: "\u041D\u0430\u0447\u043D\u0438 \u0441 \u043A\u043E\u0440\u043E\u0442\u043A\u043E\u0439: 10\u201315 \u043C\u0438\u043D\u0443\u0442 \u043D\u0430 \u043E\u0434\u043D\u0443 \u0437\u0430\u0434\u0430\u0447\u0443"
-  }))), sheetS && React.createElement(Sheet, {
+  }))))), sheetS && React.createElement(Sheet, {
     title: `СЕССИЯ // ${fmtDT(sheetS.start)}`,
     onClose: () => setSheet(null),
     items: [sheetS.missionId && data.missions.some(m => m.id === sheetS.missionId && !m.done) && {
@@ -9745,7 +9904,7 @@ function SettingsScreen({
     title: "\u0421\u0438\u0441\u0442\u0435\u043C\u0430",
     sub: "\u041F\u0440\u043E\u0442\u043E\u043A\u043E\u043B\u044B, \u043F\u0435\u0440\u0441\u043E\u043D\u0430\u043B\u0438\u0437\u0430\u0446\u0438\u044F, \u0441\u043F\u0440\u0430\u0432\u043E\u0447\u043D\u0438\u043A\u0438 \u0438 \u0440\u0435\u0437\u0435\u0440\u0432\u043D\u044B\u0435 \u043A\u043E\u043F\u0438\u0438"
   }), React.createElement("div", {
-    className: "px-4 mt-4"
+    className: `px-4 mt-4 ${UI.wide ? 'set-cols' : ''}`
   }, React.createElement(SetBlock, {
     n: "01",
     title: "\u041F\u0440\u043E\u0442\u043E\u043A\u043E\u043B \u043E\u0446\u0435\u043D\u043A\u0438 \u0434\u043D\u044F",
@@ -10271,7 +10430,9 @@ function SettingsScreen({
     onClick: clearAll
   }, "\u041E\u0447\u0438\u0441\u0442\u0438\u0442\u044C \u0432\u0441\u0435 \u0434\u0430\u043D\u043D\u044B\u0435"))), React.createElement(SyncBlock, {
     n: "05"
-  }), React.createElement("div", {
+  })), React.createElement("div", {
+    className: "px-4"
+  }, React.createElement("div", {
     className: "micro text-center mt-6 mb-2"
   }, UI.mono ? 'CYBERJOURNAL' : 'CYBER//JOURNAL 2077', " \xB7 v", APP_VERSION, " \xB7 BUILD ", window.CJ_BUILD || 'DEV', " \xB7 ", cloudOn ? 'LOCAL + CLOUD SYNC' : syncOn() ? 'LOCAL + SERVER SYNC' : 'LOCAL STORAGE')), avEdit && React.createElement(AvatarEditor, {
     onClose: () => setAvEdit(false)
@@ -10283,7 +10444,7 @@ function revealBlocks(main) {
   const walk = (el, depth) => {
     const r = el.getBoundingClientRect();
     if (!r.height || r.top >= box.bottom || r.bottom <= box.top) return;
-    if (depth < 6 && r.height > 260 && getComputedStyle(el).display !== 'grid') {
+    if (depth < 6 && r.height > 260 && (getComputedStyle(el).display !== 'grid' || el.classList.contains('desk-cols'))) {
       if (el.children.length === 1) {
         walk(el.children[0], depth);
         return;
@@ -10312,6 +10473,18 @@ function revealBlocks(main) {
     el.addEventListener('animationend', end);
     timer = setTimeout(end, delay + 600);
   });
+}
+function SideFoot() {
+  const s = useSync();
+  const good = s.on && s.status !== 'error' && s.status !== 'auth';
+  const state = !s.on ? 'НУЖЕН ВХОД' : s.status === 'busy' ? 'ОБМЕН ДАННЫМИ…' : s.status === 'error' ? 'НЕТ СВЯЗИ С СЕРВЕРОМ' : s.status === 'offline' ? 'ЖДЁТ СЕТИ' : 'СИНХРОНИЗАЦИЯ ВКЛ.';
+  return React.createElement("div", {
+    className: "side-foot"
+  }, s.ok && s.st && React.createElement("div", {
+    style: {
+      color: good ? '#59FF00' : 'var(--warn)'
+    }
+  }, "\u25CF ", nice(state)), React.createElement("div", null, nice('BUILD'), " ", window.CJ_BUILD || 'DEV'));
 }
 const TABS = [{
   id: 'missions',
@@ -10384,6 +10557,8 @@ function App() {
   const mono = data.settings.ui === 'mono';
   UI.mono = mono;
   SFX.soft = mono;
+  const wide = useWide();
+  UI.wide = wide;
   const th = THEMES[data.settings.theme] || THEMES.classic;
   const acc = (MONO_ACCENTS.find(a => a.id === data.settings.monoAccent) || MONO_ACCENTS[0]).c;
   const pageBg = mono ? '#000000' : th.bg2;
@@ -10829,18 +11004,7 @@ function App() {
     cloudOn,
     openFocus
   }), [data, up, ask, toast, replaceAll, undoable, markBackup, cloudOn, openFocus]);
-  return React.createElement(AppCtx.Provider, {
-    value: ctx
-  }, React.createElement("div", {
-    className: `cj-root ${mono ? 'ui-mono' : `${data.settings.glitch ? 'fx-glitch' : ''} ${data.settings.crt ? 'crt-on' : ''}`}`,
-    style: vars
-  }, React.createElement("style", null, mono ? CSS + MONO_CSS : CSS), React.createElement("div", {
-    className: "mx-auto max-w-[480px] h-full flex flex-col relative"
-  }, React.createElement("main", {
-    key: tab,
-    ref: mainRef,
-    className: `flex-1 min-h-0 relative ${tab === 'timer' ? 'overflow-hidden' : 'overflow-y-auto overscroll-contain'}`
-  }, tab === 'missions' && React.createElement(MissionsScreen, null), tab === 'stats' && React.createElement(StatsScreen, {
+  const screen = React.createElement(React.Fragment, null, tab === 'missions' && React.createElement(MissionsScreen, null), tab === 'stats' && React.createElement(StatsScreen, {
     openRate: (date, source) => setRate({
       date,
       source
@@ -10848,7 +11012,52 @@ function App() {
   }), tab === 'focus' && React.createElement(FocusScreen, null), tab === 'timer' && React.createElement(CountdownScreen, null), tab === 'system' && React.createElement(SettingsScreen, {
     forceEvening: forceEvening,
     simulateSkip: simulateSkip
-  })), React.createElement("nav", {
+  }));
+  return React.createElement(AppCtx.Provider, {
+    value: ctx
+  }, React.createElement("div", {
+    className: `cj-root ${wide ? 'cj-wide' : ''} ${mono ? 'ui-mono' : `${data.settings.glitch ? 'fx-glitch' : ''} ${data.settings.crt ? 'crt-on' : ''}`}`,
+    style: vars
+  }, React.createElement("style", null, mono ? CSS + MONO_CSS : CSS), wide ? React.createElement("div", {
+    className: "h-full flex"
+  }, React.createElement("aside", {
+    className: "side"
+  }, React.createElement("div", {
+    className: "side-logo"
+  }, React.createElement("b", null, mono ? 'CyberJournal' : 'CYBER//JOURNAL'), React.createElement("div", {
+    className: "micro deco mt-1.5"
+  }, "NIGHT CITY // 2077")), React.createElement("nav", {
+    className: "flex flex-col"
+  }, TABS.map(t => React.createElement("button", {
+    key: t.id,
+    type: "button",
+    onClick: () => setTab(t.id),
+    className: `side-b ${tab === t.id ? 'on' : ''}`
+  }, mono ? React.createElement(t.mIcon, {
+    size: 20,
+    strokeWidth: 2
+  }) : React.createElement(t.icon, {
+    size: 20,
+    strokeWidth: 2
+  }), React.createElement("span", {
+    className: "min-w-0"
+  }, React.createElement("span", {
+    className: "nl"
+  }, mono ? t.mLabel : t.label), !mono && React.createElement("span", {
+    className: "ns"
+  }, t.sub))))), React.createElement(SideFoot, null)), React.createElement("main", {
+    key: tab,
+    ref: mainRef,
+    className: `flex-1 min-w-0 relative ${tab === 'timer' ? 'overflow-hidden' : 'overflow-y-auto overscroll-contain'}`
+  }, tab === 'timer' ? screen : React.createElement("div", {
+    className: "desk"
+  }, screen))) : React.createElement("div", {
+    className: "mx-auto max-w-[480px] h-full flex flex-col relative"
+  }, React.createElement("main", {
+    key: tab,
+    ref: mainRef,
+    className: `flex-1 min-h-0 relative ${tab === 'timer' ? 'overflow-hidden' : 'overflow-y-auto overscroll-contain'}`
+  }, screen), React.createElement("nav", {
     className: "nav"
   }, TABS.map(t => React.createElement("button", {
     key: t.id,

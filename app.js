@@ -1,4 +1,4 @@
-/* CJ_BUILD 20261017-135106 */
+/* CJ_BUILD 20261017-153506 */
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
 const {
   useState,
@@ -196,7 +196,25 @@ const calcAvg = vals => {
   const v = vals.filter(n => typeof n === 'number');
   return v.length ? round1(v.reduce((a, b) => a + b, 0) / v.length) : null;
 };
-const schedText = c => c.type === 'once' ? `РАЗОВАЯ · ${fmtDay(c.date)}` : (c.days || []).length === 7 ? 'ПРИВЫЧКА · КАЖДЫЙ ДЕНЬ' : `ПРИВЫЧКА · ${(c.days || []).slice().sort().map(d => WD[d]).join(' ')}`;
+const CARD_WEIGHTS = [[0.5, 'Фон'], [1, 'Обычная'], [2, 'Ключевая']];
+const WEIGHT_HINT = {
+  0.5: '×0.5 — мелкая привычка: в среднем балле дня весит вдвое меньше обычной карточки.',
+  1: '×1 — обычный вклад в средний балл дня.',
+  2: '×2 — главное за день: весит вдвое больше обычной карточки.'
+};
+const cardW = c => c && CARD_WEIGHTS.some(([w]) => w === c.weight) ? c.weight : 1;
+const weightText = w => w === 2 ? 'КЛЮЧЕВАЯ ×2' : w === 0.5 ? 'ФОН ×0.5' : '';
+const calcAvgW = items => {
+  const wOf = x => typeof x.w === 'number' ? x.w : 1;
+  const v = items.filter(x => typeof x.score === 'number'),
+    ws = v.reduce((a, x) => a + wOf(x), 0);
+  return ws ? round1(v.reduce((a, x) => a + x.score * wOf(x), 0) / ws) : null;
+};
+const schedText = (c, withW = true) => {
+  const s = c.type === 'once' ? `РАЗОВАЯ · ${fmtDay(c.date)}` : (c.days || []).length === 7 ? 'ПРИВЫЧКА · КАЖДЫЙ ДЕНЬ' : `ПРИВЫЧКА · ${(c.days || []).slice().sort().map(d => WD[d]).join(' ')}`;
+  const w = withW ? weightText(cardW(c)) : '';
+  return w ? `${s} · ${w}` : s;
+};
 const THEMES = {
   classic: {
     name: 'Cyberpunk Classic',
@@ -811,7 +829,6 @@ const blankMission = sectionId => ({
   status: 'DANGER: MODERATE',
   statusColor: '',
   alert: false,
-  isNew: true,
   badge: {
     shape: 'diamond',
     text: 'NC',
@@ -852,7 +869,8 @@ const blankCard = () => ({
     3: '',
     2: '',
     1: ''
-  }
+  },
+  weight: 1
 });
 const blankTimer = () => {
   const n = new Date();
@@ -869,7 +887,8 @@ const blankTimer = () => {
     bg: 'smoke',
     bgUrl: '',
     font: 'bebas',
-    accent: '#FF4655'
+    accent: '#FF4655',
+    layout: 'classic'
   };
 };
 function makeDemo() {
@@ -892,7 +911,6 @@ function makeDemo() {
     title: 'THE SPACE IN BETWEEN',
     status: 'DANGER: MODERATE',
     alert: true,
-    isNew: false,
     badge: {
       shape: 'diamond',
       text: 'WB',
@@ -907,7 +925,6 @@ function makeDemo() {
     title: 'DOWN ON THE STREET',
     status: 'DANGER: HIGH',
     statusColor: '#FF8A3D',
-    isNew: false,
     badge: {
       shape: 'diamond',
       text: 'WB',
@@ -921,7 +938,6 @@ function makeDemo() {
     id: 'm_ghost',
     title: 'GHOST TOWN',
     status: 'DANGER: MODERATE',
-    isNew: false,
     badge: {
       shape: 'square',
       text: 'WATSON',
@@ -936,7 +952,6 @@ function makeDemo() {
     title: 'THE CORPO-RAT',
     status: 'DANGER: MODERATE',
     alert: true,
-    isNew: true,
     badge: {
       shape: 'triangle',
       text: 'N',
@@ -956,7 +971,6 @@ function makeDemo() {
     title: 'ПРОКАЧАТЬ АНГЛИЙСКИЙ',
     status: 'DANGER: LOW',
     statusColor: '#00F0FF',
-    isNew: false,
     badge: {
       shape: 'square',
       text: 'EDU',
@@ -971,7 +985,6 @@ function makeDemo() {
     title: 'ПРОДАТЬ СТАРЫЙ НОУТБУК',
     status: 'REWARD: 15 000 €$',
     statusColor: '#59FF00',
-    isNew: false,
     badge: {
       shape: 'circle',
       text: '€$',
@@ -986,7 +999,6 @@ function makeDemo() {
     title: 'THE PICKUP',
     status: 'DANGER: HIGH',
     statusColor: '#FF8A3D',
-    isNew: false,
     badge: {
       shape: 'diamond',
       text: 'WB',
@@ -1003,7 +1015,6 @@ function makeDemo() {
     title: 'ОФОРМИТЬ АБОНЕМЕНТ В ЗАЛ',
     status: 'DANGER: LOW',
     statusColor: '#00F0FF',
-    isNew: false,
     badge: {
       shape: 'square',
       text: 'GYM',
@@ -1067,6 +1078,7 @@ function makeDemo() {
     type: 'habit',
     days: [0, 1, 2, 3, 4, 5, 6],
     date: dKey(now),
+    weight: 2,
     criteria: {
       5: 'Спал ≥8 часов и встал до 11:00',
       4: 'Спал ≥8 часов, но проснулся позже 11:00',
@@ -1108,13 +1120,14 @@ function makeDemo() {
       const v = c.id === 'card_food' ? food[idx] : c.id === 'card_sleep' ? sleep[idx] : train[idx];
       scores[c.id] = {
         score: v,
-        name: c.name
+        name: c.name,
+        w: cardW(c)
       };
     }
     st.ratings[k] = {
       scores,
       note: notes[i] || '',
-      avg: calcAvg(Object.values(scores).map(s => s.score)),
+      avg: calcAvgW(Object.values(scores)),
       at: at(-i, 22).toISOString()
     };
   }
@@ -1134,6 +1147,7 @@ function makeDemo() {
   const ny = new Date(now.getFullYear() + 1, 0, 1, 0, 0);
   st.timers = [{
     id: 't_release',
+    layout: 'poster',
     title: 'РЕЛИЗ АЛЬБОМА',
     sub: 'NEON TEARS // ITUNES · SPOTIFY',
     mode: 'to',
@@ -1145,6 +1159,7 @@ function makeDemo() {
     accent: '#FF2E63'
   }, {
     id: 't_corpo',
+    layout: 'units',
     title: 'THE CORPO-RAT',
     sub: 'ДЕДЛАЙН МИССИИ',
     mode: 'to',
@@ -1157,6 +1172,7 @@ function makeDemo() {
     missionId: 'm_corpo'
   }, {
     id: 't_sugar',
+    layout: 'ring',
     title: 'БЕЗ САХАРА',
     sub: 'СТРИК ЧИСТОГО ПИТАНИЯ',
     mode: 'since',
@@ -1168,6 +1184,7 @@ function makeDemo() {
     accent: '#39FF6A'
   }, {
     id: 't_ny',
+    layout: 'flip',
     title: `НОВЫЙ ${now.getFullYear() + 1} ГОД`,
     sub: 'NIGHT CITY // NEW YEAR',
     mode: 'to',
@@ -1345,6 +1362,11 @@ const hasContent = d => d.missions.length + d.shards.length + d.timers.length + 
 const daysSince = iso => {
   const t = Date.parse(iso);
   return isNaN(t) ? Infinity : Math.floor((Date.now() - t) / 864e5);
+};
+const NEW_MS = 864e5;
+const isFreshMission = m => {
+  const t = Date.parse(m.createdAt);
+  return !m.done && !isNaN(t) && Date.now() - t < NEW_MS;
 };
 async function storagePersisted(request) {
   try {
@@ -2096,6 +2118,9 @@ textarea.inp{resize:vertical;line-height:1.5;}
 .m-status{font-size:15px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-top:7px;line-height:1;}
 .alert-tag{position:absolute;left:-10px;top:-7px;z-index:2;width:21px;height:24px;background:var(--warn);color:#111;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:15px;clip-path:polygon(0 0,100% 0,100% 74%,50% 100%,0 74%);}
 .new-tag{font-family:'Share Tech Mono',monospace;font-size:9px;padding:1px 4px;border:1px solid rgba(255,255,255,.5);color:rgba(255,255,255,.85);letter-spacing:.1em;}
+.w-tag{font-family:'Share Tech Mono',monospace;font-size:10px;line-height:1.2;padding:1px 5px;letter-spacing:.06em;flex-shrink:0;white-space:nowrap;}
+.w-tag.key{color:var(--main);border:1px solid var(--main);box-shadow:0 0 6px rgba(var(--main-rgb),.45);}
+.w-tag.bg{color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.25);}
 .step-box{width:22px;height:22px;flex-shrink:0;border:1.5px solid rgba(var(--main-rgb),.55);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;margin-top:1px;}
 .step-box.cur{background:var(--warn);border-color:var(--warn);color:#111;}
 .step-box.done{background:rgba(var(--alt-rgb),.14);border-color:var(--alt);color:var(--alt);}
@@ -2183,6 +2208,49 @@ body.cj-dragging,body.cj-dragging *{cursor:grabbing !important;}
 .tk-sub{margin-top:5px;font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:.18em;color:rgba(255,255,255,.6);text-transform:uppercase;}
 .tk-hms{margin-top:14px;font-family:'Share Tech Mono',monospace;font-size:24px;letter-spacing:.14em;padding:4px 12px;background:rgba(0,0,0,.35);box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);}
 .rail-b{display:flex;flex-direction:column;align-items:center;gap:6px;color:#fff;opacity:.9;filter:drop-shadow(0 2px 6px rgba(0,0,0,.6));}
+.tk-face{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 56px;text-align:center;color:#fff;}
+.tk-face .tk-title{margin-top:0;}
+.flip-t{position:relative;display:inline-flex;align-items:center;justify-content:center;width:min(9.5vw,58px);height:min(13vw,80px);font-size:min(10vw,64px);line-height:1;color:#fff;background:linear-gradient(180deg,#2a2631 0%,#1b1921 50%,#121016 50%,#0b0a0f 100%);box-shadow:0 8px 24px rgba(0,0,0,.55),inset 0 0 0 1px rgba(255,255,255,.08);border-radius:6px;overflow:hidden;perspective:300px;}
+.flip-t::after{content:'';position:absolute;left:0;right:0;top:50%;height:2px;margin-top:-1px;background:rgba(0,0,0,.7);}
+.flip-t.big{width:min(19vw,104px);height:min(27vw,146px);font-size:min(22vw,120px);border-radius:10px;}
+.flip-t.big.n4{width:min(14.5vw,90px);height:min(21vw,126px);font-size:min(17vw,100px);}
+.flip-d{display:block;animation:flipin .45s cubic-bezier(.2,.7,.3,1);}
+@keyframes flipin{from{transform:rotateX(-90deg);opacity:.2}to{transform:none;opacity:1}}
+.flip-cap{margin-top:14px;font-size:min(8vw,38px);letter-spacing:.06em;text-transform:uppercase;line-height:1;}
+.flip-colon{font-size:min(8vw,48px);line-height:min(13vw,80px);margin:0 1px;}
+.flip-u{margin-top:6px;font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.2em;color:rgba(255,255,255,.55);}
+.ring-box{position:relative;width:min(70vw,52vh,440px);aspect-ratio:1;margin-top:22px;display:flex;align-items:center;justify-content:center;}
+.ring-num{font-size:min(26vw,19vh,170px);line-height:.85;color:#fff;text-shadow:0 6px 30px rgba(0,0,0,.45);}
+.ring-lbl{margin-top:8px;font-size:min(5vw,26px);letter-spacing:.08em;text-transform:uppercase;line-height:1;}
+.ring-hms{margin-top:10px;font-family:'Share Tech Mono',monospace;font-size:15px;letter-spacing:.14em;color:rgba(255,255,255,.8);}
+.ring-meta{margin-top:18px;display:flex;align-items:baseline;gap:14px;font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.14em;color:rgba(255,255,255,.7);}
+.ring-meta b{font-size:13px;font-weight:400;}
+.units-l2{font-family:'Share Tech Mono',monospace;font-size:12px;letter-spacing:.3em;}
+.units-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:22px;width:min(100%,330px);}
+@media (min-width:700px){.units-grid{grid-template-columns:repeat(4,minmax(0,1fr));width:min(100%,640px);gap:14px;}}
+.unit-b{position:relative;padding:16px 6px 11px;background:rgba(0,0,0,.45);clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);}
+.unit-b::before{content:'';position:absolute;left:12px;right:0;top:0;height:2px;background:var(--ua);box-shadow:0 0 10px var(--ua);}
+.unit-n{font-size:min(15vw,64px);line-height:1;color:#fff;font-variant-numeric:tabular-nums;}
+.unit-l{margin-top:6px;font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.2em;color:rgba(255,255,255,.6);}
+.poster{position:absolute;left:22px;right:72px;top:64px;bottom:76px;display:flex;flex-direction:column;color:#fff;text-align:left;}
+.poster-l2{font-family:'Share Tech Mono',monospace;font-size:12px;letter-spacing:.3em;text-transform:uppercase;}
+.poster-num{font-size:min(48vw,36vh,340px);line-height:.82;margin-top:12px;color:transparent;-webkit-text-stroke:2px #fff;letter-spacing:-.02em;}
+.poster-bottom{margin-top:auto;}
+.poster-title{font-size:min(12vw,8vh,92px);line-height:.92;text-transform:uppercase;margin-top:8px;overflow-wrap:anywhere;text-shadow:0 4px 30px rgba(0,0,0,.5);}
+.poster-hms{margin-top:14px;display:flex;align-items:center;gap:10px;font-family:'Share Tech Mono',monospace;font-size:18px;letter-spacing:.14em;}
+.poster-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;animation:pdot 1s steps(1) infinite;}
+@keyframes pdot{50%{opacity:.2}}
+.aur{position:absolute;width:130%;height:42%;left:-15%;border-radius:50%;filter:blur(30px);mix-blend-mode:screen;will-change:transform;}
+.aur.a1{top:8%;opacity:1;background:linear-gradient(90deg,transparent,#19f5a6 30%,#0fd1c7 60%,transparent);animation:aur1 14s ease-in-out infinite alternate;}
+.aur.a2{top:24%;opacity:.85;background:linear-gradient(90deg,transparent,#7c3aed 35%,#22d3ee 70%,transparent);animation:aur2 18s ease-in-out infinite alternate;}
+.aur.a3{top:-4%;height:30%;opacity:.6;background:linear-gradient(90deg,transparent,#a3ff5c 50%,transparent);animation:aur1 22s ease-in-out infinite alternate-reverse;}
+@keyframes aur1{from{transform:translateX(-8%) skewY(-6deg) scaleY(.8)}to{transform:translateX(8%) skewY(5deg) scaleY(1.2)}}
+@keyframes aur2{from{transform:translateX(10%) skewY(4deg)}to{transform:translateX(-10%) skewY(-7deg) scaleY(1.3)}}
+.twk{animation:twk 3s ease-in-out infinite;}
+@keyframes twk{50%{opacity:.12}}
+.space-drift{animation:sdrift 60s linear infinite alternate;transform-origin:center;}
+@keyframes sdrift{to{transform:scale(1.12) rotate(2deg)}}
+.planet{position:absolute;left:-32%;bottom:-14%;width:min(85vw,560px);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 65% 30%,#ff7ab6 0%,#7a2fbf 38%,#1a0b3a 70%);box-shadow:0 0 90px rgba(255,90,180,.32),inset -40px -50px 90px rgba(0,0,0,.65);opacity:.85;}
 .rail-b span{writing-mode:vertical-rl;font-size:13px;letter-spacing:.14em;font-weight:600;}
 .rail-b:active{opacity:.6;}
 .smoke-drift{animation:drift 28s ease-in-out infinite;will-change:transform;transform-origin:center;}
@@ -2267,6 +2335,9 @@ const MONO_CSS = `
 @keyframes mtoast{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
 .ui-mono .alert-tag{clip-path:none;border-radius:50%;width:20px;height:20px;left:-6px;top:-6px;font-size:13px;box-shadow:0 0 0 3px #000;}
 .ui-mono .new-tag{font-weight:700;font-size:10px;border:0;background:var(--alt);color:#000;border-radius:999px;padding:2px 7px;letter-spacing:.02em;}
+.ui-mono .w-tag{font-family:Inter,sans-serif;font-weight:700;border:0;box-shadow:none;border-radius:999px;padding:2px 7px;letter-spacing:.02em;}
+.ui-mono .w-tag.key{background:var(--alt);color:#000;}
+.ui-mono .w-tag.bg{background:rgba(255,255,255,.12);color:#9A9AA0;}
 .ui-mono .done-stamp{font-family:'Inter',sans-serif;font-weight:700;font-size:10px;letter-spacing:.02em;box-shadow:none;background:rgba(var(--alt-rgb),.16);border-radius:999px;padding:3px 8px;}
 .ui-mono .step-box{border-radius:8px;border:1.5px solid #48484A;}
 .ui-mono .step-box.cur{background:var(--warn);border-color:var(--warn);color:#000;}
@@ -2307,6 +2378,13 @@ const MONO_CSS = `
 .ui-mono .sw{border-radius:50%;}
 .ui-mono .tk-hms{border-radius:999px;box-shadow:none;background:rgba(0,0,0,.3);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);font-family:'Inter',sans-serif;font-weight:600;letter-spacing:.04em;font-size:22px;padding:6px 18px;font-variant-numeric:tabular-nums;}
 .ui-mono .tk-sub{font-family:'Inter',sans-serif;font-weight:600;letter-spacing:.08em;}
+.ui-mono .flip-t{background:rgba(255,255,255,.1);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:none;border-radius:14px;}
+.ui-mono .flip-t.big{border-radius:22px;}
+.ui-mono .flip-t::after{height:1px;background:rgba(0,0,0,.35);}
+.ui-mono .flip-u,.ui-mono .ring-meta,.ui-mono .units-l2,.ui-mono .unit-l,.ui-mono .poster-l2{font-family:'Inter',sans-serif;font-weight:600;letter-spacing:.08em;}
+.ui-mono .ring-hms,.ui-mono .poster-hms{font-family:'Inter',sans-serif;font-weight:600;letter-spacing:.04em;font-variant-numeric:tabular-nums;}
+.ui-mono .unit-b{clip-path:none;border-radius:22px;background:rgba(255,255,255,.08);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:none;}
+.ui-mono .unit-b::before{display:none;}
 .ui-mono .set-head{background:none;border-bottom:0;padding:16px 16px 2px;}
 .ui-mono .set-n{display:none;}
 .ui-mono .set-t{font-size:17px;font-weight:700;letter-spacing:-.01em;text-transform:none;color:#fff;}
@@ -5853,7 +5931,7 @@ function MissionRow({
     className: "flex flex-col items-end gap-1.5 shrink-0 self-stretch justify-between"
   }, m.done ? React.createElement("span", {
     className: "done-stamp"
-  }, "DONE") : m.isNew ? React.createElement("span", {
+  }, "DONE") : isFreshMission(m) ? React.createElement("span", {
     className: "new-tag"
   }, "NEW") : React.createElement("span", null), m.steps.length > 0 && React.createElement("span", {
     className: "f-mono text-[11px]",
@@ -6203,12 +6281,6 @@ function MissionEditor({
     }),
     label: "\u0418\u043D\u0434\u0438\u043A\u0430\u0442\u043E\u0440 \xAB!\xBB",
     hint: "\u0416\u0451\u043B\u0442\u044B\u0439 \u0444\u043B\u0430\u0436\u043E\u043A \u0432\u0430\u0436\u043D\u043E\u0441\u0442\u0438 \u0443 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438"
-  }), React.createElement(Toggle, {
-    on: m.isNew,
-    onChange: v => set({
-      isNew: v
-    }),
-    label: "\u041C\u0435\u0442\u043A\u0430 NEW"
   })), React.createElement(Field, {
     label: "\u0417\u043D\u0430\u0447\u043E\u043A / \u0448\u0442\u0430\u043C\u043F"
   }, React.createElement("div", {
@@ -6513,7 +6585,7 @@ function ShardEditor({
   };
   return React.createElement(Modal, {
     full: true,
-    title: isNew ? 'Новый чип данных' : 'Редактор чипа',
+    title: isNew ? 'Новая запись' : 'Редактор записи',
     code: "DATA SHARD // WRITE",
     onClose: onClose,
     footer: React.createElement(React.Fragment, null, React.createElement(Btn, {
@@ -6682,7 +6754,6 @@ function MissionsScreen() {
     sfx(v ? 'check' : 'uncheck');
     up('missions', ms => ms.map(x => x.id === m.id ? {
       ...x,
-      isNew: false,
       steps: x.steps.map(s => s.id === sid ? {
         ...s,
         done: v
@@ -6696,7 +6767,6 @@ function MissionsScreen() {
     up('missions', ms => ms.map(x => x.id === m.id ? {
       ...x,
       done: true,
-      isNew: false,
       alert: false,
       completedAt: new Date().toISOString()
     } : x));
@@ -6770,20 +6840,20 @@ function MissionsScreen() {
   const saveShard = s => {
     up('shards', ss => ss.some(x => x.id === s.id) ? ss.map(x => x.id === s.id ? s : x) : [s, ...ss]);
     sfx('save');
-    toast('Чип данных записан');
+    toast('Запись сохранена');
     setEditS(null);
     setReadId(s.id);
   };
   const deleteShard = async s => {
     const ok = await ask({
-      title: 'Стереть чип данных?',
+      title: 'Удалить запись?',
       code: 'DATA SHARD // ERASE',
-      text: `«${s.title || 'Без названия'}» будет удалён.`,
-      ok: 'Стереть',
+      text: `«${s.title || 'Без названия'}» будет удалена.`,
+      ok: 'Удалить',
       danger: true
     });
     if (ok !== true) return;
-    undoable('Чип стёрт', ['shards'], () => up('shards', ss => ss.filter(x => x.id !== s.id)));
+    undoable('Запись удалена', ['shards'], () => up('shards', ss => ss.filter(x => x.id !== s.id)));
     setReadId(null);
   };
   const shards = data.shards.filter(matchS).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
@@ -6978,7 +7048,7 @@ function MissionsScreen() {
   }))), React.createElement("div", {
     className: "mt-3"
   }, React.createElement(SectionHeader, {
-    name: "DATA SHARDS",
+    name: "\u0417\u0410\u041F\u0418\u0421\u0418",
     count: shards.length
   })), React.createElement("div", {
     className: "mt-2.5 space-y-2.5"
@@ -6991,7 +7061,7 @@ function MissionsScreen() {
     }
   }))), !shards.length && React.createElement(Empty, {
     icon: Cpu,
-    title: qlS || tagF ? 'Нет совпадений' : 'Чипов пока нет',
+    title: qlS || tagF ? 'Нет совпадений' : 'Записей пока нет',
     text: qlS || tagF ? 'Сбрось фильтр или измени запрос' : 'Запиши первую мысль дня'
   }, !qlS && !tagF && React.createElement(Btn, {
     icon: Plus,
@@ -7001,17 +7071,16 @@ function MissionsScreen() {
     className: "pb-8"
   }, wide ? React.createElement(React.Fragment, null, React.createElement(ScreenHeader, {
     code: "PROTOCOL 4520-A48 // JOURNAL.EXE",
-    title: "\u0416\u0443\u0440\u043D\u0430\u043B",
-    sub: "\u041C\u0438\u0441\u0441\u0438\u0438 \u0438 \u0447\u0438\u043F\u044B \u0434\u0430\u043D\u043D\u044B\u0445"
+    title: "\u041C\u0438\u0441\u0441\u0438\u0438 \u0438 \u0436\u0443\u0440\u043D\u0430\u043B"
   }), React.createElement("div", {
     className: "desk-cols"
   }, React.createElement("div", null, colHead(UI.mono ? Flag : Crosshair, 'Миссии', `${activeN} активных · ${doneN} завершено`), React.createElement("div", {
     className: "px-4"
-  }, searchRow(true)), missionsBlock), React.createElement("div", null, colHead(UI.mono ? FileText : Cpu, 'Чипы данных', shardsSub), React.createElement("div", {
+  }, searchRow(true)), missionsBlock), React.createElement("div", null, colHead(UI.mono ? FileText : Cpu, 'Журнал', shardsSub), React.createElement("div", {
     className: "px-4"
   }, searchRow(false)), shardsBlock))) : React.createElement(React.Fragment, null, React.createElement(ScreenHeader, {
     code: "PROTOCOL 4520-A48 // JOURNAL.EXE",
-    title: mode === 'missions' ? 'Журнал миссий' : 'Чипы данных',
+    title: mode === 'missions' ? 'Журнал миссий' : 'Журнал',
     sub: mode === 'missions' ? `${activeN} активных · ${doneN} завершено` : shardsSub
   }), React.createElement("div", {
     className: "px-4 mt-3"
@@ -7027,7 +7096,7 @@ function MissionsScreen() {
       i: UI.mono ? Flag : Crosshair
     }, {
       v: 'shards',
-      l: 'Чипы данных',
+      l: 'Журнал',
       i: UI.mono ? FileText : Cpu
     }]
   }), searchRow(mode === 'missions')), mode === 'missions' ? missionsBlock : shardsBlock), sheetSection && React.createElement(Sheet, {
@@ -7112,6 +7181,15 @@ const fmtShort = k => {
   return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`;
 };
 const dayStatus = (avg, thr) => avg == null ? 'НЕТ ДАННЫХ' : avg >= thr.g ? 'ОПТИМАЛЬНО' : avg >= thr.l ? 'СТАБИЛЬНО' : avg >= thr.y ? 'НЕСТАБИЛЬНО' : 'КРИТИЧНО';
+function WeightTag({
+  w
+}) {
+  if (w === 1) return null;
+  return React.createElement("span", {
+    className: `w-tag ${w > 1 ? 'key' : 'bg'}`,
+    title: w > 1 ? 'Ключевая карточка' : 'Фоновая карточка'
+  }, w > 1 ? '×2' : '×0.5');
+}
 function ScoreBox({
   score,
   size = 38
@@ -7450,8 +7528,12 @@ function DayDetail({
     })), React.createElement("div", {
       className: "flex-1 min-w-0"
     }, React.createElement("div", {
+      className: "flex items-center gap-2 min-w-0"
+    }, React.createElement("div", {
       className: "m-title text-[16px] truncate"
-    }, c ? c.name : v.name), React.createElement("div", {
+    }, c ? c.name : v.name), React.createElement(WeightTag, {
+      w: typeof v.w === 'number' ? v.w : 1
+    })), React.createElement("div", {
       className: "text-[12px] text-white/50 leading-snug f-read mt-0.5"
     }, v.score == null ? 'Пропущено — не учитывается в среднем' : c ? c.criteria[v.score] : '')), React.createElement(ScoreBox, {
       score: v.score == null ? undefined : v.score
@@ -7890,6 +7972,20 @@ function CardEditor({
       date: e.target.value
     })
   })), React.createElement(Field, {
+    label: "\u0412\u043B\u0438\u044F\u043D\u0438\u0435 \u043D\u0430 \u0434\u0435\u043D\u044C"
+  }, React.createElement(Segmented, {
+    value: cardW(c),
+    onChange: v => set({
+      weight: v
+    }),
+    accent: "var(--alt)",
+    options: CARD_WEIGHTS.map(([v, l]) => ({
+      v,
+      l
+    }))
+  }), React.createElement("div", {
+    className: "text-[12px] text-white/50 f-read leading-snug mt-2"
+  }, WEIGHT_HINT[cardW(c)])), React.createElement(Field, {
     label: "\u0422\u0430\u0431\u043B\u0438\u0446\u0430 \u043A\u0440\u0438\u0442\u0435\u0440\u0438\u0435\u0432 (5 \u2192 1)"
   }, [5, 4, 3, 2, 1].map(n => React.createElement("div", {
     key: n,
@@ -8132,7 +8228,10 @@ function RateModal({
   const [note, setNote] = useState(prev ? prev.note || '' : '');
   const [toDiary, setToDiary] = useState(true);
   const thr = data.settings.thr;
-  const avg = calcAvg(Object.values(scores));
+  const avg = calcAvgW(cards.filter(c => scores[c.id] !== undefined).map(c => ({
+    score: scores[c.id] === 'skip' ? null : scores[c.id],
+    w: cardW(c)
+  })));
   const col = avg != null ? ringColor(avg, thr) : '#6a6a72';
   const pending = cards.filter(c => scores[c.id] === undefined).length;
   const setScore = (id, v) => {
@@ -8157,13 +8256,14 @@ function RateModal({
       const v = scores[c.id];
       if (v !== undefined) sc[c.id] = {
         score: v === 'skip' ? null : v,
-        name: c.name
+        name: c.name,
+        w: cardW(c)
       };
     });
     const rec = {
       scores: sc,
       note: note.trim(),
-      avg: calcAvg(Object.values(sc).map(x => x.score)),
+      avg: calcAvgW(Object.values(sc)),
       at: new Date().toISOString()
     };
     up('ratings', r => ({
@@ -8257,7 +8357,7 @@ function RateModal({
     className: "micro mt-1"
   }, "\u041E\u0421\u0422\u0410\u041B\u041E\u0421\u042C \u041E\u0426\u0415\u041D\u0418\u0422\u042C: ", pending))), React.createElement("div", {
     className: "text-[12px] text-white/50 f-read leading-snug mt-3"
-  }, "\u0412\u044B\u0431\u0435\u0440\u0438 \u043A\u0440\u0438\u0442\u0435\u0440\u0438\u0439, \u043A\u043E\u0442\u043E\u0440\u044B\u0439 \u043B\u0443\u0447\u0448\u0435 \u0432\u0441\u0435\u0433\u043E \u043E\u043F\u0438\u0441\u044B\u0432\u0430\u0435\u0442 \u0434\u0435\u043D\u044C. \xAB\u041F\u0440\u043E\u043F\u0443\u0441\u0442\u0438\u0442\u044C\xBB \u0438\u0441\u043A\u043B\u044E\u0447\u0430\u0435\u0442 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0443 \u0438\u0437 \u0440\u0430\u0441\u0447\u0451\u0442\u0430."))), cards.map(c => {
+  }, "\u0412\u044B\u0431\u0435\u0440\u0438 \u043A\u0440\u0438\u0442\u0435\u0440\u0438\u0439, \u043A\u043E\u0442\u043E\u0440\u044B\u0439 \u043B\u0443\u0447\u0448\u0435 \u0432\u0441\u0435\u0433\u043E \u043E\u043F\u0438\u0441\u044B\u0432\u0430\u0435\u0442 \u0434\u0435\u043D\u044C. \xAB\u041F\u0440\u043E\u043F\u0443\u0441\u0442\u0438\u0442\u044C\xBB \u0438\u0441\u043A\u043B\u044E\u0447\u0430\u0435\u0442 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0443 \u0438\u0437 \u0440\u0430\u0441\u0447\u0451\u0442\u0430.", cards.some(c => cardW(c) !== 1) ? ' Ключевые карточки (×2) весят вдвое больше обычных, фоновые (×0.5) — вдвое меньше.' : ''))), cards.map(c => {
     const v = scores[c.id];
     return React.createElement(Frame, {
       key: c.id,
@@ -8277,13 +8377,17 @@ function RateModal({
     }), React.createElement("div", {
       className: "flex-1 min-w-0"
     }, React.createElement("div", {
+      className: "flex items-center gap-2 min-w-0"
+    }, React.createElement("div", {
       className: "m-title text-[18px] truncate"
-    }, c.name), React.createElement("div", {
+    }, c.name), React.createElement(WeightTag, {
+      w: cardW(c)
+    })), React.createElement("div", {
       className: "micro mt-1",
       style: {
         color: 'rgba(255,255,255,.55)'
       }
-    }, schedText(c))), React.createElement("button", {
+    }, schedText(c, false))), React.createElement("button", {
       type: "button",
       onClick: () => setScore(c.id, 'skip'),
       className: `tag cut shrink-0 ${v === 'skip' ? 'on' : ''}`,
@@ -8337,7 +8441,7 @@ function RateModal({
   }, React.createElement(Toggle, {
     on: toDiary,
     onChange: setToDiary,
-    label: "\u0417\u0430\u043F\u0438\u0441\u0430\u0442\u044C \u0438\u0442\u043E\u0433 \u0432 \u0427\u0438\u043F\u044B \u0434\u0430\u043D\u043D\u044B\u0445",
+    label: "\u0417\u0430\u043F\u0438\u0441\u0430\u0442\u044C \u0438\u0442\u043E\u0433 \u0432 \u0416\u0443\u0440\u043D\u0430\u043B",
     hint: "\u041F\u043E\u044F\u0432\u0438\u0442\u0441\u044F \u0437\u0430\u043F\u0438\u0441\u044C \u0441 \u0442\u0435\u0433\u043E\u043C #\u0438\u0442\u043E\u0433\u0438"
   }))) : React.createElement(Empty, {
     icon: Layers,
@@ -8352,7 +8456,9 @@ const TIMER_FONTS = {
   rajdhani: ["'Rajdhani','Exo 2',sans-serif", 'Rajdhani'],
   mono: ["'Share Tech Mono','JetBrains Mono',monospace", 'Mono']
 };
-const TIMER_BGS = [['smoke', 'Багровый дым', 'radial-gradient(circle at 30% 30%,#c0134f,#3a0a2e 55%,#120818)'], ['grid', 'Кибер-сетка', 'linear-gradient(180deg,#12021f,#4a0a4f 55%,#00444d)'], ['city', 'Неоновый город', 'linear-gradient(180deg,#0b0221,#3a0a3f 60%,#ff4655)'], ['matrix', 'Матрица', 'linear-gradient(180deg,#020a04,#0a3a14)'], ['custom', 'Своё фото', 'repeating-linear-gradient(45deg,#1c1c1c 0 6px,#2c2c2c 6px 12px)']];
+const TIMER_BGS = [['smoke', 'Багровый дым', 'radial-gradient(circle at 30% 30%,#c0134f,#3a0a2e 55%,#120818)'], ['grid', 'Кибер-сетка', 'linear-gradient(180deg,#12021f,#4a0a4f 55%,#00444d)'], ['city', 'Неоновый город', 'linear-gradient(180deg,#0b0221,#3a0a3f 60%,#ff4655)'], ['matrix', 'Матрица', 'linear-gradient(180deg,#020a04,#0a3a14)'], ['aurora', 'Северное сияние', 'linear-gradient(180deg,#020814,#0b5a4a 40%,#3a1a6e 72%,#01040a)'], ['space', 'Космос', 'radial-gradient(circle at 25% 85%,#ff7ab6 0,#7a2fbf 16%,transparent 32%),radial-gradient(ellipse at 70% 25%,#3b1a6e,transparent 55%),#03020a'], ['custom', 'Своё фото', 'repeating-linear-gradient(45deg,#1c1c1c 0 6px,#2c2c2c 6px 12px)']];
+const TIMER_LAYOUTS = [['classic', 'Классика'], ['flip', 'Табло'], ['ring', 'Кольцо'], ['units', 'Блоки'], ['poster', 'Постер']];
+const timerLayout = t => TIMER_LAYOUTS.some(([k]) => k === t.layout) ? t.layout : 'classic';
 const MILESTONES = [7, 14, 30, 60, 90, 100, 180, 365, 500, 730, 1000, 1500, 2000, 3650];
 const MATRIX_CHARS = 'ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎ0123456789Z:=*+<>';
 function SmokeBG({
@@ -8515,11 +8621,70 @@ function MatrixBG() {
     }
   }, c.chars)));
 }
+function AuroraBG() {
+  return React.createElement("div", {
+    className: "absolute inset-0 overflow-hidden",
+    style: {
+      background: 'linear-gradient(180deg,#020814 0%,#04121f 55%,#01040a 100%)'
+    }
+  }, React.createElement("div", {
+    className: "aur a1"
+  }), React.createElement("div", {
+    className: "aur a2"
+  }), React.createElement("div", {
+    className: "aur a3"
+  }), React.createElement("div", {
+    className: "absolute inset-0",
+    style: {
+      background: 'radial-gradient(ellipse at 50% 115%,rgba(0,0,0,.75),transparent 60%)'
+    }
+  }));
+}
+function SpaceBG() {
+  const stars = useMemo(() => {
+    const R = rng(19);
+    return Array.from({
+      length: 150
+    }, () => ({
+      x: R() * 400,
+      y: R() * 720,
+      r: R() < 0.9 ? 0.4 + R() * 0.8 : 1.3 + R() * 0.9,
+      o: 0.35 + R() * 0.65,
+      tw: R() < 0.2,
+      d: (R() * 4).toFixed(2)
+    }));
+  }, []);
+  return React.createElement("div", {
+    className: "absolute inset-0 overflow-hidden",
+    style: {
+      background: 'radial-gradient(ellipse at 70% 25%,#3b1a6e 0%,transparent 45%),radial-gradient(ellipse at 20% 70%,#0b3a6b 0%,transparent 50%),#03020a'
+    }
+  }, React.createElement("svg", {
+    className: "absolute inset-0 w-full h-full space-drift",
+    viewBox: "0 0 400 720",
+    preserveAspectRatio: "xMidYMid slice"
+  }, stars.map((s, i) => React.createElement("circle", {
+    key: i,
+    cx: s.x,
+    cy: s.y,
+    r: s.r,
+    fill: "#fff",
+    opacity: s.o,
+    className: s.tw ? 'twk' : undefined,
+    style: s.tw ? {
+      animationDelay: `${s.d}s`
+    } : undefined
+  }))), React.createElement("div", {
+    className: "planet"
+  }));
+}
 const MONO_TBG = {
   smoke: ['Гранат', '#C2185B', 'linear-gradient(180deg,#5A0F2B 0%,#1E0610 45%,#000 85%)'],
   grid: ['Океан', '#2F6BFF', 'linear-gradient(180deg,#0F2A6B 0%,#081330 45%,#000 85%)'],
   city: ['Закат', '#FF7A1A', 'linear-gradient(180deg,#6B2A06 0%,#2A1003 45%,#000 85%)'],
   matrix: ['Лес', '#2BD46A', 'linear-gradient(180deg,#0B4A26 0%,#04200F 45%,#000 85%)'],
+  aurora: ['Мята', '#22D3A6', 'linear-gradient(180deg,#0A4A3E 0%,#04201B 45%,#000 85%)'],
+  space: ['Фиалка', '#8B5CF6', 'linear-gradient(180deg,#3B1A6E 0%,#170A2E 45%,#000 85%)'],
   custom: ['Своё фото', '#888', 'repeating-linear-gradient(45deg,#1c1c1e 0 6px,#2c2c2e 6px 12px)']
 };
 function MonoTimerBg({
@@ -8563,7 +8728,366 @@ function TimerBg({
   if (t.bg === 'grid') return React.createElement(GridBG, null);
   if (t.bg === 'city') return React.createElement(CityBG, null);
   if (t.bg === 'matrix') return React.createElement(MatrixBG, null);
+  if (t.bg === 'aurora') return React.createElement(AuroraBG, null);
+  if (t.bg === 'space') return React.createElement(SpaceBG, null);
   return React.createElement(SmokeBG, null);
+}
+const dayParts = ms => {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  return {
+    h: Math.floor(s / 3600) % 24,
+    m: Math.floor(s / 60) % 60,
+    s: s % 60
+  };
+};
+const daysWord = n => n === 1 ? 'DAY' : 'DAYS';
+function FlipTile({
+  ch,
+  big,
+  n4
+}) {
+  return React.createElement("span", {
+    className: `flip-t${big ? ' big' : ''}${n4 ? ' n4' : ''}`
+  }, React.createElement("span", {
+    key: ch,
+    className: "flip-d"
+  }, ch));
+}
+function FlipFace({
+  t,
+  st,
+  font,
+  fw,
+  accent
+}) {
+  const days = String(st.days).padStart(2, '0').split('');
+  const groups = [[st.h, 'ЧАС'], [st.m, 'МИН'], [st.s, 'СЕК']];
+  return React.createElement("div", {
+    className: "tk-face",
+    style: {
+      fontFamily: font
+    }
+  }, React.createElement("div", {
+    className: "tk-title",
+    style: {
+      fontWeight: 600
+    }
+  }, t.title), t.sub && React.createElement("div", {
+    className: "tk-sub"
+  }, t.sub), React.createElement("div", {
+    className: "flex gap-1.5 mt-6",
+    style: {
+      fontWeight: fw
+    }
+  }, days.map((c, i) => React.createElement(FlipTile, {
+    key: i,
+    ch: c,
+    big: true,
+    n4: days.length > 3
+  }))), React.createElement("div", {
+    className: "flip-cap",
+    style: {
+      color: accent,
+      fontWeight: 600
+    }
+  }, daysWord(st.days), " ", st.l2), st.done ? React.createElement("div", {
+    className: "tk-hms cut",
+    style: {
+      '--cut': '6px',
+      color: accent
+    }
+  }, "COMPLETE") : React.createElement("div", {
+    className: "flex items-start mt-5",
+    style: {
+      fontWeight: fw
+    }
+  }, groups.map(([n, l], i) => React.createElement(React.Fragment, {
+    key: l
+  }, i > 0 && React.createElement("span", {
+    className: "flip-colon",
+    style: {
+      color: accent
+    }
+  }, ":"), React.createElement("div", {
+    className: "flex flex-col items-center"
+  }, React.createElement("div", {
+    className: "flex gap-1"
+  }, pad(n).split('').map((c, j) => React.createElement(FlipTile, {
+    key: j,
+    ch: c
+  }))), React.createElement("span", {
+    className: "flip-u"
+  }, l))))));
+}
+function RingFace({
+  t,
+  st,
+  font,
+  fw,
+  accent
+}) {
+  const R = 46,
+    C = 2 * Math.PI * R,
+    len = String(st.days).length;
+  return React.createElement("div", {
+    className: "tk-face",
+    style: {
+      fontFamily: font
+    }
+  }, React.createElement("div", {
+    className: "tk-title",
+    style: {
+      fontWeight: 600
+    }
+  }, t.title), t.sub && React.createElement("div", {
+    className: "tk-sub"
+  }, t.sub), React.createElement("div", {
+    className: "ring-box"
+  }, React.createElement("svg", {
+    viewBox: "0 0 100 100",
+    className: "absolute inset-0 w-full h-full",
+    style: {
+      transform: 'rotate(-90deg)',
+      overflow: 'visible'
+    }
+  }, React.createElement("circle", {
+    cx: "50",
+    cy: "50",
+    r: R,
+    fill: "none",
+    stroke: "rgba(255,255,255,.14)",
+    strokeWidth: "2.2"
+  }), !UI.mono && React.createElement("circle", {
+    cx: "50",
+    cy: "50",
+    r: "41",
+    fill: "none",
+    stroke: "rgba(255,255,255,.25)",
+    strokeWidth: "1.6",
+    strokeDasharray: "0.5 3.793"
+  }), React.createElement("circle", {
+    cx: "50",
+    cy: "50",
+    r: R,
+    fill: "none",
+    stroke: accent,
+    strokeWidth: UI.mono ? 3.2 : 2.6,
+    strokeLinecap: UI.mono ? 'round' : 'butt',
+    strokeDasharray: C,
+    strokeDashoffset: C * (1 - st.pct),
+    style: {
+      transition: 'stroke-dashoffset 1s linear',
+      filter: UI.mono ? 'none' : `drop-shadow(0 0 2.5px ${accent})`
+    }
+  })), React.createElement("div", {
+    className: "relative flex flex-col items-center"
+  }, React.createElement("div", {
+    className: "ring-num",
+    style: {
+      fontWeight: fw,
+      fontSize: len > 3 ? 'min(18vw,13vh,120px)' : undefined
+    }
+  }, st.days), React.createElement("div", {
+    className: "ring-lbl",
+    style: {
+      color: accent,
+      fontWeight: 600
+    }
+  }, daysWord(st.days), " ", st.l2), React.createElement("div", {
+    className: "ring-hms"
+  }, st.done ? 'COMPLETE' : st.hms))), React.createElement("div", {
+    className: "ring-meta"
+  }, React.createElement("span", null, st.left), React.createElement("b", {
+    style: {
+      color: accent
+    }
+  }, (st.pct * 100).toFixed(1), "%"), React.createElement("span", null, st.right)));
+}
+function UnitsFace({
+  t,
+  st,
+  font,
+  fw,
+  accent
+}) {
+  const items = [[st.days, plural(st.days, 'день', 'дня', 'дней')], [st.h, plural(st.h, 'час', 'часа', 'часов')], [st.m, plural(st.m, 'минута', 'минуты', 'минут')], [st.s, plural(st.s, 'секунда', 'секунды', 'секунд')]];
+  const len = String(st.days).length;
+  return React.createElement("div", {
+    className: "tk-face",
+    style: {
+      fontFamily: font
+    }
+  }, React.createElement("div", {
+    className: "units-l2",
+    style: {
+      color: accent
+    }
+  }, nice(t.mode === 'since' ? 'ПРОШЛО' : st.done ? 'ЗАВЕРШЕНО' : 'ОСТАЛОСЬ')), React.createElement("div", {
+    className: "tk-title",
+    style: {
+      marginTop: 8,
+      fontWeight: 600
+    }
+  }, t.title), t.sub && React.createElement("div", {
+    className: "tk-sub"
+  }, t.sub), React.createElement("div", {
+    className: "units-grid"
+  }, items.map(([n, l], i) => React.createElement("div", {
+    key: i,
+    className: "unit-b",
+    style: {
+      '--ua': accent
+    }
+  }, React.createElement("div", {
+    className: "unit-n",
+    style: {
+      fontWeight: fw,
+      fontSize: i === 0 && len > 3 ? 'min(10vw,44px)' : i === 0 && len === 3 ? 'min(12.5vw,54px)' : undefined
+    }
+  }, i === 0 ? n : pad(n)), React.createElement("div", {
+    className: "unit-l"
+  }, nice(l.toUpperCase()))))));
+}
+function PosterFace({
+  t,
+  st,
+  font,
+  fw,
+  accent
+}) {
+  const len = String(st.days).length;
+  return React.createElement("div", {
+    className: "poster",
+    style: {
+      fontFamily: font
+    }
+  }, React.createElement("div", {
+    className: "poster-l2",
+    style: {
+      color: accent
+    }
+  }, daysWord(st.days), " ", st.l2), React.createElement("div", {
+    className: "poster-num",
+    style: {
+      fontWeight: fw,
+      fontSize: len > 3 ? 'min(34vw,26vh,250px)' : undefined,
+      filter: UI.mono ? 'none' : `drop-shadow(0 0 14px ${alpha(accent, 0.55)})`
+    }
+  }, st.days), React.createElement("div", {
+    className: "poster-bottom"
+  }, t.sub && React.createElement("div", {
+    className: "tk-sub",
+    style: {
+      marginTop: 0
+    }
+  }, t.sub), React.createElement("div", {
+    className: "poster-title",
+    style: {
+      fontWeight: fw
+    }
+  }, t.title), React.createElement("div", {
+    className: "poster-hms"
+  }, React.createElement("span", {
+    className: "poster-dot",
+    style: {
+      background: accent,
+      boxShadow: UI.mono ? 'none' : `0 0 8px ${accent}`
+    }
+  }), st.done ? 'COMPLETE' : st.hms)));
+}
+function LayoutThumb({
+  k,
+  font
+}) {
+  const box = {
+    fontFamily: font,
+    fontWeight: 700,
+    lineHeight: 1
+  };
+  if (k === 'flip') return React.createElement("div", {
+    className: "flex gap-[3px]",
+    style: box
+  }, ['2', '8'].map(c => React.createElement("span", {
+    key: c,
+    className: "flip-t",
+    style: {
+      width: 18,
+      height: 26,
+      fontSize: 18,
+      borderRadius: 3
+    }
+  }, c)));
+  if (k === 'ring') return React.createElement("div", {
+    className: "relative flex items-center justify-center",
+    style: {
+      width: 34,
+      height: 34
+    }
+  }, React.createElement("svg", {
+    viewBox: "0 0 36 36",
+    className: "absolute inset-0",
+    style: {
+      transform: 'rotate(-90deg)'
+    }
+  }, React.createElement("circle", {
+    cx: "18",
+    cy: "18",
+    r: "15",
+    fill: "none",
+    stroke: "rgba(255,255,255,.2)",
+    strokeWidth: "2.5"
+  }), React.createElement("circle", {
+    cx: "18",
+    cy: "18",
+    r: "15",
+    fill: "none",
+    stroke: "var(--alt)",
+    strokeWidth: "2.5",
+    strokeDasharray: "94.2",
+    strokeDashoffset: "33"
+  })), React.createElement("span", {
+    style: {
+      ...box,
+      fontSize: 13
+    }
+  }, "28"));
+  if (k === 'units') return React.createElement("div", {
+    className: "grid grid-cols-2 gap-[3px]"
+  }, ['28', '06', '41', '09'].map(c => React.createElement("span", {
+    key: c,
+    className: "flex items-center justify-center",
+    style: {
+      ...box,
+      width: 18,
+      height: 14,
+      fontSize: 9,
+      background: 'rgba(255,255,255,.1)',
+      borderTop: '1.5px solid var(--alt)'
+    }
+  }, c)));
+  if (k === 'poster') return React.createElement("div", {
+    className: "w-full pl-2 text-left"
+  }, React.createElement("div", {
+    style: {
+      ...box,
+      fontSize: 24,
+      color: 'transparent',
+      WebkitTextStroke: '1px #fff'
+    }
+  }, "28"), React.createElement("div", {
+    style: {
+      width: 26,
+      height: 3,
+      marginTop: 4,
+      background: 'rgba(255,255,255,.75)'
+    }
+  }));
+  return React.createElement("span", {
+    style: {
+      ...box,
+      fontSize: 30
+    }
+  }, "28");
 }
 function timerState(t, now) {
   const target = parseLocal(t.target) || new Date(now);
@@ -8575,6 +9099,7 @@ function timerState(t, now) {
     const prev = [0, ...MILESTONES].filter(m => m <= days).pop();
     return {
       days,
+      ...dayParts(diff),
       hms: fmtTotalHMS(diff),
       cap: 'ВСЕГО ПРОШЛО · Ч:М:С',
       pct: clamp((daysF - prev) / (next - prev), 0, 1),
@@ -8593,6 +9118,7 @@ function timerState(t, now) {
   const sh = x => `${pad(x.getDate())}.${pad(x.getMonth() + 1)}.${String(x.getFullYear()).slice(2)}`;
   return {
     days,
+    ...dayParts(d),
     hms: fmtTotalHMS(d),
     cap: 'ВСЕГО ОСТАЛОСЬ · Ч:М:С',
     pct: clamp((now - start) / span, 0, 1),
@@ -8615,6 +9141,15 @@ function TimerCard({
   const st = timerState(t, now);
   const font = (TIMER_FONTS[t.font] || TIMER_FONTS.bebas)[0];
   const accent = t.accent || '#FF4655';
+  const lay = timerLayout(t),
+    fw = t.font === 'mono' ? 400 : 700,
+    face = {
+      t,
+      st,
+      font,
+      fw,
+      accent
+    };
   return React.createElement("section", {
     className: "tk"
   }, React.createElement(TimerBg, {
@@ -8691,7 +9226,7 @@ function TimerCard({
     }
   }, React.createElement(Trash2, {
     size: 20
-  }), React.createElement("span", null, "DEL"))), React.createElement("div", {
+  }), React.createElement("span", null, "DEL"))), lay === 'flip' && React.createElement(FlipFace, face), lay === 'ring' && React.createElement(RingFace, face), lay === 'units' && React.createElement(UnitsFace, face), lay === 'poster' && React.createElement(PosterFace, face), lay === 'classic' && React.createElement("div", {
     className: "absolute inset-0 flex flex-col items-center justify-center px-12 text-center",
     style: {
       fontFamily: font
@@ -8699,7 +9234,7 @@ function TimerCard({
   }, React.createElement("div", {
     className: "tk-num",
     style: {
-      fontWeight: t.font === 'mono' ? 400 : 700,
+      fontWeight: fw,
       fontSize: String(st.days).length > 3 ? 'min(40vw,190px)' : undefined
     }
   }, st.days), React.createElement("div", {
@@ -8725,7 +9260,7 @@ function TimerCard({
     style: {
       color: 'rgba(255,255,255,.55)'
     }
-  }, st.cap)), React.createElement("div", {
+  }, st.cap)), lay !== 'ring' && React.createElement("div", {
     className: "absolute left-5 right-5 bottom-6 z-10"
   }, React.createElement("div", {
     className: "flex justify-between items-end f-mono text-[10px] tracking-widest text-white/75 mb-1.5"
@@ -8888,6 +9423,35 @@ function TimerEditor({
   })), t.mode === 'since' && React.createElement("div", {
     className: "text-[12px] text-white/45 f-read -mt-2 mb-4"
   }, "\u041F\u043E\u043B\u043E\u0441\u043A\u0430 \u043F\u0440\u043E\u0433\u0440\u0435\u0441\u0441\u0430 \u043F\u043E\u043A\u0430\u0436\u0435\u0442 \u043F\u0443\u0442\u044C \u0434\u043E \u0441\u043B\u0435\u0434\u0443\u044E\u0449\u0435\u0433\u043E \u0440\u0443\u0431\u0435\u0436\u0430: 7, 14, 30, 60, 90, 100, 180, 365\u2026 \u0434\u043D\u0435\u0439."), React.createElement(Field, {
+    label: "\u041E\u0444\u043E\u0440\u043C\u043B\u0435\u043D\u0438\u0435"
+  }, React.createElement("div", {
+    className: "grid grid-cols-5 gap-1.5"
+  }, TIMER_LAYOUTS.map(([k, name]) => {
+    const on = timerLayout(t) === k;
+    return React.createElement("button", {
+      key: k,
+      type: "button",
+      onClick: () => {
+        sfx();
+        set({
+          layout: k
+        });
+      },
+      className: "cut pt-2 pb-1.5 flex flex-col items-center",
+      style: {
+        '--cut': '6px',
+        background: on ? 'rgba(var(--alt-rgb),.16)' : 'rgba(255,255,255,.04)',
+        boxShadow: on ? 'inset 0 0 0 1.5px var(--alt)' : 'inset 0 0 0 1px rgba(255,255,255,.12)'
+      }
+    }, React.createElement("div", {
+      className: "h-[38px] w-full flex items-center justify-center text-white"
+    }, React.createElement(LayoutThumb, {
+      k: k,
+      font: (TIMER_FONTS[t.font] || TIMER_FONTS.bebas)[0]
+    })), React.createElement("span", {
+      className: "f-mono text-[9px] text-white/55 mt-1"
+    }, name));
+  }))), React.createElement(Field, {
     label: "\u0428\u0440\u0438\u0444\u0442"
   }, React.createElement("div", {
     className: "grid grid-cols-5 gap-1.5"
@@ -9197,7 +9761,7 @@ function useParkOps() {
         body: text
       }, ...ss]);
       sfx('save');
-      toast('Чип данных записан');
+      toast('Запись сохранена');
       return true;
     }
   };
@@ -9227,7 +9791,7 @@ function ParkedRow({
   }), React.createElement(IconBtn, {
     sm: true,
     icon: FileText,
-    title: "\u0412 \u0447\u0438\u043F \u0434\u0430\u043D\u043D\u044B\u0445",
+    title: "\u0412 \u0436\u0443\u0440\u043D\u0430\u043B",
     onClick: () => {
       if (ops.toShard(p.text)) onDone();
     }
@@ -10643,7 +11207,7 @@ function SettingsScreen({
       const ok = await ask({
         title: 'Импорт данных',
         code: 'SYS // RESTORE',
-        text: `Файл: ${f.name}\nМиссий: ${nd.missions.length} · чипов: ${nd.shards.length} · оценённых дней: ${Object.keys(nd.ratings).length} · таймеров: ${nd.timers.length} · фото: ${photos}\n\nТекущие данные будут заменены.${syncNote}`,
+        text: `Файл: ${f.name}\nМиссий: ${nd.missions.length} · записей: ${nd.shards.length} · оценённых дней: ${Object.keys(nd.ratings).length} · таймеров: ${nd.timers.length} · фото: ${photos}\n\nТекущие данные будут заменены.${syncNote}`,
         ok: 'Восстановить',
         danger: true
       });
@@ -10686,7 +11250,7 @@ function SettingsScreen({
     const ok = await ask({
       title: 'Очистить все данные?',
       code: 'SYS // WIPE',
-      text: `Будут удалены ВСЕ миссии, чипы данных, карточки, оценки и таймеры. Останутся пустые разделы MAIN JOBS / SIDE JOBS / GIGS, базовые теги и настройки.\n\nСовет: сначала сделай экспорт бэкапа.${syncNote}`,
+      text: `Будут удалены ВСЕ миссии, записи журнала, карточки, оценки и таймеры. Останутся пустые разделы MAIN JOBS / SIDE JOBS / GIGS, базовые теги и настройки.\n\nСовет: сначала сделай экспорт бэкапа.${syncNote}`,
       ok: 'Стереть всё',
       danger: true
     });
@@ -11089,7 +11653,7 @@ function SettingsScreen({
     onClick: ops.addSection
   }, "\u0414\u043E\u0431\u0430\u0432\u0438\u0442\u044C \u0440\u0430\u0437\u0434\u0435\u043B"), React.createElement("span", {
     className: "lbl mt-5"
-  }, "\u0422\u0435\u0433\u0438 \u0434\u043D\u0435\u0432\u043D\u0438\u043A\u0430 (\u0447\u0438\u043F\u043E\u0432 \u0434\u0430\u043D\u043D\u044B\u0445)"), data.tags.map(t => React.createElement("div", {
+  }, "\u0422\u0435\u0433\u0438 \u0436\u0443\u0440\u043D\u0430\u043B\u0430"), data.tags.map(t => React.createElement("div", {
     key: t.id,
     className: "flex items-center gap-2 py-2",
     style: {
@@ -11140,7 +11704,7 @@ function SettingsScreen({
     icon: Database
   }, React.createElement("div", {
     className: "grid grid-cols-3 gap-2 mb-4"
-  }, [['Миссии', data.missions.length], ['Чипы', data.shards.length], ['Дни', Object.keys(data.ratings).length], ['Таймеры', data.timers.length], ['Карточки', data.cards.length], ['Объём', `${sizeKB} КБ`]].map(([l, v]) => React.createElement("div", {
+  }, [['Миссии', data.missions.length], ['Записи', data.shards.length], ['Дни', Object.keys(data.ratings).length], ['Таймеры', data.timers.length], ['Карточки', data.cards.length], ['Объём', `${sizeKB} КБ`]].map(([l, v]) => React.createElement("div", {
     key: l,
     className: "stat-cell cut"
   }, React.createElement("div", {
@@ -11312,7 +11876,7 @@ function SideFoot() {
 const TABS = [{
   id: 'missions',
   label: 'МИССИИ',
-  sub: 'И ЧИПЫ',
+  sub: 'И ЖУРНАЛ',
   icon: Crosshair,
   mLabel: 'Миссии',
   mIcon: ListChecks

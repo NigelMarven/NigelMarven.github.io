@@ -1,4 +1,4 @@
-/* CJ_BUILD 20261017-012350 */
+/* CJ_BUILD 20261017-103901 */
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
 const {
   useState,
@@ -62,7 +62,10 @@ const {
   Snowflake,
   ImagePlus,
   Minus,
-  Share2
+  Share2,
+  RefreshCw,
+  LogOut,
+  KeyRound
 } = LucideReact;
 const BETA = typeof window !== 'undefined' && !!window.CJ_BETA;
 const MAIN_KEY = 'cyberjournal2077.v1';
@@ -388,7 +391,13 @@ const isIdb = v => typeof v === 'string' && v.startsWith('idb:');
 const isInline = v => typeof v === 'string' && v.startsWith('data:image/');
 const IMG = {
   p: null,
-  urls: new Map()
+  urls: new Map(),
+  gen: 0,
+  subs: new Set()
+};
+const imgNotify = () => {
+  IMG.gen++;
+  IMG.subs.forEach(f => f());
 };
 function idbOpen() {
   if (!IMG.p) {
@@ -536,6 +545,15 @@ function useImgSrc(v, thumb = false) {
   const id = isIdb(v) ? v.slice(4) : null;
   const cached = id ? IMG.urls.get(thumb ? `${id}.t` : id) : null;
   const [got, setGot] = useState(null);
+  const [gen, setGen] = useState(IMG.gen);
+  useEffect(() => {
+    if (!id) return undefined;
+    const f = () => setGen(IMG.gen);
+    IMG.subs.add(f);
+    return () => {
+      IMG.subs.delete(f);
+    };
+  }, [id]);
   useEffect(() => {
     if (!id || cached) return undefined;
     let live = true;
@@ -548,7 +566,7 @@ function useImgSrc(v, thumb = false) {
     return () => {
       live = false;
     };
-  }, [v, thumb]);
+  }, [v, thumb, gen]);
   if (!id) return v || '';
   return cached || (got && got.v === v ? got.u : '');
 }
@@ -1333,6 +1351,638 @@ async function cloudPull(c) {
   } catch (e) {
     return null;
   }
+}
+const SYNC_KEY = `${LS_KEY}.sync`;
+const SYNC_OK = !BETA && typeof window !== 'undefined' && !window.claude && !!(window.crypto && window.crypto.subtle);
+const SYNC_LISTS = [['sections'], ['missions'], ['shards'], ['tags'], ['cards'], ['timers'], ['focus', 'sessions'], ['focus', 'inbox']];
+const SYNC_FIELDS = {
+  focus: ['goals', 'lastMin', 'bg', 'bgDim'],
+  meta: ['retroIgnored', 'since', 'lastBackupAt']
+};
+const SYNC_CHECK = 'cj2077-ok';
+function hash53(str, seed = 0) {
+  let h1 = 0xdeadbeef ^ seed,
+    h2 = 0x41c6ce57 ^ seed;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ h1 >>> 16, 2246822507) ^ Math.imul(h2 ^ h2 >>> 13, 3266489909);
+  h2 = Math.imul(h2 ^ h2 >>> 16, 2246822507) ^ Math.imul(h1 ^ h1 >>> 13, 3266489909);
+  return 4294967296 * (2097151 & h2) + (h1 >>> 0);
+}
+const hstr = v => hash53(JSON.stringify(v === undefined ? null : v)).toString(36);
+const pbId = s => (hash53(s, 1).toString(36).padStart(11, '0') + hash53(s, 7).toString(36).padStart(11, '0')).slice(0, 15);
+function syncRecords(d) {
+  const m = new Map();
+  for (const path of SYNC_LISTS) {
+    const kind = path.join('.'),
+      arr = path.reduce((o, k) => o ? o[k] : undefined, d) || [],
+      ids = [];
+    for (const x of arr) if (x && x.id != null) {
+      m.set(`${kind}:${x.id}`, x);
+      ids.push(x.id);
+    }
+    m.set(`order:${kind}`, ids);
+  }
+  for (const [k, v] of Object.entries(d.ratings || {})) m.set(`ratings:${k}`, v);
+  for (const [k, v] of Object.entries(d.settings || {})) m.set(`settings:${k}`, v);
+  for (const [o, ks] of Object.entries(SYNC_FIELDS)) for (const k of ks) if (d[o] && d[o][k] !== undefined) m.set(`${o}:${k}`, d[o][k]);
+  return m;
+}
+function syncBuild(m, base) {
+  const d = {
+    ...base,
+    focus: {
+      ...base.focus
+    },
+    meta: {
+      ...base.meta
+    },
+    ratings: {},
+    settings: {}
+  };
+  const by = {};
+  for (const [key, v] of m) {
+    const i = key.indexOf(':'),
+      kind = key.slice(0, i),
+      id = key.slice(i + 1);
+    if (kind === 'order') continue;
+    if (kind === 'ratings') d.ratings[id] = v;else if (kind === 'settings') d.settings[id] = v;else if (SYNC_FIELDS[kind]) d[kind][id] = v;else (by[kind] || (by[kind] = new Map())).set(id, v);
+  }
+  for (const path of SYNC_LISTS) {
+    const kind = path.join('.'),
+      items = by[kind] || new Map(),
+      out = [],
+      seen = new Set();
+    for (const raw of m.get(`order:${kind}`) || []) {
+      const id = String(raw);
+      if (items.has(id) && !seen.has(id)) {
+        out.push(items.get(id));
+        seen.add(id);
+      }
+    }
+    for (const [id, v] of items) if (!seen.has(id)) out.push(v);
+    if (path.length === 1) d[path[0]] = out;else d[path[0]][path[1]] = out;
+  }
+  return d;
+}
+const b64e = u8 => {
+  let s = '';
+  for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
+  return btoa(s);
+};
+const b64d = s => {
+  const b = atob(s),
+    u = new Uint8Array(b.length);
+  for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i);
+  return u;
+};
+const utf8 = s => new TextEncoder().encode(s);
+async function syncDeriveKey(phrase, salt) {
+  const base = await crypto.subtle.importKey('raw', utf8(phrase), 'PBKDF2', false, ['deriveBits']);
+  return b64e(new Uint8Array(await crypto.subtle.deriveBits({
+    name: 'PBKDF2',
+    salt: utf8(`cj2077:${salt}`),
+    iterations: 310000,
+    hash: 'SHA-256'
+  }, base, 256)));
+}
+const SK = {
+  raw: '',
+  key: null,
+  ids: ''
+};
+async function syncKey(raw) {
+  if (SK.raw !== raw || !SK.key) {
+    SK.key = await crypto.subtle.importKey('raw', b64d(raw), 'AES-GCM', false, ['encrypt', 'decrypt']);
+    SK.ids = b64e(new Uint8Array(await crypto.subtle.digest('SHA-256', utf8(`ids:${raw}`))));
+    SK.raw = raw;
+  }
+  return SK.key;
+}
+async function encBytes(key, u8) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({
+    name: 'AES-GCM',
+    iv
+  }, key, u8));
+  const out = new Uint8Array(12 + ct.length);
+  out.set(iv);
+  out.set(ct, 12);
+  return out;
+}
+const decBytes = async (key, u8) => new Uint8Array(await crypto.subtle.decrypt({
+  name: 'AES-GCM',
+  iv: u8.subarray(0, 12)
+}, key, u8.subarray(12)));
+const encText = async (key, s) => b64e(await encBytes(key, utf8(s)));
+const decText = async (key, s) => new TextDecoder().decode(await decBytes(key, b64d(s)));
+const syncId = k => pbId(`${SK.ids}|${k}`);
+const SYNC = {
+  st: null,
+  app: null,
+  busy: false,
+  again: false,
+  timer: null,
+  retry: null,
+  es: null,
+  status: 'off',
+  err: '',
+  fail: 0,
+  subs: new Set(),
+  filesBusy: false,
+  miss: {},
+  ftok: '',
+  ftokAt: 0
+};
+function syncLoad() {
+  try {
+    const s = JSON.parse(localStorage.getItem(SYNC_KEY));
+    return s && s.url && s.uid ? s : null;
+  } catch (e) {
+    return null;
+  }
+}
+function syncSave() {
+  try {
+    if (SYNC.st) localStorage.setItem(SYNC_KEY, JSON.stringify(SYNC.st));else localStorage.removeItem(SYNC_KEY);
+  } catch (e) {}
+}
+if (SYNC_OK) SYNC.st = syncLoad();
+const syncOn = () => !!(SYNC.st && SYNC.st.token);
+function syncEmit(status, err) {
+  if (status) SYNC.status = status;
+  if (err !== undefined) SYNC.err = err;
+  SYNC.subs.forEach(f => f());
+}
+function useSync() {
+  const [, force] = useState(0);
+  useEffect(() => {
+    const f = () => force(x => x + 1);
+    SYNC.subs.add(f);
+    return () => {
+      SYNC.subs.delete(f);
+    };
+  }, []);
+  const st = SYNC.st;
+  return {
+    ok: SYNC_OK,
+    on: syncOn(),
+    st,
+    status: SYNC.status,
+    err: SYNC.err,
+    pending: st ? Object.keys(st.dirty || {}).length : 0
+  };
+}
+async function pbFetch(path, opts = {}, st = SYNC.st) {
+  const json = opts.body && !(opts.body instanceof FormData);
+  const r = await fetch(st.url + path, {
+    ...opts,
+    headers: {
+      ...(json ? {
+        'Content-Type': 'application/json'
+      } : {}),
+      ...(st.token ? {
+        Authorization: st.token
+      } : {})
+    }
+  });
+  if (r.status === 401) {
+    const e = new Error('auth');
+    e.auth = true;
+    throw e;
+  }
+  return r;
+}
+function syncTrack(d, ts) {
+  const st = SYNC.st;
+  if (!st || !st.token) return false;
+  const recs = syncRecords(d),
+    now = ts || Date.now();
+  let n = 0;
+  for (const [k, v] of recs) {
+    const h = hstr(v);
+    if (st.local[k] !== h) {
+      st.local[k] = h;
+      st.dirty[k] = now;
+      n++;
+    }
+  }
+  for (const k of Object.keys(st.local)) if (!recs.has(k)) {
+    delete st.local[k];
+    st.dirty[k] = now;
+    n++;
+  }
+  if (n) syncSave();
+  return n > 0;
+}
+function syncMerge(cur, changes, replace) {
+  const st = SYNC.st;
+  if (!replace) syncTrack(cur);
+  const base = replace ? {
+    ...cur,
+    sections: [],
+    missions: [],
+    shards: [],
+    tags: [],
+    cards: [],
+    timers: [],
+    ratings: {},
+    focus: {
+      ...cur.focus,
+      sessions: [],
+      inbox: []
+    }
+  } : cur;
+  const m = syncRecords(base),
+    applied = [];
+  for (const p of changes) {
+    const k = p.k;
+    if (!replace) {
+      if ((st.dirty[k] || 0) >= p.t) continue;
+      if (p.x ? !(k in st.local) : st.local[k] === hstr(p.v)) {
+        delete st.dirty[k];
+        continue;
+      }
+    }
+    if (p.x) m.delete(k);else m.set(k, p.v);
+    delete st.dirty[k];
+    applied.push(k);
+  }
+  if (!applied.length && !replace) {
+    syncSave();
+    return {
+      n: 0
+    };
+  }
+  const d = normalize(syncBuild(m, base)),
+    recs = syncRecords(d);
+  for (const k of applied) {
+    if (recs.has(k)) st.local[k] = hstr(recs.get(k));else delete st.local[k];
+  }
+  syncSave();
+  return {
+    n: applied.length,
+    d
+  };
+}
+const pbDate = ms => new Date(ms).toISOString().replace('T', ' ');
+async function syncFetch(st, cursor) {
+  const key = await syncKey(st.key),
+    from = cursor ? cursor - 5000 : 0,
+    changes = [];
+  let max = cursor || 0;
+  for (let page = 1;; page++) {
+    const q = new URLSearchParams({
+      page,
+      perPage: 500,
+      sort: 'updated,id',
+      skipTotal: 1,
+      fields: 'id,d,updated'
+    });
+    if (from) q.set('filter', `updated >= "${pbDate(from)}"`);
+    const r = await pbFetch(`/api/collections/cj_items/records?${q}`, {}, st);
+    if (!r.ok) throw new Error(`pull ${r.status}`);
+    const items = (await r.json()).items || [];
+    for (const it of items) {
+      const u = Date.parse(String(it.updated).replace(' ', 'T'));
+      if (u > max) max = u;
+      let p = null;
+      try {
+        p = JSON.parse(await decText(key, it.d));
+      } catch (e) {
+        continue;
+      }
+      if (p && p.k && p.k[0] !== '_') changes.push(p);
+    }
+    if (items.length < 500) break;
+  }
+  return {
+    changes,
+    max
+  };
+}
+async function syncPush() {
+  const st = SYNC.st;
+  syncTrack(SYNC.app.get());
+  const keys = Object.keys(st.dirty);
+  if (!keys.length) return;
+  const key = await syncKey(st.key),
+    recs = syncRecords(SYNC.app.get());
+  for (let i = 0; i < keys.length; i += 50) {
+    const sent = keys.slice(i, i + 50).map(k => ({
+      k,
+      t: st.dirty[k]
+    }));
+    const requests = await Promise.all(sent.map(async ({
+      k,
+      t
+    }) => ({
+      method: 'PUT',
+      url: '/api/collections/cj_items/records',
+      body: {
+        id: syncId(k),
+        user: st.uid,
+        d: await encText(key, JSON.stringify(recs.has(k) ? {
+          k,
+          t,
+          v: recs.get(k)
+        } : {
+          k,
+          t,
+          x: 1
+        }))
+      }
+    })));
+    const r = await pbFetch('/api/batch', {
+      method: 'POST',
+      body: JSON.stringify({
+        requests
+      })
+    });
+    if (!r.ok) throw new Error(`push ${r.status}`);
+    for (const {
+      k,
+      t
+    } of sent) if (st.dirty[k] === t) delete st.dirty[k];
+    syncSave();
+  }
+}
+async function syncFiles() {
+  if (SYNC.filesBusy || !syncOn()) return;
+  SYNC.filesBusy = true;
+  let got = 0;
+  try {
+    const st = SYNC.st,
+      key = await syncKey(st.key);
+    const ids = [...new Set(listImages(SYNC.app.get()).filter(isIdb).map(v => v.slice(4)))];
+    for (const id of ids) {
+      if (!syncOn()) break;
+      const blob = await imgGet(id),
+        rid = syncId(`file:${id}`);
+      if (blob) {
+        if (st.files[id]) continue;
+        const type = utf8(blob.type || 'image/webp'),
+          body = new Uint8Array(await blob.arrayBuffer());
+        const plain = new Uint8Array(1 + type.length + body.length);
+        plain[0] = type.length;
+        plain.set(type, 1);
+        plain.set(body, 1 + type.length);
+        const fd = new FormData();
+        fd.append('id', rid);
+        fd.append('user', st.uid);
+        fd.append('file', new Blob([await encBytes(key, plain)]), 'img.bin');
+        const r = await pbFetch('/api/collections/cj_files/records', {
+          method: 'POST',
+          body: fd
+        });
+        if (!r.ok && r.status !== 400) throw new Error(`file ${r.status}`);
+        st.files[id] = 1;
+        syncSave();
+      } else if (!SYNC.miss[id] || Date.now() - SYNC.miss[id] > 10 * 60e3) {
+        const r = await pbFetch(`/api/collections/cj_files/records/${rid}?fields=id,file`);
+        if (r.status === 404) {
+          SYNC.miss[id] = Date.now();
+          continue;
+        }
+        if (!r.ok) throw new Error(`file ${r.status}`);
+        const rec = await r.json();
+        if (Date.now() - SYNC.ftokAt > 60e3) {
+          const t = await pbFetch('/api/files/token', {
+            method: 'POST'
+          });
+          SYNC.ftok = (await t.json()).token;
+          SYNC.ftokAt = Date.now();
+        }
+        const f = await fetch(`${st.url}/api/files/cj_files/${rid}/${encodeURIComponent(rec.file)}?token=${encodeURIComponent(SYNC.ftok)}`);
+        if (!f.ok) {
+          SYNC.miss[id] = Date.now();
+          continue;
+        }
+        const plain = await decBytes(key, new Uint8Array(await f.arrayBuffer()));
+        const n = plain[0],
+          b = new Blob([plain.subarray(1 + n)], {
+            type: new TextDecoder().decode(plain.subarray(1, 1 + n))
+          });
+        let thumb = null;
+        try {
+          thumb = await makeThumb(await loadImage(b));
+        } catch (e) {}
+        await imgPut([[id, b], [`${id}.t`, thumb]]);
+        st.files[id] = 1;
+        syncSave();
+        got++;
+      }
+    }
+  } catch (e) {}
+  SYNC.filesBusy = false;
+  if (got) imgNotify();
+}
+async function syncRun() {
+  if (!syncOn() || !SYNC.app) return;
+  if (SYNC.busy) {
+    SYNC.again = true;
+    return;
+  }
+  if (navigator.onLine === false) {
+    syncEmit('offline', '');
+    return;
+  }
+  SYNC.busy = true;
+  syncEmit('busy');
+  try {
+    do {
+      SYNC.again = false;
+      const {
+        changes,
+        max
+      } = await syncFetch(SYNC.st, SYNC.st.cursor);
+      if (changes.length) SYNC.app.apply(changes);
+      SYNC.st.cursor = max;
+      syncSave();
+      await syncPush();
+    } while (SYNC.again);
+    SYNC.st.last = new Date().toISOString();
+    syncSave();
+    SYNC.fail = 0;
+    syncEmit('idle', '');
+    syncFiles();
+  } catch (e) {
+    if (e && e.auth) {
+      SYNC.st.token = '';
+      syncSave();
+      syncStop();
+      syncEmit('auth', 'Вход истёк — войди заново');
+    } else {
+      SYNC.fail++;
+      syncEmit('error', navigator.onLine === false ? 'Нет сети' : 'Сервер недоступен');
+      clearTimeout(SYNC.retry);
+      SYNC.retry = setTimeout(syncRun, Math.min(300e3, 5e3 * 2 ** SYNC.fail));
+    }
+  }
+  SYNC.busy = false;
+}
+function syncSoon(ms = 1500) {
+  clearTimeout(SYNC.timer);
+  SYNC.timer = setTimeout(syncRun, ms);
+}
+function syncLive() {
+  syncStop();
+  if (!syncOn() || typeof EventSource === 'undefined') return;
+  const es = new EventSource(`${SYNC.st.url}/api/realtime`);
+  SYNC.es = es;
+  es.addEventListener('PB_CONNECT', async e => {
+    try {
+      const {
+        clientId
+      } = JSON.parse(e.data);
+      await pbFetch('/api/realtime', {
+        method: 'POST',
+        body: JSON.stringify({
+          clientId,
+          subscriptions: ['cj_items/*']
+        })
+      });
+      syncSoon(300);
+    } catch (err) {}
+  });
+  es.addEventListener('cj_items/*', () => syncSoon(400));
+}
+function syncStop() {
+  if (SYNC.es) {
+    SYNC.es.close();
+    SYNC.es = null;
+  }
+}
+async function syncRefresh() {
+  const st = SYNC.st;
+  if (!syncOn() || Date.now() - (st.tokenAt || 0) < 864e5) return;
+  try {
+    const r = await pbFetch('/api/collections/users/auth-refresh', {
+      method: 'POST'
+    });
+    if (r.ok) {
+      st.token = (await r.json()).token;
+      st.tokenAt = Date.now();
+      syncSave();
+    }
+  } catch (e) {
+    if (e && e.auth) {
+      st.token = '';
+      syncSave();
+      syncStop();
+      syncEmit('auth', 'Вход истёк — войди заново');
+    }
+  }
+}
+async function syncLogin({
+  url,
+  email,
+  password,
+  phrase
+}) {
+  let u = String(url || '').trim().replace(/\/+$/, '');
+  if (!/^https?:\/\//i.test(u)) u = `https://${u}`;
+  let r;
+  try {
+    r = await fetch(`${u}/api/collections/users/auth-with-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        identity: String(email).trim(),
+        password
+      })
+    });
+  } catch (e) {
+    throw new Error('Сервер не отвечает. Проверь адрес и интернет');
+  }
+  if (r.status === 400) throw new Error('Неверный email или пароль');
+  if (!r.ok) throw new Error(`Сервер ответил ошибкой ${r.status}`);
+  const j = await r.json(),
+    uid = j.record.id;
+  const raw = await syncDeriveKey(String(phrase), uid);
+  const prev = SYNC.st;
+  const same = !!(prev && prev.uid === uid && prev.url === u && prev.key === raw);
+  const st = same ? {
+    ...prev,
+    token: j.token,
+    tokenAt: Date.now()
+  } : {
+    url: u,
+    email: j.record.email || String(email).trim(),
+    uid,
+    key: raw,
+    token: j.token,
+    tokenAt: Date.now(),
+    cursor: 0,
+    local: {},
+    dirty: {},
+    files: {},
+    last: ''
+  };
+  const key = await syncKey(raw),
+    cid = pbId(`${uid}|_check`);
+  const c = await pbFetch(`/api/collections/cj_items/records/${cid}`, {}, st);
+  if (c.ok) {
+    let good = false;
+    try {
+      good = (await decText(key, (await c.json()).d)) === SYNC_CHECK;
+    } catch (e) {}
+    if (!good) throw new Error('Неверная фраза шифрования. Она должна совпадать на всех устройствах');
+    return {
+      st,
+      empty: false,
+      same
+    };
+  }
+  if (c.status !== 404) throw new Error(`Сервер ответил ошибкой ${c.status}`);
+  const w = await pbFetch('/api/collections/cj_items/records', {
+    method: 'POST',
+    body: JSON.stringify({
+      id: cid,
+      user: uid,
+      d: await encText(key, SYNC_CHECK)
+    })
+  }, st);
+  if (!w.ok) throw new Error(`Сервер ответил ошибкой ${w.status}`);
+  return {
+    st,
+    empty: true,
+    same
+  };
+}
+async function syncStart(st, mode) {
+  if (mode !== 'resume') {
+    st.local = {};
+    st.dirty = {};
+    st.files = {};
+    st.cursor = 0;
+  }
+  const got = mode === 'replace' ? await syncFetch(st, 0) : null;
+  syncStop();
+  SYNC.st = st;
+  if (mode === 'push') syncTrack(SYNC.app.get());
+  if (mode === 'merge') syncTrack(SYNC.app.get(), 1);
+  if (got) {
+    SYNC.app.apply(got.changes, true);
+    st.cursor = got.max;
+  }
+  syncSave();
+  syncEmit('idle', '');
+  syncLive();
+  syncRun();
+}
+function syncLogout() {
+  syncStop();
+  clearTimeout(SYNC.timer);
+  clearTimeout(SYNC.retry);
+  SYNC.st = null;
+  syncSave();
+  syncEmit('off', '');
 }
 const CSS = `
 .cj-root{font-family:'Rajdhani','Exo 2',system-ui,sans-serif;color:#ECE6E9;background:radial-gradient(130% 70% at 50% -10%,var(--bg1) 0%,var(--bg2) 75%);-webkit-tap-highlight-color:transparent;-webkit-font-smoothing:antialiased;height:100%;overflow:hidden;position:relative;}
@@ -8746,6 +9396,191 @@ function SetBlock({
 const THR_OPTIONS = Array.from({
   length: 41
 }, (_, i) => round1(1 + i * 0.1));
+function SyncLoginModal({
+  onClose
+}) {
+  const {
+    ask,
+    toast
+  } = useApp();
+  const prev = SYNC.st;
+  const [f, setF] = useState({
+    url: prev ? prev.url : '',
+    email: prev ? prev.email : '',
+    password: '',
+    phrase: ''
+  });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const set = p => setF(x => ({
+    ...x,
+    ...p
+  }));
+  const ready = f.url.trim() && f.email.trim() && f.password && f.phrase.length >= 8;
+  const go = async () => {
+    if (!ready || busy) return;
+    setBusy(true);
+    setErr('');
+    try {
+      const res = await syncLogin(f);
+      let mode = res.same ? 'resume' : res.empty ? 'push' : null;
+      if (!mode) {
+        const ans = await ask({
+          title: 'На сервере уже есть данные',
+          code: 'SYNC // FIRST.LINK',
+          text: 'Это устройство подключается к аккаунту впервые.\n\n«Взять с сервера» — данные этого устройства заменятся серверными. Подходит для нового устройства.\n\n«Объединить» — сольются записи с обеих сторон, при совпадении останется версия с сервера.',
+          ok: 'Взять с сервера',
+          extra: 'Объединить'
+        });
+        if (ans === true) mode = 'replace';else if (ans === 'extra') mode = 'merge';else {
+          setBusy(false);
+          return;
+        }
+      }
+      await syncStart(res.st, mode);
+      sfx('save');
+      toast(mode === 'replace' ? 'Данные загружены с сервера' : 'Синхронизация включена');
+      onClose();
+    } catch (e) {
+      sfx('error');
+      setErr(e && e.message && /[а-я]/i.test(e.message) ? e.message : 'Не удалось подключиться к серверу');
+      setBusy(false);
+    }
+  };
+  return React.createElement(Modal, {
+    onClose: busy ? null : onClose,
+    title: "\u041F\u043E\u0434\u043A\u043B\u044E\u0447\u0438\u0442\u044C \u0441\u0435\u0440\u0432\u0435\u0440",
+    code: "SYNC // LINK.DEVICE",
+    footer: React.createElement(Btn, {
+      className: "w-full",
+      icon: KeyRound,
+      disabled: !ready || busy,
+      onClick: go,
+      snd: "none"
+    }, busy ? 'Подключение…' : 'Войти')
+  }, React.createElement(Field, {
+    label: "\u0410\u0434\u0440\u0435\u0441 \u0441\u0435\u0440\u0432\u0435\u0440\u0430"
+  }, React.createElement("input", {
+    className: "inp",
+    inputMode: "url",
+    autoCapitalize: "off",
+    autoCorrect: "off",
+    spellCheck: false,
+    placeholder: "https://1-2-3-4.sslip.io",
+    value: f.url,
+    onChange: e => set({
+      url: e.target.value
+    })
+  })), React.createElement(Field, {
+    label: "Email"
+  }, React.createElement("input", {
+    className: "inp",
+    type: "email",
+    name: "email",
+    autoComplete: "username",
+    autoCapitalize: "off",
+    value: f.email,
+    onChange: e => set({
+      email: e.target.value
+    })
+  })), React.createElement(Field, {
+    label: "\u041F\u0430\u0440\u043E\u043B\u044C"
+  }, React.createElement("input", {
+    className: "inp",
+    type: "password",
+    name: "password",
+    autoComplete: "current-password",
+    value: f.password,
+    onChange: e => set({
+      password: e.target.value
+    })
+  })), React.createElement(Field, {
+    label: "\u0424\u0440\u0430\u0437\u0430 \u0448\u0438\u0444\u0440\u043E\u0432\u0430\u043D\u0438\u044F"
+  }, React.createElement("input", {
+    className: "inp",
+    autoComplete: "off",
+    autoCapitalize: "off",
+    autoCorrect: "off",
+    spellCheck: false,
+    value: f.phrase,
+    onChange: e => set({
+      phrase: e.target.value
+    }),
+    onKeyDown: e => {
+      if (e.key === 'Enter') go();
+    }
+  }), React.createElement("div", {
+    className: "text-[12px] text-white/45 f-read mt-1.5 leading-snug"
+  }, "\u041D\u0435 \u043A\u043E\u0440\u043E\u0447\u0435 8 \u0441\u0438\u043C\u0432\u043E\u043B\u043E\u0432, \u043E\u0434\u043D\u0430 \u0438 \u0442\u0430 \u0436\u0435 \u043D\u0430 \u0432\u0441\u0435\u0445 \u0443\u0441\u0442\u0440\u043E\u0439\u0441\u0442\u0432\u0430\u0445. \u0415\u0439 \u0448\u0438\u0444\u0440\u0443\u044E\u0442\u0441\u044F \u0432\u0441\u0435 \u0434\u0430\u043D\u043D\u044B\u0435 \u043D\u0430 \u0441\u0435\u0440\u0432\u0435\u0440\u0435. \u0417\u0430\u043F\u0438\u0448\u0438 \u0435\u0451: \u0435\u0441\u043B\u0438 \u0437\u0430\u0431\u044B\u0442\u044C, \u043A\u043E\u043F\u0438\u044E \u043D\u0430 \u0441\u0435\u0440\u0432\u0435\u0440\u0435 \u043D\u0435 \u043F\u0440\u043E\u0447\u0438\u0442\u0430\u0442\u044C (\u0434\u0430\u043D\u043D\u044B\u0435 \u043D\u0430 \u0443\u0441\u0442\u0440\u043E\u0439\u0441\u0442\u0432\u0430\u0445 \u043E\u0441\u0442\u0430\u043D\u0443\u0442\u0441\u044F).")), err && React.createElement("div", {
+    className: "text-[13px] f-read leading-snug",
+    style: {
+      color: '#FF4D4D'
+    }
+  }, err));
+}
+function SyncBlock({
+  n
+}) {
+  const {
+    ask,
+    toast
+  } = useApp();
+  const s = useSync();
+  const [login, setLogin] = useState(false);
+  if (!s.ok) return null;
+  const st = s.st;
+  const bad = s.status === 'error' || s.status === 'auth' || st && !s.on;
+  const color = !st ? 'rgba(255,255,255,.5)' : bad ? 'var(--warn)' : '#59FF00';
+  const state = !st ? 'ВЫКЛЮЧЕНА' : !s.on ? 'НУЖЕН ВХОД' : s.status === 'busy' ? 'ОБМЕН ДАННЫМИ…' : s.status === 'error' ? 'ОШИБКА' : s.status === 'offline' ? 'ЖДЁТ СЕТИ' : 'ВКЛЮЧЕНА';
+  const logout = async () => {
+    const ok = await ask({
+      title: 'Отключить синхронизацию?',
+      code: 'SYNC // UNLINK',
+      text: `Данные на этом устройстве останутся, но перестанут обмениваться с сервером.${s.pending ? `\n\nНе отправлено изменений: ${s.pending}. Они останутся только здесь.` : ''}`,
+      ok: 'Отключить',
+      danger: !!s.pending
+    });
+    if (ok === true) {
+      syncLogout();
+      toast('Синхронизация отключена');
+    }
+  };
+  return React.createElement(React.Fragment, null, React.createElement(SetBlock, {
+    n: n,
+    title: "\u0421\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u044F \u0443\u0441\u0442\u0440\u043E\u0439\u0441\u0442\u0432",
+    icon: RefreshCw
+  }, React.createElement("div", {
+    className: "f-mono text-[11px] tracking-wider mb-1",
+    style: {
+      color
+    }
+  }, "\u25CF \u0421\u0418\u041D\u0425\u0420\u041E\u041D\u0418\u0417\u0410\u0426\u0418\u042F: ", state), st && React.createElement("div", {
+    className: "f-mono text-[11px] tracking-wider mb-1 text-white/55 break-all"
+  }, "\u25CF ", st.email, " \xB7 ", st.url.replace(/^https?:\/\//, '')), s.on && React.createElement("div", {
+    className: "f-mono text-[11px] tracking-wider mb-1 text-white/55"
+  }, "\u25CF \u041F\u041E\u0421\u041B\u0415\u0414\u041D\u0418\u0419 \u041E\u0411\u041C\u0415\u041D: ", st.last ? fmtDT(st.last) : '—', s.pending ? ` · В ОЧЕРЕДИ: ${s.pending}` : ''), s.err && React.createElement("div", {
+    className: "text-[12.5px] f-read mb-1",
+    style: {
+      color: 'var(--warn)'
+    }
+  }, s.err), React.createElement("div", {
+    className: "text-[12px] text-white/45 f-read mt-2 mb-3 leading-snug"
+  }, st ? 'Миссии, дневник, оценки, фокус, таймеры, настройки и фото одинаковые на всех подключённых устройствах. На сервере всё зашифровано твоей фразой. Без сети приложение работает как обычно и догонит изменения позже.' : 'Подключи свой сервер, чтобы данные были одинаковыми на телефоне и компьютере. Все записи шифруются фразой, которую знаешь только ты.'), React.createElement("div", {
+    className: "grid gap-2"
+  }, s.on ? React.createElement(Btn, {
+    icon: RefreshCw,
+    onClick: () => syncSoon(0)
+  }, "\u0421\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0438\u0440\u043E\u0432\u0430\u0442\u044C \u0441\u0435\u0439\u0447\u0430\u0441") : React.createElement(Btn, {
+    icon: KeyRound,
+    onClick: () => setLogin(true)
+  }, st ? 'Войти заново' : 'Подключить сервер'), st && React.createElement(Btn, {
+    variant: "dark",
+    icon: LogOut,
+    onClick: logout
+  }, "\u041E\u0442\u043A\u043B\u044E\u0447\u0438\u0442\u044C \u043D\u0430 \u044D\u0442\u043E\u043C \u0443\u0441\u0442\u0440\u043E\u0439\u0441\u0442\u0432\u0435"))), login && React.createElement(SyncLoginModal, {
+    onClose: () => setLogin(false)
+  }));
+}
 function SettingsScreen({
   forceEvening,
   simulateSkip
@@ -8760,6 +9595,8 @@ function SettingsScreen({
     markBackup,
     cloudOn
   } = useApp();
+  const sync = useSync();
+  const syncNote = sync.on ? '\n\nСинхронизация включена: изменение дойдёт до всех устройств.' : '';
   const ops = useDirOps();
   const [avEdit, setAvEdit] = useState(false);
   const [persisted, setPersisted] = useState(null);
@@ -8824,7 +9661,7 @@ function SettingsScreen({
       const ok = await ask({
         title: 'Импорт данных',
         code: 'SYS // RESTORE',
-        text: `Файл: ${f.name}\nМиссий: ${nd.missions.length} · чипов: ${nd.shards.length} · оценённых дней: ${Object.keys(nd.ratings).length} · таймеров: ${nd.timers.length} · фото: ${photos}\n\nТекущие данные будут заменены.`,
+        text: `Файл: ${f.name}\nМиссий: ${nd.missions.length} · чипов: ${nd.shards.length} · оценённых дней: ${Object.keys(nd.ratings).length} · таймеров: ${nd.timers.length} · фото: ${photos}\n\nТекущие данные будут заменены.${syncNote}`,
         ok: 'Восстановить',
         danger: true
       });
@@ -8848,7 +9685,7 @@ function SettingsScreen({
     const ok = await ask({
       title: 'Сбросить до демо?',
       code: 'SYS // RESET.DEMO',
-      text: 'Все миссии, записи, карточки, оценки и таймеры будут заменены примерами со скриншотов. Настройки сохранятся.',
+      text: `Все миссии, записи, карточки, оценки и таймеры будут заменены примерами со скриншотов. Настройки сохранятся.${syncNote}`,
       ok: 'Сбросить',
       danger: true
     });
@@ -8867,7 +9704,7 @@ function SettingsScreen({
     const ok = await ask({
       title: 'Очистить все данные?',
       code: 'SYS // WIPE',
-      text: 'Будут удалены ВСЕ миссии, чипы данных, карточки, оценки и таймеры. Останутся пустые разделы MAIN JOBS / SIDE JOBS / GIGS, базовые теги и настройки.\n\nСовет: сначала сделай экспорт бэкапа.',
+      text: `Будут удалены ВСЕ миссии, чипы данных, карточки, оценки и таймеры. Останутся пустые разделы MAIN JOBS / SIDE JOBS / GIGS, базовые теги и настройки.\n\nСовет: сначала сделай экспорт бэкапа.${syncNote}`,
       ok: 'Стереть всё',
       danger: true
     });
@@ -9339,9 +10176,9 @@ function SettingsScreen({
     style: {
       color: cloudOn ? '#59FF00' : 'rgba(255,255,255,.5)'
     }
-  }, "\u25CF ", cloudOn ? 'ОБЛАЧНАЯ КОПИЯ: ВКЛЮЧЕНА' : 'ХРАНИЛИЩЕ: ТОЛЬКО ЭТОТ БРАУЗЕР'), React.createElement("div", {
+  }, "\u25CF ", cloudOn ? 'ОБЛАЧНАЯ КОПИЯ: ВКЛЮЧЕНА' : sync.on ? 'ХРАНИЛИЩЕ: ЭТОТ БРАУЗЕР + СВОЙ СЕРВЕР' : 'ХРАНИЛИЩЕ: ТОЛЬКО ЭТОТ БРАУЗЕР'), React.createElement("div", {
     className: "text-[12px] text-white/45 f-read mb-3 leading-snug"
-  }, cloudOn ? 'Данные хранятся в этом браузере и в твоём личном разделе Claude: их видишь только ты, они синхронизируются между устройствами.' : 'Данные хранятся только в памяти этого браузера (localStorage). Регулярно делай экспорт, чтобы не потерять записи при очистке браузера.'), persisted !== null && React.createElement("div", {
+  }, cloudOn ? 'Данные хранятся в этом браузере и в твоём личном разделе Claude: их видишь только ты, они синхронизируются между устройствами.' : sync.on ? 'Данные хранятся в этом браузере и в зашифрованном виде на твоём сервере. Экспорт в .json — дополнительная страховка.' : 'Данные хранятся только в памяти этого браузера (localStorage). Регулярно делай экспорт, чтобы не потерять записи при очистке браузера.'), persisted !== null && React.createElement("div", {
     className: "f-mono text-[11px] tracking-wider mb-1",
     style: {
       color: persisted ? '#59FF00' : 'var(--warn)'
@@ -9432,9 +10269,11 @@ function SettingsScreen({
     variant: "dangerGhost",
     icon: Eraser,
     onClick: clearAll
-  }, "\u041E\u0447\u0438\u0441\u0442\u0438\u0442\u044C \u0432\u0441\u0435 \u0434\u0430\u043D\u043D\u044B\u0435"))), React.createElement("div", {
+  }, "\u041E\u0447\u0438\u0441\u0442\u0438\u0442\u044C \u0432\u0441\u0435 \u0434\u0430\u043D\u043D\u044B\u0435"))), React.createElement(SyncBlock, {
+    n: "05"
+  }), React.createElement("div", {
     className: "micro text-center mt-6 mb-2"
-  }, UI.mono ? 'CYBERJOURNAL' : 'CYBER//JOURNAL 2077', " \xB7 v", APP_VERSION, " \xB7 BUILD ", window.CJ_BUILD || 'DEV', " \xB7 ", cloudOn ? 'LOCAL + CLOUD SYNC' : 'LOCAL STORAGE')), avEdit && React.createElement(AvatarEditor, {
+  }, UI.mono ? 'CYBERJOURNAL' : 'CYBER//JOURNAL 2077', " \xB7 v", APP_VERSION, " \xB7 BUILD ", window.CJ_BUILD || 'DEV', " \xB7 ", cloudOn ? 'LOCAL + CLOUD SYNC' : syncOn() ? 'LOCAL + SERVER SYNC' : 'LOCAL STORAGE')), avEdit && React.createElement(AvatarEditor, {
     onClose: () => setAvEdit(false)
   }));
 }
@@ -9725,9 +10564,46 @@ function App() {
         clearTimeout(cloudTimer.current);
         cloudTimer.current = setTimeout(cloudSave, 1200);
       }
+      if (syncTrack(data)) syncSoon();
     }, 250);
     return () => clearTimeout(t);
   }, [data, toast, cloudSave]);
+  useEffect(() => {
+    if (!SYNC_OK) return undefined;
+    SYNC.app = {
+      get: () => dataRef.current,
+      apply: (changes, replace) => {
+        const r = syncMerge(dataRef.current, changes, replace);
+        if (r.d) {
+          dataRef.current = r.d;
+          setData(r.d);
+        }
+        return r.n;
+      }
+    };
+    if (syncOn()) syncRefresh().then(() => {
+      if (syncOn()) {
+        syncLive();
+        syncRun();
+      }
+    });
+    const onVis = () => {
+      if (document.visibilityState === 'visible' && syncOn()) {
+        if (!SYNC.es) syncLive();
+        syncSoon(200);
+      }
+    };
+    const onOnline = () => {
+      if (syncOn()) syncSoon(200);
+    };
+    document.addEventListener('visibilitychange', onVis);
+    window.addEventListener('online', onOnline);
+    return () => {
+      document.removeEventListener('visibilitychange', onVis);
+      window.removeEventListener('online', onOnline);
+      syncStop();
+    };
+  }, []);
   const migrating = useRef(false);
   useEffect(() => {
     if (migrating.current || IMG.broken) return;
@@ -9820,7 +10696,7 @@ function App() {
       }
     }
     const today = dKey(now);
-    if (s.backupDays > 0 && !window.claude && !BETA && d.meta.backupAskedOn !== today && hasContent(d)) {
+    if (s.backupDays > 0 && !window.claude && !BETA && !syncOn() && d.meta.backupAskedOn !== today && hasContent(d)) {
       const last = d.meta.lastBackupAt;
       const age = daysSince(last || d.meta.since);
       if (age >= (last ? s.backupDays : 1)) {

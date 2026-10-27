@@ -1,4 +1,4 @@
-/* CJ_BUILD 20261017-153506 */
+/* CJ_BUILD 20261028-020525 */
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
 const {
   useState,
@@ -65,7 +65,8 @@ const {
   Share2,
   RefreshCw,
   LogOut,
-  KeyRound
+  KeyRound,
+  Eye
 } = LucideReact;
 const BETA = typeof window !== 'undefined' && !!window.CJ_BETA;
 const MAIN_KEY = 'cyberjournal2077.v1';
@@ -332,12 +333,13 @@ const VIBES = {
   uncheck: 12,
   score: 18,
   save: [18, 50, 28],
-  error: [70, 50, 70]
+  error: [70, 50, 70],
+  ping: [90, 70, 90, 70, 90]
 };
 function sfx(kind = 'click') {
   if (kind === 'none') return;
   const ua = navigator.userActivation;
-  if (SFX.vib && (!ua || ua.isActive)) {
+  if (SFX.vib && (!ua || ua.isActive || kind === 'ping' && ua.hasBeenActive)) {
     try {
       if (navigator.vibrate) navigator.vibrate(VIBES[kind] || VIBES.click);
     } catch (e) {}
@@ -392,6 +394,10 @@ function sfx(kind = 'click') {
         case 'score':
           tone(740, 1000, 0.06, 'sine', 0.06);
           break;
+        case 'ping':
+          tone(880, 880, 0.12, 'sine', 0.07);
+          tone(1175, 1175, 0.16, 'sine', 0.07, 0.14);
+          break;
         default:
           tone(1180, 1180, 0.03, 'sine', 0.045);
       }
@@ -424,6 +430,11 @@ function sfx(kind = 'click') {
         break;
       case 'score':
         tone(1100, 1650, 0.05, 'triangle', 0.05);
+        break;
+      case 'ping':
+        tone(1400, 1400, 0.09, 'square', 0.04);
+        tone(1400, 1400, 0.09, 'square', 0.04, 0.16);
+        tone(2100, 2100, 0.12, 'triangle', 0.05, 0.32);
         break;
       default:
         tone(2500, 1400, 0.03, 'square', 0.026);
@@ -733,6 +744,12 @@ const DEFAULT_TAGS = () => [{
   color: '#59FF00'
 }];
 const FOCUS_GOAL = 25;
+const CHECK_EVERY = {
+  '3-5': [3, 5],
+  '5-7': [5, 7],
+  '8-12': [8, 12]
+};
+const CHECK_WINS = [10, 20, 30];
 const emptyFocus = () => ({
   sessions: [],
   inbox: [],
@@ -743,7 +760,34 @@ const emptyFocus = () => ({
   lastMin: 25,
   bg: '',
   bgDim: 'mid',
-  active: null
+  active: null,
+  lastMode: 'timer',
+  checkEvery: '5-7',
+  checkWin: 20
+});
+const emptyPersona = () => ({
+  name: '',
+  traits: []
+});
+const TRAIT_COLORS = ['#FF4655', '#00F0FF', '#FCEE0A', '#59FF00', '#FF7A00', '#B98CF0', '#FF2E8C', '#FFFFFF'];
+const MCCLANE = () => ({
+  name: 'Джон Макклейн',
+  traits: [{
+    id: uid('tr'),
+    name: 'Упорство',
+    color: '#FF4655',
+    maxim: 'Не жду идеальных условий. Делаю следующий шаг, даже когда больно и не хочется.'
+  }, {
+    id: uid('tr'),
+    name: 'Чувство юмора',
+    color: '#FCEE0A',
+    maxim: 'Когда всё идёт наперекосяк — улыбнись. Шутка снимает напряжение и возвращает ясную голову.'
+  }, {
+    id: uid('tr'),
+    name: 'Преданность семье',
+    color: '#59FF00',
+    maxim: 'Всё это ради них. Сначала позвоню близким, потом разберусь с остальным.'
+  }]
 });
 const emptyState = () => ({
   v: 1,
@@ -760,6 +804,7 @@ const emptyState = () => ({
       ...DEFAULT_SETTINGS.thr
     }
   },
+  persona: emptyPersona(),
   focus: emptyFocus(),
   meta: {
     retroIgnored: [],
@@ -777,6 +822,9 @@ function normalizeFocus(f) {
   if (!Array.isArray(out.inbox)) out.inbox = [];
   if (!Array.isArray(out.goals) || !out.goals.length) out.goals = emptyFocus().goals;
   if (typeof out.bg !== 'string') out.bg = '';
+  if (out.lastMode !== 'active') out.lastMode = 'timer';
+  if (!CHECK_EVERY[out.checkEvery]) out.checkEvery = '5-7';
+  if (!CHECK_WINS.includes(out.checkWin)) out.checkWin = 20;
   delete out.level;
   const a = out.active;
   out.active = a && typeof a === 'object' && a.startAt && a.endAt ? {
@@ -813,6 +861,11 @@ function normalize(d) {
   };
   if (!Array.isArray(out.meta.retroIgnored)) out.meta.retroIgnored = [];
   out.focus = normalizeFocus(d && d.focus);
+  const pr = d && d.persona && typeof d.persona === 'object' ? d.persona : {};
+  out.persona = {
+    name: typeof pr.name === 'string' ? pr.name : '',
+    traits: Array.isArray(pr.traits) ? pr.traits.filter(t => t && t.id) : []
+  };
   out.v = 1;
   return out;
 }
@@ -870,7 +923,8 @@ const blankCard = () => ({
     2: '',
     1: ''
   },
-  weight: 1
+  weight: 1,
+  trait: ''
 });
 const blankTimer = () => {
   const n = new Date();
@@ -1402,9 +1456,10 @@ async function cloudPull(c) {
 }
 const SYNC_KEY = `${LS_KEY}.sync`;
 const SYNC_OK = !BETA && typeof window !== 'undefined' && !window.claude && !!(window.crypto && window.crypto.subtle);
-const SYNC_LISTS = [['sections'], ['missions'], ['shards'], ['tags'], ['cards'], ['timers'], ['focus', 'sessions'], ['focus', 'inbox']];
+const SYNC_LISTS = [['sections'], ['missions'], ['shards'], ['tags'], ['cards'], ['timers'], ['focus', 'sessions'], ['focus', 'inbox'], ['persona', 'traits']];
 const SYNC_FIELDS = {
-  focus: ['goals', 'lastMin', 'bg', 'bgDim'],
+  focus: ['goals', 'lastMin', 'bg', 'bgDim', 'lastMode', 'checkEvery', 'checkWin'],
+  persona: ['name'],
   meta: ['retroIgnored', 'since', 'lastBackupAt']
 };
 const SYNC_CHECK = 'cj2077-ok';
@@ -1444,6 +1499,9 @@ function syncBuild(m, base) {
     ...base,
     focus: {
       ...base.focus
+    },
+    persona: {
+      ...base.persona
     },
     meta: {
       ...base.meta
@@ -2275,6 +2333,13 @@ body.cj-dragging,body.cj-dragging *{cursor:grabbing !important;}
 .f-alert{--cut:10px;background:rgba(255,42,42,.14);box-shadow:inset 0 0 0 1px #FF2A2A,0 0 24px rgba(255,42,42,.35);color:#FF5A5A;animation:dlgin .25s ease-out;}
 .f-chip{--cut:7px;padding:8px 12px;font-weight:700;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--alt);box-shadow:inset 0 0 0 1px rgba(var(--alt-rgb),.55);background:rgba(var(--alt-rgb),.06);}
 .f-chip:active{filter:brightness(1.4);}
+/* значок проверки внимания: кольцо убывает за время на ответ */
+.f-check{width:100px;height:100px;margin:-50px 0 0 -50px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--warn);background:linear-gradient(rgba(var(--warn-rgb),.16),rgba(var(--warn-rgb),.16)),var(--bg2);box-shadow:0 0 0 1px rgba(var(--warn-rgb),.6),0 0 30px rgba(var(--warn-rgb),.45);animation:fchkin .3s ease-out,fchkp 1.2s ease-in-out .3s infinite;touch-action:manipulation;}
+.f-check:active{filter:brightness(1.4);}
+.f-check-t{stroke-dashoffset:0;animation-name:fchkt;animation-timing-function:linear;animation-fill-mode:both;}
+@keyframes fchkt{to{stroke-dashoffset:289;}}
+@keyframes fchkin{from{transform:scale(.4);opacity:0;}to{transform:scale(1);opacity:1;}}
+@keyframes fchkp{50%{box-shadow:0 0 0 1px rgba(var(--warn-rgb),.9),0 0 46px rgba(var(--warn-rgb),.7);}}
 .f-range{-webkit-appearance:none;appearance:none;height:30px;background:transparent;cursor:pointer;touch-action:pan-y;}
 .f-range:focus{outline:none;}
 .f-range::-webkit-slider-runnable-track{height:4px;background:linear-gradient(90deg,var(--alt) 0 var(--p),rgba(255,255,255,.12) var(--p) 100%);box-shadow:0 0 8px rgba(var(--alt-rgb),.35);}
@@ -2408,6 +2473,7 @@ const MONO_CSS = `
 .ui-mono .f-range::-webkit-slider-runnable-track{height:6px;border-radius:3px;box-shadow:none;background:linear-gradient(90deg,var(--alt) 0 var(--p),#2C2C2E var(--p) 100%);}
 .ui-mono .f-range::-webkit-slider-thumb{width:26px;height:26px;margin-top:-10px;border:0;border-radius:50%;transform:none;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.5);}
 .ui-mono .f-range::-moz-range-thumb{width:26px;height:26px;border:0;border-radius:50%;transform:none;background:#fff;}
+.ui-mono .f-check{background:var(--warn);color:#000;box-shadow:0 8px 30px rgba(var(--warn-rgb),.45);animation:fchkin .3s ease-out;}
 .ui-mono .f-chip{border-radius:999px;box-shadow:none;background:#1C1C1E;color:#F2F2F7;text-transform:none;letter-spacing:0;font-weight:600;font-size:14px;}
 `;
 const AppCtx = createContext(null);
@@ -7751,6 +7817,7 @@ function CardEditor({
     ...p
   }));
   const isNew = !data.cards.some(x => x.id === c.id);
+  const traits = data.persona.traits;
   const order = data.settings.weekStart === 1 ? [0, 1, 2, 3, 4, 5, 6] : [6, 0, 1, 2, 3, 4, 5];
   const toggleDay = d => set({
     days: c.days.includes(d) ? c.days.filter(x => x !== d) : [...c.days, d].sort((a, b) => a - b)
@@ -7985,7 +8052,40 @@ function CardEditor({
     }))
   }), React.createElement("div", {
     className: "text-[12px] text-white/50 f-read leading-snug mt-2"
-  }, WEIGHT_HINT[cardW(c)])), React.createElement(Field, {
+  }, WEIGHT_HINT[cardW(c)])), traits.length > 0 && React.createElement(Field, {
+    label: `Черта персоны${data.persona.name ? ` · ${data.persona.name}` : ''}`
+  }, React.createElement("div", {
+    className: "flex flex-wrap gap-2"
+  }, React.createElement("button", {
+    type: "button",
+    onClick: () => {
+      sfx();
+      set({
+        trait: ''
+      });
+    },
+    className: `tag cut ${!c.trait ? 'on' : ''}`,
+    style: {
+      '--tc': '#8E8E93',
+      '--cut': '6px'
+    }
+  }, "\u0411\u0415\u0417 \u0427\u0415\u0420\u0422\u042B"), traits.map(t => React.createElement("button", {
+    key: t.id,
+    type: "button",
+    onClick: () => {
+      sfx();
+      set({
+        trait: t.id
+      });
+    },
+    className: `tag cut ${c.trait === t.id ? 'on' : ''}`,
+    style: {
+      '--tc': t.color || '#fff',
+      '--cut': '6px'
+    }
+  }, nice(t.name.toUpperCase())))), React.createElement("div", {
+    className: "text-[12px] text-white/50 f-read leading-snug mt-2"
+  }, "\u041E\u0446\u0435\u043D\u043A\u0438 \u044D\u0442\u043E\u0439 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438 \u0438\u0434\u0443\u0442 \u0432 \u043F\u0440\u043E\u0433\u0440\u0435\u0441\u0441 \u0432\u044B\u0431\u0440\u0430\u043D\u043D\u043E\u0439 \u0447\u0435\u0440\u0442\u044B \u043D\u0430 \u044D\u043A\u0440\u0430\u043D\u0435 \xAB\u041F\u0435\u0440\u0441\u043E\u043D\u0430\xBB.")), React.createElement(Field, {
     label: "\u0422\u0430\u0431\u043B\u0438\u0446\u0430 \u043A\u0440\u0438\u0442\u0435\u0440\u0438\u0435\u0432 (5 \u2192 1)"
   }, [5, 4, 3, 2, 1].map(n => React.createElement("div", {
     key: n,
@@ -8122,6 +8222,311 @@ function CardCatalog({
     onClose: () => setEdit(null)
   }));
 }
+const TRAIT_WEEKS = 4;
+function traitStats(data, endKey) {
+  const byCard = {};
+  data.cards.forEach(c => {
+    if (c.trait) byCard[c.id] = c.trait;
+  });
+  const end = parseKey(endKey),
+    acc = {};
+  data.persona.traits.forEach(t => {
+    acc[t.id] = Array.from({
+      length: TRAIT_WEEKS
+    }, () => []);
+  });
+  for (const [k, r] of Object.entries(data.ratings)) {
+    const diff = Math.round((end - parseKey(k)) / 86400000);
+    if (diff < 0 || diff >= TRAIT_WEEKS * 7) continue;
+    for (const [id, s] of Object.entries(r.scores || {})) {
+      const tid = byCard[id];
+      if (tid && acc[tid]) acc[tid][Math.floor(diff / 7)].push({
+        score: s.score,
+        w: s.w
+      });
+    }
+  }
+  return data.persona.traits.map(t => {
+    const weeks = acc[t.id].map(calcAvgW);
+    return {
+      t,
+      weeks,
+      cur: weeks[0],
+      cards: data.cards.filter(c => c.trait === t.id).length
+    };
+  });
+}
+const pct5 = v => Math.round(v / 5 * 100);
+function PersonaEditor({
+  onClose
+}) {
+  const {
+    data,
+    up,
+    toast
+  } = useApp();
+  const [p, setP] = useState(() => JSON.parse(JSON.stringify(data.persona)));
+  const setTrait = (id, patch) => setP(x => ({
+    ...x,
+    traits: x.traits.map(t => t.id === id ? {
+      ...t,
+      ...patch
+    } : t)
+  }));
+  const save = () => {
+    const traits = p.traits.map(t => ({
+      ...t,
+      name: t.name.trim(),
+      maxim: (t.maxim || '').trim()
+    })).filter(t => t.name);
+    up('persona', {
+      name: p.name.trim(),
+      traits
+    });
+    sfx('save');
+    toast('Персона сохранена');
+    onClose();
+  };
+  return React.createElement(Modal, {
+    full: true,
+    title: "\u041F\u0435\u0440\u0441\u043E\u043D\u0430",
+    code: "PERSONA // EDIT",
+    onClose: onClose,
+    footer: React.createElement(React.Fragment, null, React.createElement(Btn, {
+      variant: "ghost",
+      className: "flex-1",
+      onClick: onClose
+    }, "\u041E\u0442\u043C\u0435\u043D\u0430"), React.createElement(Btn, {
+      className: "flex-[2]",
+      icon: Save,
+      snd: "none",
+      onClick: save
+    }, "\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C"))
+  }, React.createElement(Field, {
+    label: "\u041E\u0431\u0440\u0430\u0437\u0435\u0446 (\u043D\u0430 \u043A\u043E\u0433\u043E \u0440\u0430\u0432\u043D\u044F\u044E\u0441\u044C)"
+  }, React.createElement("input", {
+    className: "inp",
+    value: p.name,
+    onChange: e => setP({
+      ...p,
+      name: e.target.value
+    }),
+    placeholder: "\u041D\u0430\u043F\u0440\u0438\u043C\u0435\u0440: \u0414\u0436\u043E\u043D \u041C\u0430\u043A\u043A\u043B\u0435\u0439\u043D"
+  })), !p.traits.length && React.createElement(Btn, {
+    small: true,
+    variant: "dark",
+    className: "mb-4",
+    onClick: () => setP(MCCLANE())
+  }, "\u0417\u0430\u043F\u043E\u043B\u043D\u0438\u0442\u044C: \u0414\u0436\u043E\u043D \u041C\u0430\u043A\u043A\u043B\u0435\u0439\u043D"), p.traits.map((t, i) => React.createElement(Frame, {
+    key: t.id,
+    cut: 12,
+    className: "mb-4",
+    color: alpha(t.color || '#ffffff', 0.5)
+  }, React.createElement("div", {
+    className: "p-3"
+  }, React.createElement("div", {
+    className: "flex items-center gap-2"
+  }, React.createElement("input", {
+    className: "inp flex-1 min-w-0",
+    value: t.name,
+    onChange: e => setTrait(t.id, {
+      name: e.target.value
+    }),
+    placeholder: "\u041D\u0430\u0437\u0432\u0430\u043D\u0438\u0435 \u0447\u0435\u0440\u0442\u044B"
+  }), React.createElement(IconBtn, {
+    icon: Trash2,
+    title: "\u0423\u0434\u0430\u043B\u0438\u0442\u044C \u0447\u0435\u0440\u0442\u0443",
+    onClick: () => setP(x => ({
+      ...x,
+      traits: x.traits.filter(y => y.id !== t.id)
+    }))
+  })), React.createElement("div", {
+    className: "mt-3"
+  }, React.createElement(ColorRow, {
+    value: t.color,
+    onChange: v => setTrait(t.id, {
+      color: v
+    }),
+    presets: TRAIT_COLORS
+  })), React.createElement("textarea", {
+    className: "inp f-read mt-3",
+    rows: 3,
+    value: t.maxim || '',
+    onChange: e => setTrait(t.id, {
+      maxim: e.target.value
+    }),
+    placeholder: "\u0423\u0441\u0442\u0430\u043D\u043E\u0432\u043A\u0430: \u0447\u0442\u043E \u0434\u0435\u043B\u0430\u043B \u0431\u044B \u043E\u0431\u0440\u0430\u0437\u0435\u0446"
+  }), React.createElement("div", {
+    className: "micro mt-2"
+  }, "\u0427\u0415\u0420\u0422\u0410 ", i + 1, " \u0418\u0417 ", p.traits.length)))), React.createElement(Btn, {
+    small: true,
+    variant: "dark",
+    icon: Plus,
+    onClick: () => setP(x => ({
+      ...x,
+      traits: [...x.traits, {
+        id: uid('tr'),
+        name: '',
+        color: TRAIT_COLORS[x.traits.length % TRAIT_COLORS.length],
+        maxim: ''
+      }]
+    }))
+  }, "\u0414\u043E\u0431\u0430\u0432\u0438\u0442\u044C \u0447\u0435\u0440\u0442\u0443"), React.createElement("div", {
+    className: "text-[12px] text-white/50 f-read leading-snug mt-3"
+  }, "\u041B\u0443\u0447\u0448\u0435 3\u20135 \u0447\u0435\u0440\u0442. \u041F\u0440\u0438\u0432\u044B\u0447\u043A\u0438 \u043F\u0440\u0438\u0432\u044F\u0437\u044B\u0432\u0430\u044E\u0442\u0441\u044F \u043A \u0447\u0435\u0440\u0442\u0430\u043C \u0432 \u0440\u0435\u0434\u0430\u043A\u0442\u043E\u0440\u0435 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438 (\u043F\u043E\u043B\u0435 \xAB\u0427\u0435\u0440\u0442\u0430 \u043F\u0435\u0440\u0441\u043E\u043D\u044B\xBB)."));
+}
+function PersonaView() {
+  const {
+    data,
+    ask
+  } = useApp();
+  const [edit, setEdit] = useState(false);
+  const pr = data.persona,
+    name = pr.name || 'Образец';
+  const st = useMemo(() => traitStats(data, dKey(new Date())), [data.cards, data.ratings, data.persona]);
+  const vals = st.map(s => s.cur).filter(v => v != null);
+  const prevVals = st.map(s => s.weeks[1]).filter(v => v != null);
+  const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+  const prevAvg = prevVals.length ? prevVals.reduce((a, b) => a + b, 0) / prevVals.length : null;
+  const delta = avg != null && prevAvg != null ? pct5(avg) - pct5(prevAvg) : null;
+  const spin = async () => {
+    const list = pr.traits.filter(t => t.maxim);
+    if (!list.length) return;
+    let i = Math.floor(Math.random() * list.length);
+    for (;;) {
+      const t = list[i];
+      const ok = await ask({
+        title: `${name}: ${t.name}`,
+        code: 'PERSONA // WWJD',
+        text: t.maxim,
+        ok: 'Понял',
+        cancel: list.length > 1 ? 'Другая' : false
+      });
+      if (ok === true || list.length < 2) return;
+      i = (i + 1) % list.length;
+    }
+  };
+  if (!pr.traits.length) return React.createElement("div", {
+    className: "px-4 pt-4"
+  }, React.createElement(Empty, {
+    icon: Brain,
+    title: "\u041F\u0435\u0440\u0441\u043E\u043D\u0430 \u043D\u0435 \u0437\u0430\u0434\u0430\u043D\u0430",
+    text: "\u0412\u044B\u0431\u0435\u0440\u0438 \u043E\u0431\u0440\u0430\u0437\u0435\u0446 \u0438 3\u20135 \u0435\u0433\u043E \u043A\u0430\u0447\u0435\u0441\u0442\u0432, \u043A\u043E\u0442\u043E\u0440\u044B\u0435 \u0445\u043E\u0447\u0435\u0448\u044C \u0440\u0430\u0437\u0432\u0438\u0442\u044C. \u041F\u0440\u0438\u0432\u044B\u0447\u043A\u0438 \u043F\u0440\u0438\u0432\u044F\u0436\u0443\u0442\u0441\u044F \u043A \u043D\u0438\u043C, \u0430 \u043F\u0440\u043E\u0433\u0440\u0435\u0441\u0441 \u043F\u043E\u043A\u0430\u0436\u0435\u0442, \u043A\u0430\u043A\u0430\u044F \u0447\u0435\u0440\u0442\u0430 \u0440\u0430\u0441\u0442\u0451\u0442."
+  }, React.createElement(Btn, {
+    icon: Plus,
+    snd: "open",
+    onClick: () => setEdit(true)
+  }, "\u0421\u043E\u0437\u0434\u0430\u0442\u044C \u043F\u0435\u0440\u0441\u043E\u043D\u0443")), edit && React.createElement(PersonaEditor, {
+    onClose: () => setEdit(false)
+  }));
+  return React.createElement("div", {
+    className: "px-4 pt-4"
+  }, React.createElement("div", {
+    className: "flex items-center justify-between gap-3"
+  }, React.createElement("div", {
+    className: "min-w-0"
+  }, React.createElement("div", {
+    className: "sec-title text-[18px] truncate"
+  }, name), React.createElement("div", {
+    className: "micro mt-1",
+    style: {
+      color: UI.mono ? '#8E8E93' : 'rgba(var(--alt-rgb),.7)'
+    }
+  }, "\u041F\u0420\u041E\u0413\u0420\u0415\u0421\u0421 \u0427\u0415\u0420\u0422 \xB7 7 \u0414\u041D\u0415\u0419")), React.createElement(Btn, {
+    small: true,
+    variant: "dark",
+    icon: Pencil,
+    onClick: () => setEdit(true)
+  }, "\u0418\u0437\u043C\u0435\u043D\u0438\u0442\u044C")), React.createElement(Frame, {
+    cut: 14,
+    className: "mt-4",
+    color: "rgba(var(--main-rgb),.5)"
+  }, React.createElement("div", {
+    className: "flex items-center gap-4 p-4"
+  }, React.createElement("div", {
+    className: "relative w-16 h-16 shrink-0"
+  }, React.createElement(Ring, {
+    avg: avg,
+    color: avg != null ? ringColor(avg, data.settings.thr) : '#6a6a72',
+    size: 64,
+    stroke: 4
+  }), React.createElement("span", {
+    className: "absolute inset-0 flex items-center justify-center st-score text-[15px]",
+    style: {
+      color: avg != null ? ringColor(avg, data.settings.thr) : '#6a6a72'
+    }
+  }, avg != null ? `${pct5(avg)}%` : '—')), React.createElement("div", {
+    className: "min-w-0"
+  }, React.createElement("div", {
+    className: "sec-title text-[16px]"
+  }, "\u041F\u043E\u0445\u043E\u0436\u0435\u0441\u0442\u044C \u043D\u0430 \u043E\u0431\u0440\u0430\u0437\u0435\u0446"), React.createElement("div", {
+    className: "micro mt-1"
+  }, delta == null ? 'ПОКА НЕТ ДАННЫХ ЗА ПРОШЛУЮ НЕДЕЛЮ' : delta === 0 ? 'КАК И НЕДЕЛЮ НАЗАД' : `${delta > 0 ? '+' : ''}${delta}% К ПРОШЛОЙ НЕДЕЛЕ`)))), st.map(({
+    t,
+    weeks,
+    cur,
+    cards
+  }) => {
+    const col = t.color || '#fff',
+      hist = weeks.slice().reverse();
+    return React.createElement(Frame, {
+      key: t.id,
+      cut: 12,
+      className: "mt-3",
+      color: alpha(col, 0.5)
+    }, React.createElement("div", {
+      className: "p-3"
+    }, React.createElement("div", {
+      className: "flex items-center justify-between gap-2"
+    }, React.createElement("div", {
+      className: "m-title text-[18px] truncate",
+      style: {
+        color: col
+      }
+    }, t.name), React.createElement("div", {
+      className: "st-score text-[18px] shrink-0",
+      style: {
+        color: col
+      }
+    }, cur != null ? `${pct5(cur)}%` : '—')), React.createElement("div", {
+      className: "mt-2 h-2",
+      style: {
+        background: 'rgba(255,255,255,.1)',
+        borderRadius: UI.mono ? 99 : 0
+      }
+    }, React.createElement("div", {
+      className: "h-full",
+      style: {
+        width: `${cur != null ? pct5(cur) : 0}%`,
+        background: col,
+        borderRadius: UI.mono ? 99 : 0,
+        boxShadow: UI.mono ? 'none' : `0 0 8px ${col}`
+      }
+    })), React.createElement("div", {
+      className: "flex items-end gap-1.5 mt-3 h-8"
+    }, hist.map((v, i) => React.createElement("div", {
+      key: i,
+      className: "flex-1 flex items-end h-full",
+      title: v != null ? `${pct5(v)}%` : 'нет данных'
+    }, React.createElement("div", {
+      className: "w-full",
+      style: {
+        height: v != null ? `${Math.max(8, pct5(v))}%` : '4px',
+        background: v != null ? alpha(col, i === hist.length - 1 ? 1 : 0.45) : 'rgba(255,255,255,.12)',
+        borderRadius: UI.mono ? 4 : 0
+      }
+    })))), React.createElement("div", {
+      className: "micro mt-2"
+    }, cards ? `${cards} ${plural(cards, 'КАРТОЧКА', 'КАРТОЧКИ', 'КАРТОЧЕК')} · 4 НЕДЕЛИ, СТАРЫЕ СЛЕВА` : 'НЕТ КАРТОЧЕК · ПРИВЯЖИ В КАТАЛОГЕ')));
+  }), React.createElement(Btn, {
+    className: "w-full mt-4",
+    icon: Brain,
+    snd: "open",
+    onClick: spin
+  }, "\u0427\u0442\u043E \u0431\u044B \u0441\u0434\u0435\u043B\u0430\u043B ", name, "?"), edit && React.createElement(PersonaEditor, {
+    onClose: () => setEdit(false)
+  }));
+}
 function StatsScreen({
   openRate
 }) {
@@ -8165,11 +8570,15 @@ function StatsScreen({
       v: 'cards',
       l: 'Каталог',
       i: Layers
+    }, {
+      v: 'persona',
+      l: 'Персона',
+      i: Brain
     }]
   })), tab === 'cal' ? React.createElement(DayDetail, {
     k: sel,
     openRate: openRate
-  }) : React.createElement(CardCatalog, {
+  }) : tab === 'persona' ? React.createElement(PersonaView, null) : React.createElement(CardCatalog, {
     sel: sel
   }))));
   return React.createElement("div", {
@@ -8191,12 +8600,16 @@ function StatsScreen({
       v: 'cards',
       l: 'Каталог',
       i: Layers
+    }, {
+      v: 'persona',
+      l: 'Персона',
+      i: Brain
     }]
   })), tab === 'cal' ? React.createElement(CalendarView, {
     sel: sel,
     setSel: setSel,
     openRate: openRate
-  }) : React.createElement(CardCatalog, {
+  }) : tab === 'persona' ? React.createElement(PersonaView, null) : React.createElement(CardCatalog, {
     sel: sel
   }));
 }
@@ -9651,6 +10064,23 @@ const BG_DIM = {
   high: 0.75
 };
 const FOCUS_LEFT_KEY = `${LS_KEY}.focusLeft`;
+const ACTIVE_CAP = 12 * 3600e3;
+const nextCheckOf = ([lo, hi], from) => ({
+  nextCheck: from + Math.round((lo + Math.random() * (hi - lo)) * 60e3),
+  checkPos: {
+    x: 0.18 + Math.random() * 0.64,
+    y: 0.12 + Math.random() * 0.76
+  }
+});
+const lapseOf = (x, t) => {
+  if (x.mode !== 'active' || x.stoppedAt) return null;
+  const dead = x.nextCheck + x.win * 1e3;
+  return t >= dead ? {
+    stoppedAt: x.okAt,
+    lapsed: true,
+    lostMs: dead - x.okAt
+  } : null;
+};
 const readLeft = () => {
   try {
     const v = Number(localStorage.getItem(FOCUS_LEFT_KEY)) || 0;
@@ -9822,6 +10252,9 @@ function FocusSetup({
   const [mid, setMid] = useState(missions.some(m => m.id === missionId) ? missionId : '');
   const [goal, setGoal] = useState(() => stepOf(missionId));
   const [dur, setDur] = useState(data.focus.lastMin || 25);
+  const [mode, setMode] = useState(data.focus.lastMode);
+  const [every, setEvery] = useState(data.focus.checkEvery);
+  const [win, setWin] = useState(data.focus.checkWin);
   const durs = [...new Set([...FOCUS_DURS, dur])].sort((a, b) => a - b);
   const pickMission = id => {
     if (!goal.trim() || goal === stepOf(mid)) setGoal(stepOf(id));
@@ -9830,25 +10263,47 @@ function FocusSetup({
   const start = () => {
     const m = data.missions.find(x => x.id === mid),
       n = Date.now();
+    const base = {
+      id: uid('fs'),
+      missionId: mid,
+      title: m ? m.title : '',
+      goal: goal.trim(),
+      startAt: n,
+      distractions: 0,
+      reasons: {},
+      leaves: 0,
+      away: 0,
+      parked: [],
+      stoppedAt: 0
+    };
+    const act = mode === 'active' ? {
+      ...base,
+      mode: 'active',
+      planMin: 0,
+      endAt: n + ACTIVE_CAP,
+      every: CHECK_EVERY[every],
+      win,
+      okAt: n,
+      checks: 0,
+      lapsed: false,
+      lostMs: 0,
+      ...nextCheckOf(CHECK_EVERY[every], n)
+    } : {
+      ...base,
+      planMin: dur,
+      endAt: n + dur * 60e3
+    };
     readLeft();
     up('focus', f => ({
       ...f,
-      lastMin: dur,
-      active: {
-        id: uid('fs'),
-        missionId: mid,
-        title: m ? m.title : '',
-        goal: goal.trim(),
-        planMin: dur,
-        startAt: n,
-        endAt: n + dur * 60e3,
-        distractions: 0,
-        reasons: {},
-        leaves: 0,
-        away: 0,
-        parked: [],
-        stoppedAt: 0
-      }
+      lastMode: mode,
+      ...(mode === 'active' ? {
+        checkEvery: every,
+        checkWin: win
+      } : {
+        lastMin: dur
+      }),
+      active: act
     }));
     onClose();
   };
@@ -9858,11 +10313,28 @@ function FocusSetup({
     code: "NEURAL LINK // CALIBRATE",
     footer: React.createElement(Btn, {
       className: "flex-1",
-      icon: Play,
+      icon: mode === 'active' ? Eye : Play,
       snd: "open",
       onClick: start
-    }, UI.mono ? 'Начать' : 'Подключиться', " \xB7 ", dur, " \u043C\u0438\u043D")
+    }, UI.mono ? 'Начать' : 'Подключиться', " \xB7 ", mode === 'active' ? 'без лимита' : `${dur} мин`)
   }, React.createElement(Field, {
+    label: "\u0420\u0435\u0436\u0438\u043C"
+  }, React.createElement(Segmented, {
+    value: mode,
+    onChange: setMode,
+    accent: "var(--alt)",
+    options: [{
+      v: 'timer',
+      l: 'Таймер',
+      i: Timer
+    }, {
+      v: 'active',
+      l: 'Активная',
+      i: Eye
+    }]
+  }), React.createElement("div", {
+    className: "text-[12px] text-white/40 f-read mt-1.5 leading-snug"
+  }, mode === 'active' ? 'Время идёт вверх без лимита. Время от времени всплывает значок: не нажал вовремя — сессия остановится, а время с последней отметки не засчитается.' : 'Отсчёт заданного числа минут.')), React.createElement(Field, {
     label: "\u041C\u0438\u0441\u0441\u0438\u044F"
   }, React.createElement("select", {
     className: "inp",
@@ -9883,7 +10355,41 @@ function FocusSetup({
     placeholder: "\u041D\u0430\u043F\u0440\u0438\u043C\u0435\u0440: \u0447\u0435\u0440\u043D\u043E\u0432\u0438\u043A \u043F\u0435\u0440\u0432\u043E\u0439 \u0433\u043B\u0430\u0432\u044B"
   }), React.createElement("div", {
     className: "text-[12px] text-white/40 f-read mt-1.5 leading-snug"
-  }, "\u041E\u0434\u043D\u0430 \u043A\u043E\u043D\u043A\u0440\u0435\u0442\u043D\u0430\u044F \u0446\u0435\u043B\u044C. \u0421 \u043D\u0435\u0439 \u043B\u0435\u0433\u0447\u0435 \u0437\u0430\u043C\u0435\u0442\u0438\u0442\u044C, \u0447\u0442\u043E \u0432\u043D\u0438\u043C\u0430\u043D\u0438\u0435 \u0443\u0448\u043B\u043E \u0432 \u0441\u0442\u043E\u0440\u043E\u043D\u0443.")), React.createElement(Field, {
+  }, "\u041E\u0434\u043D\u0430 \u043A\u043E\u043D\u043A\u0440\u0435\u0442\u043D\u0430\u044F \u0446\u0435\u043B\u044C. \u0421 \u043D\u0435\u0439 \u043B\u0435\u0433\u0447\u0435 \u0437\u0430\u043C\u0435\u0442\u0438\u0442\u044C, \u0447\u0442\u043E \u0432\u043D\u0438\u043C\u0430\u043D\u0438\u0435 \u0443\u0448\u043B\u043E \u0432 \u0441\u0442\u043E\u0440\u043E\u043D\u0443.")), mode === 'active' ? React.createElement(React.Fragment, null, React.createElement(Field, {
+    label: "\u041F\u0440\u043E\u0432\u0435\u0440\u043A\u0430 \u0432\u043D\u0438\u043C\u0430\u043D\u0438\u044F, \u0440\u0430\u0437 \u0432 \u2026 \u043C\u0438\u043D"
+  }, React.createElement("div", {
+    className: "flex flex-wrap gap-2"
+  }, Object.keys(CHECK_EVERY).map(k => React.createElement("button", {
+    key: k,
+    type: "button",
+    onClick: () => {
+      sfx('tab');
+      setEvery(k);
+    },
+    className: `wd-chip cut ${every === k ? 'on' : ''}`,
+    style: {
+      minWidth: 64
+    }
+  }, k.replace('-', '–')))), React.createElement("div", {
+    className: "text-[12px] text-white/40 f-read mt-2 leading-snug"
+  }, "\u041C\u043E\u043C\u0435\u043D\u0442 \u0432\u044B\u0431\u0438\u0440\u0430\u0435\u0442\u0441\u044F \u0441\u043B\u0443\u0447\u0430\u0439\u043D\u043E, \u043F\u043E\u044D\u0442\u043E\u043C\u0443 \u0437\u0430\u0440\u0430\u043D\u0435\u0435 \u043D\u0435 \u0443\u0433\u0430\u0434\u0430\u0442\u044C.")), React.createElement(Field, {
+    label: "\u0412\u0440\u0435\u043C\u044F \u043D\u0430 \u043E\u0442\u0432\u0435\u0442, \u0441\u0435\u043A"
+  }, React.createElement("div", {
+    className: "flex flex-wrap gap-2"
+  }, CHECK_WINS.map(v => React.createElement("button", {
+    key: v,
+    type: "button",
+    onClick: () => {
+      sfx('tab');
+      setWin(v);
+    },
+    className: `wd-chip cut ${win === v ? 'on' : ''}`,
+    style: {
+      minWidth: 52
+    }
+  }, v))), React.createElement("div", {
+    className: "text-[12px] text-white/40 f-read mt-2 leading-snug"
+  }, st.todayDone ? `Цель дня (${st.goal} мин) уже выполнена.` : `До цели дня осталось ${left} мин.`, " \u0412\u044B\u0445\u043E\u0434 \u0438\u0437 \u043F\u0440\u0438\u043B\u043E\u0436\u0435\u043D\u0438\u044F \u0432\u043E \u0432\u0440\u0435\u043C\u044F \u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0438 \u0442\u043E\u0436\u0435 \u0441\u0447\u0438\u0442\u0430\u0435\u0442\u0441\u044F \u043F\u0440\u043E\u043F\u0443\u0441\u043A\u043E\u043C."))) : React.createElement(Field, {
     label: "\u0414\u043B\u0438\u0442\u0435\u043B\u044C\u043D\u043E\u0441\u0442\u044C, \u043C\u0438\u043D"
   }, React.createElement("div", {
     className: "flex flex-wrap gap-2"
@@ -9986,22 +10492,26 @@ function FocusSession() {
       const left = readLeft(),
         x = aRef.current;
       if (!left || !x || x.stoppedAt || left < x.startAt || left >= x.endAt) return;
-      const away = Math.min(Date.now(), x.endAt) - left;
-      if (away < 3000) return;
+      const t = Date.now(),
+        lp = lapseOf(x, t);
+      const away = Math.min(t, x.endAt) - left;
+      if (away < 3000 && !lp) return;
+      const counted = Math.max(0, Math.min(t, x.endAt, lp ? lp.stoppedAt : Infinity) - left);
       up('focus', f => f.active && f.active.id === x.id ? {
         ...f,
         active: {
           ...f.active,
-          leaves: f.active.leaves + 1,
-          away: f.active.away + away
+          ...lp,
+          leaves: f.active.leaves + (away >= 3000 ? 1 : 0),
+          away: f.active.away + (away >= 3000 ? counted : 0)
         }
       } : f);
-      if (Date.now() < x.endAt) {
+      if (lp) sfx('error');else if (t < x.endAt) {
         sfx('error');
         setFlash({
           away,
           n: x.leaves + 1,
-          k: Date.now()
+          k: t
         });
       }
     };
@@ -10057,6 +10567,36 @@ function FocusSession() {
     ...f,
     active: fn(f.active)
   } : f);
+  const isActive = a.mode === 'active';
+  const checkOn = isActive && !over && now >= a.nextCheck;
+  const pinged = useRef(0);
+  const dayBase = useMemo(() => focusStreak(data.focus, dKey(new Date(a.startAt))), [data.focus.sessions, data.focus.goals, a.startAt]);
+  useEffect(() => {
+    if (!isActive || a.stoppedAt) return;
+    if (lapseOf(a, now)) {
+      sfx('error');
+      patch(x => ({
+        ...x,
+        ...(lapseOf(x, Date.now()) || {})
+      }));
+      return;
+    }
+    if (checkOn && pinged.current !== a.nextCheck && document.visibilityState === 'visible') {
+      pinged.current = a.nextCheck;
+      sfx('ping');
+    }
+  }, [now, isActive, checkOn, a.stoppedAt, a.nextCheck]);
+  const confirmCheck = () => {
+    const t = Date.now();
+    if (lapseOf(a, t)) return;
+    sfx('check');
+    patch(x => ({
+      ...x,
+      okAt: t,
+      checks: (x.checks || 0) + 1,
+      ...nextCheckOf(x.every, t)
+    }));
+  };
   const distract = () => {
     sfx('uncheck');
     patch(x => ({
@@ -10096,15 +10636,15 @@ function FocusSession() {
     const ans = await ask({
       title: 'Завершить сессию?',
       code: 'NEURAL LINK // DISCONNECT',
-      text: `Прошло ${done} из ${a.planMin} мин. Сессия будет записана как прерванная.`,
+      text: isActive ? `Прошло ${done} мин. Всё это время будет засчитано.` : `Прошло ${done} из ${a.planMin} мин. Сессия будет записана как прерванная.`,
       ok: 'Завершить',
       cancel: 'Продолжить',
       extra: 'Удалить без записи'
     });
-    if (ans === true) patch(x => ({
+    if (ans === true) patch(x => x.stoppedAt ? x : {
       ...x,
       stoppedAt: Date.now()
-    }));
+    });
     if (ans === 'extra') {
       readLeft();
       up('focus', f => ({
@@ -10129,8 +10669,14 @@ function FocusSession() {
       reasons: a.reasons,
       leaves: a.leaves,
       score,
-      completed: !a.stoppedAt,
-      goalDone
+      completed: isActive ? !a.lapsed : !a.stoppedAt,
+      goalDone,
+      ...(isActive ? {
+        mode: 'active',
+        checks: a.checks || 0,
+        lapsed: !!a.lapsed,
+        lostMs: a.lostMs || 0
+      } : {})
     };
   };
   const streakNow = () => {
@@ -10178,6 +10724,7 @@ function FocusSession() {
   const end = a.stoppedAt || a.endAt;
   const elapsed = Math.max(0, Math.min(now, end) - a.startAt);
   const plan = a.planMin * 60e3;
+  const counted = isActive ? Math.max(0, a.okAt - a.startAt - a.away) : 0;
   const reasonsSet = Object.values(a.reasons).reduce((x, y) => x + y, 0);
   const wrap = 'relative w-full max-w-[480px] h-full flex flex-col px-5';
   const pads = {
@@ -10202,13 +10749,19 @@ function FocusSession() {
       className: "micro deco"
     }, "NEURAL LINK // DEBRIEF"), React.createElement("div", {
       className: "h1 mt-1"
-    }, a.stoppedAt ? 'Сессия прервана' : 'Сессия завершена'), (title || a.goal) && React.createElement("div", {
+    }, isActive ? a.lapsed ? 'Внимание потеряно' : 'Сессия завершена' : a.stoppedAt ? 'Сессия прервана' : 'Сессия завершена'), a.lapsed && React.createElement("div", {
+      className: "f-alert cut mt-3 px-4 py-3"
+    }, React.createElement("div", {
+      className: "font-bold tracking-[.1em] uppercase text-[14px]"
+    }, UI.mono ? 'Отметка пропущена' : 'Сигнал не подтверждён'), React.createElement("div", {
+      className: "text-[12.5px] mt-0.5 opacity-85 f-read leading-snug"
+    }, "\u0417\u043D\u0430\u0447\u043E\u043A \u043D\u0435 \u043D\u0430\u0436\u0430\u0442 \u0437\u0430 ", a.win, " \u0441. \u0417\u0430\u0441\u0447\u0438\u0442\u0430\u043D\u043E \u0432\u0440\u0435\u043C\u044F \u0434\u043E \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0435\u0439 \u043E\u0442\u043C\u0435\u0442\u043A\u0438, \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u0435 ", fmtMin(a.lostMs / 60e3), " \u043D\u0435 \u0432 \u0441\u0447\u0451\u0442.")), (title || a.goal) && React.createElement("div", {
       className: "mt-2 text-[14px] text-white/60 f-read leading-snug"
     }, title && React.createElement("span", {
       className: "font-semibold text-white/80"
     }, nice(title)), title && a.goal ? ' · ' : '', a.goal), React.createElement("div", {
       className: "grid grid-cols-3 gap-2 mt-4"
-    }, [[fmtMin(mins), `Фокус из ${a.planMin}`], [a.distractions, plural(a.distractions, 'Отвлечение', 'Отвлечения', 'Отвлечений')], [a.leaves, plural(a.leaves, 'Выход', 'Выхода', 'Выходов')]].map(([v, l]) => React.createElement("div", {
+    }, [[fmtMin(mins), isActive ? 'Засчитано' : `Фокус из ${a.planMin}`], [a.distractions, plural(a.distractions, 'Отвлечение', 'Отвлечения', 'Отвлечений')], [a.leaves, plural(a.leaves, 'Выход', 'Выхода', 'Выходов')]].map(([v, l]) => React.createElement("div", {
       key: l,
       className: "stat-cell cut"
     }, React.createElement("div", {
@@ -10224,7 +10777,9 @@ function FocusSession() {
         '--tc': 'var(--warn)',
         '--cut': '5px'
       }
-    }, n, " \xD7 ", a.reasons[k]))), a.leaves > 0 && React.createElement("div", {
+    }, n, " \xD7 ", a.reasons[k]))), isActive && React.createElement("div", {
+      className: "text-[12.5px] text-white/45 f-read mt-2"
+    }, "\u041E\u0442\u043C\u0435\u0442\u043E\u043A \u0432\u043D\u0438\u043C\u0430\u043D\u0438\u044F: ", a.checks || 0), a.leaves > 0 && a.away >= 1000 && React.createElement("div", {
       className: "text-[12.5px] text-white/45 f-read mt-2"
     }, "\u0412\u043D\u0435 \u043F\u0440\u0438\u043B\u043E\u0436\u0435\u043D\u0438\u044F: ", fmtClock(a.away)), a.goal && React.createElement("div", {
       className: "mt-5"
@@ -10346,7 +10901,27 @@ function FocusSession() {
     className: "font-bold tracking-[.12em] uppercase text-[15px]"
   }, UI.mono ? 'Ты выходил из приложения' : 'Связь прервана'), React.createElement("div", {
     className: "text-[12.5px] mt-0.5 opacity-80"
-  }, "\u0412\u043D\u0435 \u0441\u0435\u0441\u0441\u0438\u0438 ", fmtClock(flash.away), " \xB7 \u0432\u044B\u0445\u043E\u0434 \u2116", flash.n)), React.createElement("div", {
+  }, "\u0412\u043D\u0435 \u0441\u0435\u0441\u0441\u0438\u0438 ", fmtClock(flash.away), " \xB7 \u0432\u044B\u0445\u043E\u0434 \u2116", flash.n)), isActive ? React.createElement("div", {
+    className: "relative",
+    style: {
+      width: 260,
+      height: 260
+    }
+  }, React.createElement(FocusRing, {
+    p: (dayBase.todayMin + counted / 60e3) / dayBase.goal
+  }), React.createElement("div", {
+    className: "absolute inset-0 flex flex-col items-center justify-center"
+  }, React.createElement("div", {
+    className: "f-time",
+    style: {
+      fontSize: elapsed >= 3600e3 ? 44 : 58
+    }
+  }, fmtClock(elapsed)), React.createElement("div", {
+    className: "micro mt-3",
+    style: {
+      color: 'rgba(255,255,255,.45)'
+    }
+  }, "\u0417\u0410\u0421\u0427\u0418\u0422\u0410\u041D\u041E ", Math.floor(counted / 60e3), " \u041C\u0418\u041D"))) : React.createElement("div", {
     className: "relative",
     style: {
       width: 260,
@@ -10366,7 +10941,43 @@ function FocusSession() {
     style: {
       color: 'rgba(255,255,255,.45)'
     }
-  }, "\u0418\u0417 ", a.planMin, " \u041C\u0418\u041D"))), React.createElement("div", {
+  }, "\u0418\u0417 ", a.planMin, " \u041C\u0418\u041D"))), checkOn && React.createElement("button", {
+    key: a.nextCheck,
+    type: "button",
+    className: "f-check absolute z-20",
+    onClick: confirmCheck,
+    title: "\u042F \u0437\u0434\u0435\u0441\u044C",
+    style: {
+      left: `${a.checkPos.x * 100}%`,
+      top: `${a.checkPos.y * 100}%`
+    }
+  }, React.createElement("svg", {
+    width: "100",
+    height: "100",
+    viewBox: "0 0 100 100",
+    className: "absolute inset-0",
+    style: {
+      transform: 'rotate(-90deg)'
+    }
+  }, React.createElement("circle", {
+    cx: "50",
+    cy: "50",
+    r: "46",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: "5",
+    strokeDasharray: "289",
+    className: "f-check-t",
+    style: {
+      animationDuration: `${a.win}s`,
+      animationDelay: `${-(Date.now() - a.nextCheck) / 1000}s`
+    }
+  })), React.createElement(Eye, {
+    size: 34,
+    strokeWidth: 2.4
+  }), React.createElement("span", {
+    className: "f-mono text-[13px] font-bold leading-none mt-1"
+  }, Math.max(0, Math.ceil((a.nextCheck + a.win * 1e3 - now) / 1000)))), React.createElement("div", {
     className: "flex gap-5 mt-5 f-mono text-[12px] tracking-wider text-white/55 uppercase"
   }, React.createElement("span", null, "\u041E\u0442\u0432\u043B\u0435\u0447\u0435\u043D\u0438\u0439: ", React.createElement("b", {
     className: "text-white/90"
@@ -10410,7 +11021,7 @@ function FocusSession() {
     onClick: () => pickReason(k)
   }, n)))) : React.createElement("div", {
     className: "w-full text-center text-[12.5px] text-white/35 f-read leading-snug pb-1"
-  }, "\u041F\u043E\u0439\u043C\u0430\u043B \u0441\u0435\u0431\u044F \u043D\u0430 \u043F\u043E\u0441\u0442\u043E\u0440\u043E\u043D\u043D\u0438\u0445 \u043C\u044B\u0441\u043B\u044F\u0445 \u2014 \u043D\u0430\u0436\u043C\u0438 \xAB\u041E\u0442\u0432\u043B\u0451\u043A\u0441\u044F\xBB \u0438 \u0432\u0435\u0440\u043D\u0438\u0441\u044C \u043A \u0446\u0435\u043B\u0438")), React.createElement("div", {
+  }, isActive ? `Всплывёт значок — нажми его за ${a.win} с, иначе сессия остановится на последней отметке` : 'Поймал себя на посторонних мыслях — нажми «Отвлёкся» и вернись к цели')), React.createElement("div", {
     className: "grid grid-cols-2 gap-2 mt-3"
   }, React.createElement(Btn, {
     variant: "ghost",
@@ -10888,9 +11499,9 @@ function FocusScreen() {
       }
     }, Math.round(focusMin(s)), React.createElement("span", {
       className: "text-white/40 text-[11px]"
-    }, "/", s.planMin)), React.createElement("div", {
+    }, s.mode === 'active' ? ' МИН' : `/${s.planMin}`)), React.createElement("div", {
       className: "f-mono text-[10px] text-white/45 mt-0.5"
-    }, s.completed ? `${s.distractions} ОТВЛ.` : 'ПРЕРВАНА', s.leaves ? ` · ${s.leaves} ВЫХ.` : '')))));
+    }, s.mode === 'active' ? s.lapsed ? 'ОТКАТ' : `${s.checks || 0} ОТМ.` : s.completed ? `${s.distractions} ОТВЛ.` : 'ПРЕРВАНА', s.leaves ? ` · ${s.leaves} ВЫХ.` : '')))));
   }), !f.sessions.length && React.createElement(Empty, {
     icon: Brain,
     title: "\u0421\u0435\u0441\u0441\u0438\u0439 \u043F\u043E\u043A\u0430 \u043D\u0435\u0442",

@@ -1,4 +1,4 @@
-/* CJ_BUILD 20261028-020525 */
+/* CJ_BUILD 20261029-011046 */
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
 const {
   useState,
@@ -66,7 +66,8 @@ const {
   RefreshCw,
   LogOut,
   KeyRound,
-  Eye
+  Eye,
+  ArrowUpDown
 } = LucideReact;
 const BETA = typeof window !== 'undefined' && !!window.CJ_BETA;
 const MAIN_KEY = 'cyberjournal2077.v1';
@@ -316,7 +317,8 @@ const DEFAULT_SETTINGS = {
   haptics: true,
   avatar: 'preset:m',
   avatarHolo: false,
-  backupDays: 7
+  backupDays: 7,
+  timerOrder: 'near'
 };
 const SFX = {
   on: true,
@@ -2892,6 +2894,65 @@ function Sheet({
     }
   }, "\u041E\u0442\u043C\u0435\u043D\u0430")))));
 }
+function ReorderModal({
+  title,
+  code,
+  list,
+  setList,
+  row,
+  onMove,
+  onSave,
+  onClose,
+  children
+}) {
+  const move = (i, d) => {
+    const j = i + d;
+    if (j < 0 || j >= list.length) return;
+    const n = [...list];
+    [n[i], n[j]] = [n[j], n[i]];
+    setList(n);
+    if (onMove) onMove();
+  };
+  return React.createElement(Modal, {
+    title: title,
+    code: code,
+    onClose: onClose,
+    footer: React.createElement(React.Fragment, null, React.createElement(Btn, {
+      variant: "ghost",
+      className: "flex-1",
+      onClick: onClose
+    }, "\u041E\u0442\u043C\u0435\u043D\u0430"), React.createElement(Btn, {
+      className: "flex-[2]",
+      icon: Save,
+      snd: "none",
+      onClick: onSave
+    }, "\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C"))
+  }, children, list.map((x, i) => React.createElement("div", {
+    key: x.id,
+    className: "flex items-center gap-2 py-2",
+    style: {
+      borderBottom: '1px solid rgba(255,255,255,.06)'
+    }
+  }, React.createElement("span", {
+    className: "f-mono text-[11px] text-white/35 w-5 shrink-0"
+  }, pad(i + 1)), React.createElement("div", {
+    className: "flex-1 min-w-0 flex items-center gap-2.5"
+  }, row(x)), React.createElement(IconBtn, {
+    sm: true,
+    icon: ArrowUp,
+    title: "\u0412\u044B\u0448\u0435",
+    onClick: () => move(i, -1)
+  }), React.createElement(IconBtn, {
+    sm: true,
+    icon: ArrowDown,
+    title: "\u041D\u0438\u0436\u0435",
+    onClick: () => move(i, 1)
+  }))));
+}
+const byOrder = (arr, order) => {
+  const pos = Object.fromEntries(order.map((x, i) => [x.id, i]));
+  return [...arr].sort((a, b) => (a.id in pos ? pos[a.id] : 1e9) - (b.id in pos ? pos[b.id] : 1e9));
+};
 function NeonScroll({
   children,
   maxH = 230,
@@ -8123,6 +8184,7 @@ function CardCatalog({
     undoable
   } = useApp();
   const [edit, setEdit] = useState(null);
+  const [order, setOrder] = useState(null);
   const [idx, setIdx] = useState(0);
   const sc = useRef(null);
   const cards = data.cards;
@@ -8170,12 +8232,18 @@ function CardCatalog({
     style: {
       color: UI.mono ? '#8E8E93' : 'rgba(var(--alt-rgb),.7)'
     }
-  }, cards.length, " ", plural(cards.length, 'КАРТОЧКА', 'КАРТОЧКИ', 'КАРТОЧЕК'), " \xB7 \u0411\u0410\u041B\u041B\u042B \u0417\u0410 ", fmtShort(sel))), React.createElement(Btn, {
+  }, cards.length, " ", plural(cards.length, 'КАРТОЧКА', 'КАРТОЧКИ', 'КАРТОЧЕК'), " \xB7 \u0411\u0410\u041B\u041B\u042B \u0417\u0410 ", fmtShort(sel))), React.createElement("div", {
+    className: "flex items-center gap-2 shrink-0"
+  }, cards.length > 1 && React.createElement(IconBtn, {
+    icon: ArrowUpDown,
+    title: "\u041F\u043E\u0440\u044F\u0434\u043E\u043A \u043A\u0430\u0440\u0442\u043E\u0447\u0435\u043A",
+    onClick: () => setOrder(cards)
+  }), React.createElement(Btn, {
     small: true,
     icon: Plus,
     snd: "open",
     onClick: () => setEdit(blankCard())
-  }, "\u041D\u043E\u0432\u0430\u044F")), cards.length ? React.createElement(React.Fragment, null, React.createElement("div", {
+  }, "\u041D\u043E\u0432\u0430\u044F"))), cards.length ? React.createElement(React.Fragment, null, React.createElement("div", {
     ref: sc,
     onScroll: onScroll,
     className: "flex overflow-x-auto noscb mt-4",
@@ -8220,7 +8288,36 @@ function CardCatalog({
     initial: edit,
     onSave: saveCard,
     onClose: () => setEdit(null)
-  }));
+  }), order && React.createElement(ReorderModal, {
+    title: "\u041F\u043E\u0440\u044F\u0434\u043E\u043A \u043A\u0430\u0440\u0442\u043E\u0447\u0435\u043A",
+    code: "CATALOG // ORDER",
+    list: order,
+    setList: setOrder,
+    onClose: () => setOrder(null),
+    onSave: () => {
+      up('cards', cs => byOrder(cs, order));
+      sfx('save');
+      toast('Порядок сохранён');
+      setOrder(null);
+      go(0);
+    },
+    row: c => React.createElement(React.Fragment, null, React.createElement("span", {
+      className: "shrink-0"
+    }, React.createElement(Sticker, {
+      icon: c.icon,
+      color: c.iconColor,
+      frame: c.iconFrame,
+      size: 30
+    })), React.createElement("span", {
+      className: "min-w-0"
+    }, React.createElement("span", {
+      className: "block text-[15px] font-semibold truncate"
+    }, c.name || 'Без названия'), React.createElement("span", {
+      className: "block f-mono text-[10px] text-white/40 truncate"
+    }, schedText(c))))
+  }, React.createElement("div", {
+    className: "text-[12px] text-white/45 f-read mb-2"
+  }, "\u0412 \u044D\u0442\u043E\u043C \u043F\u043E\u0440\u044F\u0434\u043A\u0435 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438 \u0438\u0434\u0443\u0442 \u0432 \u043A\u0430\u0442\u0430\u043B\u043E\u0433\u0435 \u0438 \u0432 \u0432\u0435\u0447\u0435\u0440\u043D\u0435\u0439 \u043E\u0446\u0435\u043D\u043A\u0435 \u0434\u043D\u044F.")));
 }
 const TRAIT_WEEKS = 4;
 function traitStats(data, endKey) {
@@ -9549,7 +9646,9 @@ function TimerCard({
   total,
   onEdit,
   onAdd,
-  onDelete
+  onDelete,
+  onOrder,
+  onReset
 }) {
   const st = timerState(t, now);
   const font = (TIMER_FONTS[t.font] || TIMER_FONTS.bebas)[0];
@@ -9590,6 +9689,16 @@ function TimerCard({
     }
   }, React.createElement(Pencil, {
     size: 19
+  })), t.mode === 'since' && React.createElement("button", {
+    type: "button",
+    "aria-label": "\u0421\u0431\u0440\u043E\u0441\u0438\u0442\u044C \u043E\u0442\u0441\u0447\u0451\u0442",
+    className: "mono-rail",
+    onClick: () => {
+      sfx();
+      onReset();
+    }
+  }, React.createElement(RotateCcw, {
+    size: 19
   })), React.createElement("button", {
     type: "button",
     "aria-label": "\u041D\u043E\u0432\u044B\u0439 \u0442\u0430\u0439\u043C\u0435\u0440",
@@ -9600,6 +9709,16 @@ function TimerCard({
     }
   }, React.createElement(Plus, {
     size: 22
+  })), total > 1 && React.createElement("button", {
+    type: "button",
+    "aria-label": "\u041F\u043E\u0440\u044F\u0434\u043E\u043A \u0442\u0430\u0439\u043C\u0435\u0440\u043E\u0432",
+    className: "mono-rail",
+    onClick: () => {
+      sfx('open');
+      onOrder();
+    }
+  }, React.createElement(ArrowUpDown, {
+    size: 19
   })), React.createElement("button", {
     type: "button",
     "aria-label": "\u0423\u0434\u0430\u043B\u0438\u0442\u044C",
@@ -9621,7 +9740,17 @@ function TimerCard({
     }
   }, React.createElement(Pencil, {
     size: 22
-  }), React.createElement("span", null, "EDIT")), React.createElement("button", {
+  }), React.createElement("span", null, "EDIT")), t.mode === 'since' && React.createElement("button", {
+    type: "button",
+    "aria-label": "\u0421\u0431\u0440\u043E\u0441\u0438\u0442\u044C \u043E\u0442\u0441\u0447\u0451\u0442",
+    className: "rail-b",
+    onClick: () => {
+      sfx();
+      onReset();
+    }
+  }, React.createElement(RotateCcw, {
+    size: 21
+  }), React.createElement("span", null, "RESET")), React.createElement("button", {
     type: "button",
     className: "rail-b",
     onClick: () => {
@@ -9630,7 +9759,17 @@ function TimerCard({
     }
   }, React.createElement(Plus, {
     size: 24
-  }), React.createElement("span", null, "NEW")), React.createElement("button", {
+  }), React.createElement("span", null, "NEW")), total > 1 && React.createElement("button", {
+    type: "button",
+    "aria-label": "\u041F\u043E\u0440\u044F\u0434\u043E\u043A \u0442\u0430\u0439\u043C\u0435\u0440\u043E\u0432",
+    className: "rail-b",
+    onClick: () => {
+      sfx('open');
+      onOrder();
+    }
+  }, React.createElement(ArrowUpDown, {
+    size: 21
+  }), React.createElement("span", null, "SORT")), React.createElement("button", {
     type: "button",
     className: "rail-b",
     onClick: () => {
@@ -9951,19 +10090,65 @@ function CountdownScreen() {
   const now = useNow(1000);
   const [edit, setEdit] = useState(null);
   const [page, setPage] = useState(0);
+  const [order, setOrder] = useState(null);
+  const [jump, setJump] = useState(null);
   const feedRef = useRef(null);
   const minute = Math.floor(now / 60000);
-  const list = useMemo(() => {
+  const manual = data.settings.timerOrder === 'manual';
+  const nearList = () => {
     const n = Date.now();
     const dist = t => {
       const d = parseLocal(t.target);
       return d ? Math.abs(d - n) : Infinity;
     };
     return [...data.timers].sort((a, b) => dist(a) - dist(b));
-  }, [data.timers, minute]);
+  };
+  const list = useMemo(() => manual ? data.timers : nearList(), [data.timers, manual, minute]);
   const onScroll = () => {
     const el = feedRef.current;
     if (el) setPage(Math.round(el.scrollTop / Math.max(1, el.clientHeight)));
+  };
+  useEffect(() => {
+    if (!jump) return;
+    const el = feedRef.current,
+      i = list.findIndex(x => x.id === jump);
+    if (el && i >= 0) el.scrollTo({
+      top: i * el.clientHeight
+    });
+    setJump(null);
+  }, [list, jump]);
+  const openOrder = () => setOrder({
+    mode: manual ? 'manual' : 'near',
+    list
+  });
+  const saveOrder = () => {
+    up('settings', s => ({
+      ...s,
+      timerOrder: order.mode
+    }));
+    if (order.mode === 'manual') up('timers', ts => byOrder(ts, order.list));
+    sfx('save');
+    toast('Порядок сохранён');
+    setOrder(null);
+    if (feedRef.current) feedRef.current.scrollTo({
+      top: 0
+    });
+  };
+  const resetTimer = async t => {
+    const days = timerState(t, Date.now()).days;
+    const ok = await ask({
+      title: 'Сбросить отсчёт?',
+      code: 'COUNTDOWN // RESET',
+      text: `«${t.title}» начнёт считать с нуля. Сейчас: ${days} ${dayWord(days)}.`,
+      ok: 'Сбросить',
+      danger: true
+    });
+    if (ok !== true) return;
+    undoable('Отсчёт сброшен', ['timers'], () => up('timers', ts => ts.map(x => x.id === t.id ? {
+      ...x,
+      target: toLocalInput(new Date())
+    } : x)));
+    setJump(t.id);
   };
   const saveTimer = t => {
     const exists = data.timers.some(x => x.id === t.id);
@@ -10010,7 +10195,9 @@ function CountdownScreen() {
     total: list.length,
     onEdit: () => setEdit(t),
     onAdd: () => setEdit(blankTimer()),
-    onDelete: () => delTimer(t)
+    onDelete: () => delTimer(t),
+    onOrder: openOrder,
+    onReset: () => resetTimer(t)
   })) : React.createElement("section", {
     className: "tk flex items-center justify-center"
   }, UI.mono ? React.createElement(MonoTimerBg, {
@@ -10041,7 +10228,55 @@ function CountdownScreen() {
     onSave: saveTimer,
     onClose: () => setEdit(null),
     onDelete: () => delTimer(edit)
-  }));
+  }), order && React.createElement(ReorderModal, {
+    title: "\u041F\u043E\u0440\u044F\u0434\u043E\u043A \u0442\u0430\u0439\u043C\u0435\u0440\u043E\u0432",
+    code: "COUNTDOWN // ORDER",
+    list: order.list,
+    setList: l => setOrder(o => ({
+      ...o,
+      list: l
+    })),
+    onMove: () => setOrder(o => ({
+      ...o,
+      mode: 'manual'
+    })),
+    onSave: saveOrder,
+    onClose: () => setOrder(null),
+    row: t => {
+      const st = timerState(t, now);
+      return React.createElement(React.Fragment, null, React.createElement("span", {
+        className: "w-1.5 h-9 shrink-0",
+        style: {
+          background: t.accent || '#FF4655',
+          borderRadius: UI.mono ? 3 : 0
+        }
+      }), React.createElement("span", {
+        className: "min-w-0"
+      }, React.createElement("span", {
+        className: "block text-[15px] font-semibold truncate uppercase tracking-wide"
+      }, nice(t.title)), React.createElement("span", {
+        className: "block f-mono text-[10px] text-white/40 truncate"
+      }, t.mode === 'since' ? 'ПРОШЛО' : st.done ? 'ЗАВЕРШЕНО' : 'ОСТАЛОСЬ', " \xB7 ", st.days, " \u0414\u041D.")));
+    }
+  }, React.createElement(Field, {
+    label: "\u041F\u043E\u0440\u044F\u0434\u043E\u043A \u0432 \u043B\u0435\u043D\u0442\u0435"
+  }, React.createElement(Segmented, {
+    value: order.mode,
+    accent: "var(--alt)",
+    options: [{
+      v: 'near',
+      l: 'По близости'
+    }, {
+      v: 'manual',
+      l: 'Вручную'
+    }],
+    onChange: v => setOrder({
+      mode: v,
+      list: v === 'near' ? nearList() : data.timers
+    })
+  })), React.createElement("div", {
+    className: "text-[12px] text-white/45 f-read -mt-2 mb-2"
+  }, order.mode === 'near' ? 'Первыми идут события, чья дата ближе к сегодня. Сдвинь любой таймер стрелкой — порядок станет ручным.' : 'Лента идёт в этом порядке, пока не выберешь «По близости».')));
 }
 const FOCUS_REASONS = [['phone', 'Телефон'], ['mind', 'Мысли'], ['noise', 'Шум'], ['tired', 'Усталость'], ['other', 'Другое']];
 const REASON_NAME = Object.fromEntries(FOCUS_REASONS);

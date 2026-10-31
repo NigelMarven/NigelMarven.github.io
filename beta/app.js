@@ -1,4 +1,4 @@
-/* CJ_BUILD BETA-20261031-232019 */
+/* CJ_BUILD BETA-20261031-233525 */
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
 const {
   useState,
@@ -28,9 +28,7 @@ const {
   Link,
   Clock,
   Activity,
-  Crosshair,
   Hourglass,
-  Terminal,
   Database,
   RotateCcw,
   AlertTriangle,
@@ -76,7 +74,6 @@ const BETA_KEY = 'cyberjournal2077.beta';
 const LS_KEY = BETA ? BETA_KEY : MAIN_KEY;
 const APP_VERSION = '1.0.0';
 const UI = {
-  mono: true,
   wide: false
 };
 const WIDE_MQ = '(min-width: 1000px)';
@@ -119,7 +116,7 @@ const nice = s => {
   if (!s) return s;
   if (PLAIN[s]) return PLAIN[s];
   if (s.startsWith('REWARD: ')) return `Награда: ${s.slice(8)}`;
-  return UI.mono && s === s.toUpperCase() ? cap(s) : s;
+  return s === s.toUpperCase() ? cap(s) : s;
 };
 const uid = (p = 'id') => `${p}_${Math.random().toString(36).slice(2, 8)}${Date.now().toString(36).slice(-4)}`;
 const pad = n => String(n).padStart(2, '0');
@@ -161,15 +158,6 @@ const plural = (n, one, few, many) => {
   if (b === 1) return one;
   return many;
 };
-function rng(seed) {
-  let a = seed >>> 0;
-  return () => {
-    a = a + 0x6D2B79F5 | 0;
-    let t = Math.imul(a ^ a >>> 15, 1 | a);
-    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-    return ((t ^ t >>> 14) >>> 0) / 4294967296;
-  };
-}
 const MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
 const MONTHS_GEN = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
 const WD = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
@@ -233,53 +221,7 @@ const schedText = (c, withW = true) => {
   const w = withW ? weightText(cardW(c)) : '';
   return w ? `${s} · ${w}` : s;
 };
-const THEMES = {
-  classic: {
-    name: 'Cyberpunk Classic',
-    sub: 'Red / Cyan',
-    main: '#FF4655',
-    alt: '#00F0FF',
-    warn: '#FCEE0A',
-    bg1: '#18080C',
-    bg2: '#0A0A0F',
-    sel: ['#D9524C', '#F2906F']
-  },
-  gold: {
-    name: 'Night City Gold',
-    sub: 'Yellow / Cyan',
-    main: '#FCEE0A',
-    alt: '#00F0FF',
-    warn: '#FF9F1C',
-    bg1: '#161305',
-    bg2: '#09090B',
-    sel: ['#B7A800', '#E9DB4A'],
-    selFg: '#0B0B10',
-    selSub: '#6B1500'
-  },
-  bio: {
-    name: 'Bio-Monitor',
-    sub: 'Neon Green',
-    main: '#3DFF6E',
-    alt: '#C6FF3D',
-    warn: '#E5FF00',
-    bg1: '#04150A',
-    bg2: '#040806',
-    sel: ['#159A3E', '#47D873'],
-    selFg: '#02110A',
-    selSub: '#0A3A18'
-  },
-  arasaka: {
-    name: 'Arasaka Corp',
-    sub: 'Minimal Red / White',
-    main: '#E8112D',
-    alt: '#F4F4F4',
-    warn: '#FFFFFF',
-    bg1: '#111113',
-    bg2: '#060607',
-    sel: ['#9E0C1F', '#E8112D']
-  }
-};
-const MONO_ACCENTS = [{
+const ACCENTS = [{
   id: 'lime',
   name: 'Лайм',
   c: '#B8FF00'
@@ -314,23 +256,16 @@ const DEFAULT_SETTINGS = {
     l: 3.5,
     y: 2.5
   },
-  ui: 'mono',
   monoAccent: 'lime',
-  theme: 'classic',
-  scanlines: true,
-  crt: true,
-  glitch: true,
   sound: true,
   haptics: true,
   avatar: 'preset:m',
-  avatarHolo: false,
   backupDays: 7,
   timerOrder: 'near'
 };
 const SFX = {
   on: true,
   vib: true,
-  soft: false,
   ctx: null
 };
 const VIBES = {
@@ -374,79 +309,40 @@ function sfx(kind = 'click') {
       o.start(t + delay);
       o.stop(t + delay + dur + 0.03);
     };
-    if (SFX.soft) {
-      switch (kind) {
-        case 'check':
-          tone(660, 990, 0.07, 'sine', 0.06);
-          tone(990, 1320, 0.08, 'sine', 0.05, 0.06);
-          break;
-        case 'uncheck':
-          tone(700, 440, 0.08, 'sine', 0.05);
-          break;
-        case 'open':
-          tone(440, 660, 0.09, 'sine', 0.045);
-          break;
-        case 'close':
-          tone(660, 440, 0.08, 'sine', 0.04);
-          break;
-        case 'save':
-          tone(523, 523, 0.08, 'sine', 0.06);
-          tone(659, 659, 0.08, 'sine', 0.06, 0.08);
-          tone(784, 784, 0.13, 'sine', 0.06, 0.16);
-          break;
-        case 'error':
-          tone(320, 200, 0.18, 'triangle', 0.06);
-          break;
-        case 'tab':
-          tone(880, 880, 0.035, 'sine', 0.045);
-          break;
-        case 'score':
-          tone(740, 1000, 0.06, 'sine', 0.06);
-          break;
-        case 'ping':
-          tone(880, 880, 0.12, 'sine', 0.07);
-          tone(1175, 1175, 0.16, 'sine', 0.07, 0.14);
-          break;
-        default:
-          tone(1180, 1180, 0.03, 'sine', 0.045);
-      }
-      return;
-    }
     switch (kind) {
       case 'check':
-        tone(900, 1800, 0.05, 'square', 0.035);
-        tone(1500, 2800, 0.07, 'triangle', 0.04, 0.045);
+        tone(660, 990, 0.07, 'sine', 0.06);
+        tone(990, 1320, 0.08, 'sine', 0.05, 0.06);
         break;
       case 'uncheck':
-        tone(1700, 600, 0.08, 'square', 0.03);
+        tone(700, 440, 0.08, 'sine', 0.05);
         break;
       case 'open':
-        tone(260, 1300, 0.12, 'sawtooth', 0.022);
+        tone(440, 660, 0.09, 'sine', 0.045);
         break;
       case 'close':
-        tone(1300, 260, 0.1, 'sawtooth', 0.018);
+        tone(660, 440, 0.08, 'sine', 0.04);
         break;
       case 'save':
-        tone(600, 900, 0.06, 'triangle', 0.05);
-        tone(900, 1350, 0.06, 'triangle', 0.05, 0.07);
-        tone(1350, 2100, 0.1, 'triangle', 0.05, 0.14);
+        tone(523, 523, 0.08, 'sine', 0.06);
+        tone(659, 659, 0.08, 'sine', 0.06, 0.08);
+        tone(784, 784, 0.13, 'sine', 0.06, 0.16);
         break;
       case 'error':
-        tone(240, 90, 0.22, 'sawtooth', 0.05);
+        tone(320, 200, 0.18, 'triangle', 0.06);
         break;
       case 'tab':
-        tone(2300, 1200, 0.035, 'square', 0.028);
+        tone(880, 880, 0.035, 'sine', 0.045);
         break;
       case 'score':
-        tone(1100, 1650, 0.05, 'triangle', 0.05);
+        tone(740, 1000, 0.06, 'sine', 0.06);
         break;
       case 'ping':
-        tone(1400, 1400, 0.09, 'square', 0.04);
-        tone(1400, 1400, 0.09, 'square', 0.04, 0.16);
-        tone(2100, 2100, 0.12, 'triangle', 0.05, 0.32);
+        tone(880, 880, 0.12, 'sine', 0.07);
+        tone(1175, 1175, 0.16, 'sine', 0.07, 0.14);
         break;
       default:
-        tone(2500, 1400, 0.03, 'square', 0.026);
+        tone(1180, 1180, 0.03, 'sine', 0.045);
     }
   } catch (e) {}
 }
@@ -787,22 +683,6 @@ async function snapDaily() {
     SNAP.day = '';
   }
 }
-function demoMapImage() {
-  const R = rng(2077);
-  let s = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200"><rect width="320" height="200" fill="#1c0306"/>';
-  s += '<g transform="rotate(-24 160 100)">';
-  for (let i = 0; i < 9; i++) s += `<rect x="-60" y="${i * 34 - 40}" width="440" height="${2 + R() * 3}" fill="#2f6bd6" opacity="${0.5 + R() * 0.4}"/>`;
-  for (let i = 0; i < 12; i++) s += `<rect x="${i * 38 - 40}" y="-60" width="${2 + R() * 2}" height="320" fill="#2f6bd6" opacity="${0.35 + R() * 0.4}"/>`;
-  for (let i = 0; i < 90; i++) {
-    const x = R() * 400 - 40,
-      y = R() * 300 - 50,
-      w = 6 + R() * 26,
-      h = 6 + R() * 22;
-    s += `<rect x="${x.toFixed(0)}" y="${y.toFixed(0)}" width="${w.toFixed(0)}" height="${h.toFixed(0)}" fill="${R() > 0.3 ? '#c4121f' : '#ff4655'}" opacity="${(0.55 + R() * 0.45).toFixed(2)}"/>`;
-  }
-  s += '</g><circle cx="196" cy="92" r="7" fill="none" stroke="#00f0ff" stroke-width="2"/><circle cx="196" cy="92" r="2.5" fill="#00f0ff"/></svg>';
-  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s);
-}
 const DEFAULT_SECTIONS = () => [{
   id: 'sec_main',
   name: 'MAIN JOBS',
@@ -926,7 +806,6 @@ function normalize(d) {
       ...(d && d.settings && d.settings.thr || {})
     }
   };
-  if (typeof (d && d.settings && d.settings.crt) !== 'boolean') out.settings.crt = out.settings.scanlines !== false;
   out.meta = {
     ...base.meta,
     ...(d && d.meta || {})
@@ -956,13 +835,12 @@ const blankMission = sectionId => ({
   alert: false,
   badge: {
     shape: 'diamond',
-    text: 'NC',
+    text: 'М',
     color: '#F5B83D'
   },
   steps: [step('')],
   image: '',
   imageCaption: '',
-  holo: true,
   description: '',
   deadline: '',
   countdown: false,
@@ -1377,15 +1255,8 @@ function readBoot() {
     }
     if (BETA) {
       const main = localStorage.getItem(MAIN_KEY);
-      const d = main ? normalize(JSON.parse(main)) : makeDemo();
       return {
-        data: {
-          ...d,
-          settings: {
-            ...d.settings,
-            ui: 'mono'
-          }
-        }
+        data: main ? normalize(JSON.parse(main)) : makeDemo()
       };
     }
   } catch (e) {
@@ -1491,7 +1362,6 @@ async function sendBackup(data, ask) {
   let res = await share();
   if (res === 'again') res = (await ask({
     title: 'Бэкап готов',
-    code: 'SYS // BACKUP.SHARE',
     text: 'Файл собран. Нажми «Отправить» и выбери, куда сохранить: Telegram, Google Диск и т. п.',
     ok: 'Отправить'
   })) === true ? await share() : 'declined';
@@ -2207,24 +2077,17 @@ const CSS = `
 .cj-root button{font-family:inherit;cursor:pointer;}
 .cj-root input,.cj-root textarea,.cj-root select{font-family:'Exo 2','Rajdhani',sans-serif;}
 .f-mono{font-family:'Share Tech Mono','JetBrains Mono',ui-monospace,monospace;}
-.f-disp{font-family:'Oswald','Bebas Neue',sans-serif;}
+
 .f-orb{font-family:'Orbitron','Russo One',sans-serif;}
-.f-unb{font-family:'Unbounded','Russo One',sans-serif;}
-.f-inter{font-family:'Inter',system-ui,sans-serif;}
 .f-read{font-family:'Exo 2','Inter',sans-serif;}
 .noscb::-webkit-scrollbar{display:none}.noscb{scrollbar-width:none}
 .cut{--c:var(--cut,12px);clip-path:polygon(0 0,calc(100% - var(--c)) 0,100% var(--c),100% 100%,var(--c) 100%,0 calc(100% - var(--c)));}
-.cut-tr{--c:var(--cut,12px);clip-path:polygon(0 0,calc(100% - var(--c)) 0,100% var(--c),100% 100%,0 100%);}
-.cut-br{--c:var(--cut,12px);clip-path:polygon(0 0,100% 0,100% calc(100% - var(--c)),calc(100% - var(--c)) 100%,0 100%);}
 .frame{padding:1px;background:var(--fc,rgba(var(--main-rgb),.5));}
 .frame-in{background:var(--fb,linear-gradient(180deg,rgba(24,13,26,.95),rgba(12,9,18,.95)));height:100%;}
 .micro{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:rgba(var(--main-rgb),.6);}
 .lbl{display:block;font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:rgba(var(--alt-rgb),.8);margin-bottom:6px;}
 .h1{font-weight:700;font-size:27px;line-height:1.05;letter-spacing:.06em;text-transform:uppercase;color:var(--main);text-shadow:0 0 12px rgba(var(--main-rgb),.55);}
-.hdr-line{position:relative;height:1px;margin-top:10px;background:rgba(var(--main-rgb),.55);box-shadow:0 0 8px rgba(var(--main-rgb),.6);}
-.hdr-line::before{content:'';position:absolute;left:0;top:-1px;height:3px;width:30%;background:var(--alt);box-shadow:0 0 10px var(--alt);}
-.hdr-line::after{content:'';position:absolute;right:0;top:-4px;width:7px;height:7px;border:1px solid var(--main);transform:rotate(45deg);background:var(--bg2);}
-.txt-main{color:var(--main)}.txt-alt{color:var(--alt)}.txt-warn{color:var(--warn)}
+.txt-main{color:var(--main)}.txt-alt{color:var(--alt)}
 .glow-main{text-shadow:0 0 8px rgba(var(--main-rgb),.6);}
 .glow-alt{text-shadow:0 0 8px rgba(var(--alt-rgb),.55);}
 .inp{width:100%;display:block;background:rgba(0,0,0,.45);border:1px solid rgba(var(--main-rgb),.35);color:#F3EEF1;padding:10px 12px;font-size:16px;outline:none;border-radius:0;transition:border-color .15s,box-shadow .15s;}
@@ -2266,21 +2129,6 @@ textarea.inp{resize:vertical;line-height:1.5;}
 .toast-msg{min-width:0;overflow:hidden;text-overflow:ellipsis;}
 .toast-btn{flex-shrink:0;display:inline-flex;align-items:center;gap:5px;--cut:6px;padding:7px 10px;background:var(--warn);color:#0a0a0f;font:inherit;font-size:12px;letter-spacing:.08em;text-transform:uppercase;}
 @keyframes toastin{0%{opacity:0;transform:translate(-50%,10px)}30%{opacity:1;transform:translate(calc(-50% + 3px),0)}45%{transform:translate(calc(-50% - 3px),0)}60%{transform:translate(-50%,0)}}
-/* сканлайны / ЭЛТ */
-.scan,.crt{position:fixed;inset:0;pointer-events:none;z-index:250;}
-.scan{background:repeating-linear-gradient(0deg,rgba(0,0,0,.2) 0,rgba(0,0,0,.2) 1px,transparent 1px,transparent 3px);}
-.crt,.crt-on .scan{animation:flick 7s infinite steps(1);}
-.crt::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 58%,rgba(0,0,0,.5) 100%);}
-@keyframes flick{0%,100%{opacity:1}43%{opacity:.82}44%{opacity:1}88%{opacity:.9}89%{opacity:1}}
-/* глитч */
-.glitch{position:relative;display:inline-block;}
-.fx-glitch .glitch::before,.fx-glitch .glitch::after{content:attr(data-text);position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;text-shadow:none;white-space:nowrap;}
-.fx-glitch .glitch::before{color:var(--alt);animation:gl1 4.5s infinite steps(1);clip-path:inset(0 0 100% 0);}
-.fx-glitch .glitch::after{color:var(--warn);animation:gl2 4.5s infinite steps(1);clip-path:inset(100% 0 0 0);}
-@keyframes gl1{0%,89%,100%{clip-path:inset(0 0 100% 0);transform:none}90%{clip-path:inset(8% 0 62% 0);transform:translate(-3px,0)}92%{clip-path:inset(54% 0 18% 0);transform:translate(2px,0)}94%{clip-path:inset(30% 0 44% 0);transform:translate(-2px,0)}96%{clip-path:inset(0 0 100% 0)}}
-@keyframes gl2{0%,89%,100%{clip-path:inset(100% 0 0 0);transform:none}91%{clip-path:inset(66% 0 8% 0);transform:translate(3px,0)}93%{clip-path:inset(18% 0 64% 0);transform:translate(-3px,0)}95%{clip-path:inset(78% 0 4% 0);transform:translate(2px,0)}97%{clip-path:inset(100% 0 0 0)}}
-.fx-glitch .gbox{animation:gbox 7s infinite steps(1);}
-@keyframes gbox{0%,93%,100%{transform:none;filter:none}94%{transform:translate(2px,-1px) skewX(-3deg);filter:hue-rotate(40deg)}95%{transform:translate(-2px,1px)}96%{transform:none;filter:none}}
 /* миссии */
 .sec-title{font-size:20px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--main);text-shadow:0 0 10px rgba(var(--main-rgb),.55);line-height:1;}
 .m-title{font-size:19px;font-weight:600;letter-spacing:.03em;text-transform:uppercase;color:var(--alt);line-height:1.08;text-shadow:0 0 8px rgba(var(--alt-rgb),.45);}
@@ -2296,10 +2144,6 @@ textarea.inp{resize:vertical;line-height:1.5;}
 .desc{color:rgba(var(--main-rgb),1);filter:brightness(1.15);font-size:16px;line-height:1.6;white-space:pre-wrap;font-family:'Exo 2','Rajdhani',sans-serif;}
 .neon-track{position:absolute;right:2px;top:0;bottom:0;width:3px;background:rgba(var(--main-rgb),.18);}
 .neon-thumb{position:absolute;left:-1px;width:5px;background:var(--main);box-shadow:0 0 8px var(--main),0 0 16px rgba(var(--main-rgb),.6);transition:top .05s;}
-.holo{position:relative;overflow:hidden;}
-.holo img{filter:grayscale(1) sepia(1) hue-rotate(-45deg) saturate(5) contrast(1.1) brightness(.85);}
-.holo::after{content:'';position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(var(--main-rgb),.22) 0,rgba(var(--main-rgb),.22) 1px,transparent 1px,transparent 3px),linear-gradient(180deg,rgba(var(--main-rgb),.15),transparent 60%,rgba(var(--main-rgb),.2));mix-blend-mode:screen;animation:holo 3s infinite steps(1);}
-@keyframes holo{0%,100%{opacity:1}50%{opacity:.7}51%{opacity:1}}
 .tag{display:inline-flex;align-items:center;gap:3px;font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:.05em;padding:3px 8px;color:var(--tc);box-shadow:inset 0 0 0 1px var(--tc);background:rgba(0,0,0,.35);white-space:nowrap;}
 .tag.on{background:var(--tc);color:#0a0a0f;}
 .plus-btn{--cut:10px;width:46px;height:46px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--main);color:#0a0a0f;}
@@ -2309,7 +2153,7 @@ textarea.inp{resize:vertical;line-height:1.5;}
 .nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));background:linear-gradient(180deg,rgba(10,8,14,.94),rgba(5,4,8,.99));border-top:1px solid rgba(var(--main-rgb),.45);box-shadow:0 -6px 24px rgba(var(--main-rgb),.14);position:relative;z-index:20;}
 .nav-b{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:9px 2px 8px;color:rgba(255,255,255,.42);}
 .nav-b .nl{font-size:11px;font-weight:700;letter-spacing:.03em;line-height:1;white-space:nowrap;}
-.nav-b .ns{font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:.08em;opacity:.75;line-height:1;white-space:nowrap;}
+
 .nav-b.on{color:var(--main);text-shadow:0 0 8px rgba(var(--main-rgb),.7);}
 .nav-b.on::before{content:'';position:absolute;top:-1px;left:22%;right:22%;height:3px;background:var(--main);box-shadow:0 0 12px var(--main);}
 .nav-b.on svg{filter:drop-shadow(0 0 5px var(--main));}
@@ -2339,7 +2183,7 @@ body.cj-dragging,body.cj-dragging *{cursor:grabbing !important;}
 .side-logo b{display:block;font-family:'Orbitron',sans-serif;font-weight:900;font-size:16px;letter-spacing:.08em;color:var(--main);text-shadow:0 0 10px rgba(var(--main-rgb),.6);}
 .side-b{position:relative;display:flex;align-items:center;gap:12px;width:100%;padding:12px 20px;color:rgba(255,255,255,.5);text-align:left;transition:color .15s,background .15s;}
 .side-b .nl{display:block;font-size:15px;font-weight:700;letter-spacing:.06em;line-height:1.1;}
-.side-b .ns{display:block;font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:.12em;opacity:.7;margin-top:3px;}
+
 .side-b:hover{color:rgba(255,255,255,.88);background:rgba(var(--main-rgb),.06);}
 .side-b.on{color:var(--main);background:linear-gradient(90deg,rgba(var(--main-rgb),.16),transparent);text-shadow:0 0 8px rgba(var(--main-rgb),.7);}
 .side-b.on::before{content:'';position:absolute;left:0;top:8px;bottom:8px;width:3px;background:var(--main);box-shadow:0 0 12px var(--main);}
@@ -2358,12 +2202,10 @@ body.cj-dragging,body.cj-dragging *{cursor:grabbing !important;}
 .cj-wide main{scrollbar-color:rgba(var(--main-rgb),.35) transparent;}
 /* статистика */
 .st-score{font-family:'Orbitron','Russo One',sans-serif;font-weight:900;line-height:1;letter-spacing:.02em;font-variant-numeric:tabular-nums;}
-.seg-bar{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;}
-.seg-bar i{display:block;height:7px;background:rgba(255,255,255,.08);transform:skewX(-24deg);}
 .day-cell{position:relative;display:flex;align-items:center;justify-content:center;width:44px;height:44px;margin:0 auto;}
 .day-sel{position:absolute;inset:0;--cut:9px;background:rgba(var(--main-rgb),.14);box-shadow:inset 0 0 0 1.5px var(--main);}
 .day-today{position:absolute;bottom:-1px;left:50%;margin-left:-5px;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:6px solid var(--warn);filter:drop-shadow(0 0 3px var(--warn));}
-.crit-row{display:grid;grid-template-columns:60px 1fr;align-items:center;gap:6px;border-bottom:1px solid rgba(var(--main-rgb),.18);padding:9px 0;}
+
 .wd-chip{min-width:40px;padding:8px 0;text-align:center;font-weight:700;font-size:13px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);color:rgba(255,255,255,.5);--cut:6px;}
 .wd-chip.on{background:var(--alt);color:#06080a;box-shadow:none;}
 .thumb{--cut:7px;width:40px;height:54px;display:flex;align-items:flex-start;justify-content:center;padding-top:7px;opacity:.5;transition:opacity .15s,transform .15s;box-shadow:inset 0 0 0 1px rgba(var(--main-rgb),.35);flex-shrink:0;}
@@ -2427,7 +2269,7 @@ body.cj-dragging,body.cj-dragging *{cursor:grabbing !important;}
 .pf-line i.on{background:var(--pc);box-shadow:0 0 12px var(--pc),0 0 26px var(--pc);}
 .pf-line i.wait{background:transparent;box-shadow:inset 0 0 0 1px var(--pc);}
 .pf-line i.none{background:rgba(255,255,255,.06);box-shadow:none;}
-.pf-no{position:absolute;left:16px;top:70px;color:rgba(255,255,255,.65);}
+
 .pf-rail{position:absolute;right:12px;top:82px;z-index:10;}
 .pf-tabs{position:absolute;left:12px;right:12px;top:10px;z-index:20;max-width:560px;}
 .pf-tabs .seg{background:rgba(0,0,0,.4);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);}
@@ -2448,7 +2290,7 @@ body.cj-dragging,body.cj-dragging *{cursor:grabbing !important;}
 .tk-title{margin-top:20px;font-size:21px;letter-spacing:.12em;color:#fff;text-transform:uppercase;text-shadow:0 0 14px rgba(0,0,0,.6);}
 .tk-sub{margin-top:5px;font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:.18em;color:rgba(255,255,255,.6);text-transform:uppercase;}
 .tk-hms{margin-top:14px;font-family:'Share Tech Mono',monospace;font-size:24px;letter-spacing:.14em;padding:4px 12px;background:rgba(0,0,0,.35);box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);}
-.rail-b{display:flex;flex-direction:column;align-items:center;gap:6px;color:#fff;opacity:.9;filter:drop-shadow(0 2px 6px rgba(0,0,0,.6));}
+
 .tk-face{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 56px;text-align:center;color:#fff;}
 .tk-face .tk-title{margin-top:0;}
 .flip-t{position:relative;display:inline-flex;align-items:center;justify-content:center;width:min(9.5vw,58px);height:min(13vw,80px);font-size:min(10vw,64px);line-height:1;color:#fff;background:linear-gradient(180deg,#2a2631 0%,#1b1921 50%,#121016 50%,#0b0a0f 100%);box-shadow:0 8px 24px rgba(0,0,0,.55),inset 0 0 0 1px rgba(255,255,255,.08);border-radius:6px;overflow:hidden;perspective:300px;}
@@ -2481,28 +2323,8 @@ body.cj-dragging,body.cj-dragging *{cursor:grabbing !important;}
 .poster-hms{margin-top:14px;display:flex;align-items:center;gap:10px;font-family:'Share Tech Mono',monospace;font-size:18px;letter-spacing:.14em;}
 .poster-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;animation:pdot 1s steps(1) infinite;}
 @keyframes pdot{50%{opacity:.2}}
-.aur{position:absolute;width:130%;height:42%;left:-15%;border-radius:50%;filter:blur(30px);mix-blend-mode:screen;will-change:transform;}
-.aur.a1{top:8%;opacity:1;background:linear-gradient(90deg,transparent,#19f5a6 30%,#0fd1c7 60%,transparent);animation:aur1 14s ease-in-out infinite alternate;}
-.aur.a2{top:24%;opacity:.85;background:linear-gradient(90deg,transparent,#7c3aed 35%,#22d3ee 70%,transparent);animation:aur2 18s ease-in-out infinite alternate;}
-.aur.a3{top:-4%;height:30%;opacity:.6;background:linear-gradient(90deg,transparent,#a3ff5c 50%,transparent);animation:aur1 22s ease-in-out infinite alternate-reverse;}
-@keyframes aur1{from{transform:translateX(-8%) skewY(-6deg) scaleY(.8)}to{transform:translateX(8%) skewY(5deg) scaleY(1.2)}}
-@keyframes aur2{from{transform:translateX(10%) skewY(4deg)}to{transform:translateX(-10%) skewY(-7deg) scaleY(1.3)}}
-.twk{animation:twk 3s ease-in-out infinite;}
-@keyframes twk{50%{opacity:.12}}
-.space-drift{animation:sdrift 60s linear infinite alternate;transform-origin:center;}
-@keyframes sdrift{to{transform:scale(1.12) rotate(2deg)}}
-.planet{position:absolute;left:-32%;bottom:-14%;width:min(85vw,560px);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 65% 30%,#ff7ab6 0%,#7a2fbf 38%,#1a0b3a 70%);box-shadow:0 0 90px rgba(255,90,180,.32),inset -40px -50px 90px rgba(0,0,0,.65);opacity:.85;}
-.rail-b span{writing-mode:vertical-rl;font-size:13px;letter-spacing:.14em;font-weight:600;}
-.rail-b:active{opacity:.6;}
-.smoke-drift{animation:drift 28s ease-in-out infinite;will-change:transform;transform-origin:center;}
 @keyframes drift{0%,100%{transform:scale(1.15) translate(0,0)}50%{transform:scale(1.35) translate(-5%,4%) rotate(3deg)}}
-.grid-floor{position:absolute;left:-60%;right:-60%;bottom:-6%;height:52%;background-image:linear-gradient(rgba(0,240,255,.75) 2px,transparent 2px),linear-gradient(90deg,rgba(255,46,140,.7) 2px,transparent 2px);background-size:46px 46px;transform:perspective(260px) rotateX(64deg);transform-origin:top center;animation:gridmove 1.6s linear infinite;-webkit-mask-image:linear-gradient(180deg,transparent,#000 30%);mask-image:linear-gradient(180deg,transparent,#000 30%);}
-@keyframes gridmove{from{background-position:0 0}to{background-position:0 46px}}
-.grid-sun{position:absolute;left:50%;top:22%;width:min(62vw,280px);aspect-ratio:1;transform:translateX(-50%);border-radius:50%;background:linear-gradient(180deg,#FCEE0A 0%,#FF7A00 40%,#FF2E8C 75%);-webkit-mask-image:linear-gradient(180deg,#000 55%,transparent 55%,transparent 59%,#000 59%,#000 68%,transparent 68%,transparent 73%,#000 73%,#000 81%,transparent 81%,transparent 87%,#000 87%);mask-image:linear-gradient(180deg,#000 55%,transparent 55%,transparent 59%,#000 59%,#000 68%,transparent 68%,transparent 73%,#000 73%,#000 81%,transparent 81%,transparent 87%,#000 87%);box-shadow:0 0 80px rgba(255,46,140,.6);}
-.rain{position:absolute;inset:-20%;background:repeating-linear-gradient(105deg,transparent 0,transparent 13px,rgba(180,220,255,.08) 13px,rgba(180,220,255,.08) 14px);animation:rain .5s linear infinite;}
 @keyframes rain{from{transform:translate(0,0)}to{transform:translate(-6px,28px)}}
-.mx-col{position:absolute;top:0;writing-mode:vertical-rl;text-orientation:upright;color:#39FF6A;font-size:17px;letter-spacing:3px;text-shadow:0 0 8px #39FF6A;opacity:.5;animation:mxfall linear infinite;-webkit-mask-image:linear-gradient(180deg,transparent,#000 75%);mask-image:linear-gradient(180deg,transparent,#000 75%);}
-@keyframes mxfall{from{transform:translateY(-100%)}to{transform:translateY(115vh)}}
 /* настройки */
 .set-head{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid rgba(var(--main-rgb),.3);background:linear-gradient(90deg,rgba(var(--main-rgb),.14),transparent);}
 .set-n{font-family:'Share Tech Mono',monospace;font-size:11px;color:#0a0a0f;background:var(--main);padding:2px 5px;letter-spacing:.06em;}
@@ -2534,13 +2356,13 @@ body.cj-dragging,body.cj-dragging *{cursor:grabbing !important;}
 const MONO_CSS = `
 .cj-root.ui-mono{font-family:'Inter',system-ui,sans-serif;color:#F2F2F7;background:#000;}
 .ui-mono input,.ui-mono textarea,.ui-mono select{font-family:'Inter',system-ui,sans-serif;}
-.ui-mono .f-mono,.ui-mono .f-read,.ui-mono .f-disp{font-family:'Inter',system-ui,sans-serif;font-variant-numeric:tabular-nums;}
-.ui-mono .mx-col{font-family:'Share Tech Mono',monospace;}
+.ui-mono .f-mono,.ui-mono .f-read{font-family:'Inter',system-ui,sans-serif;font-variant-numeric:tabular-nums;}
+
 .ui-mono .f-orb,.ui-mono .st-score{font-family:'Unbounded','Inter',sans-serif;font-weight:700;letter-spacing:-.01em;}
 .ui-mono .uppercase{text-transform:none;}
 .ui-mono [class*="tracking-"]{letter-spacing:0;}
-.ui-mono .deco{display:none!important;}
-.ui-mono .cut,.ui-mono .cut-tr,.ui-mono .cut-br{clip-path:none;border-radius:12px;}
+
+.ui-mono .cut{clip-path:none;border-radius:12px;}
 .ui-mono div[style*="inset 0 0 0 1px"]{border-radius:14px;}
 .ui-mono .frame{background:var(--fc,rgba(255,255,255,.07));border-radius:var(--r,20px);}
 .ui-mono .frame-in{background:var(--fb,#111113);border-radius:calc(var(--r,20px) - 1px);}
@@ -2592,8 +2414,6 @@ const MONO_CSS = `
 .ui-mono .step-box.done{background:var(--alt);border-color:var(--alt);color:#000;}
 .ui-mono .neon-track{background:transparent;}
 .ui-mono .neon-thumb{background:#48484A;box-shadow:none;border-radius:3px;}
-.ui-mono .holo img{filter:none;}
-.ui-mono .holo::after{display:none;}
 .ui-mono .tag{border-radius:999px;box-shadow:none;background:rgba(255,255,255,.08);font-family:'Inter',sans-serif;font-weight:600;letter-spacing:0;padding:5px 10px;}
 .ui-mono .tag.on{background:var(--tc);color:#000;}
 .ui-mono .plus-btn{border-radius:50%;background:var(--alt);color:#000;}
@@ -2615,7 +2435,7 @@ const MONO_CSS = `
 .ui-mono.cj-wide .modal-panel.wide{border:1px solid #1C1C1E;border-radius:24px;box-shadow:0 20px 60px rgba(0,0,0,.7);animation:mdlg .2s ease-out;}
 .ui-mono.cj-wide main::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);border:3px solid transparent;background-clip:padding-box;}
 .ui-mono.cj-wide main{scrollbar-color:rgba(255,255,255,.2) transparent;}
-.ui-mono .seg-bar i{transform:none;border-radius:3px;height:6px;background:#2C2C2E;}
+
 .ui-mono .day-sel{border-radius:50%;background:rgba(255,255,255,.1);box-shadow:none;inset:2px;}
 .ui-mono .day-today{border:0;width:5px;height:5px;border-radius:50%;background:var(--alt);margin-left:-2.5px;bottom:-4px;filter:none;}
 .ui-mono .day-n{font-family:'Unbounded','Inter',sans-serif;font-size:12px;font-weight:500;}
@@ -2691,25 +2511,19 @@ function Frame({
   bg,
   cut = 12,
   style,
-  onClick,
-  mc,
-  mb
+  onClick
 }) {
-  const fc = UI.mono ? mc : color,
-    fb = UI.mono ? mb : bg;
   return React.createElement("div", {
     onClick: onClick,
     className: `frame cut ${className}`,
     style: {
       '--cut': `${cut}px`,
-      ...(UI.mono ? {
-        '--r': `${Math.round(cut * 1.45)}px`
+      '--r': `${Math.round(cut * 1.45)}px`,
+      ...(color ? {
+        '--fc': color
       } : {}),
-      ...(fc ? {
-        '--fc': fc
-      } : {}),
-      ...(fb ? {
-        '--fb': fb
+      ...(bg ? {
+        '--fb': bg
       } : {}),
       ...style
     }
@@ -2717,43 +2531,6 @@ function Frame({
     className: `frame-in cut ${inner}`
   }, children));
 }
-const BTN_V = {
-  main: {
-    bg: 'var(--main)',
-    fg: '#0a0a0f',
-    bd: 'transparent'
-  },
-  alt: {
-    bg: 'var(--alt)',
-    fg: '#05080a',
-    bd: 'transparent'
-  },
-  ghost: {
-    bg: 'rgba(var(--alt-rgb),.06)',
-    fg: 'var(--alt)',
-    bd: 'rgba(var(--alt-rgb),.55)'
-  },
-  ghostMain: {
-    bg: 'rgba(var(--main-rgb),.07)',
-    fg: 'var(--main)',
-    bd: 'rgba(var(--main-rgb),.6)'
-  },
-  danger: {
-    bg: '#E8112D',
-    fg: '#fff',
-    bd: 'transparent'
-  },
-  dangerGhost: {
-    bg: 'rgba(255,42,42,.07)',
-    fg: '#FF5A5A',
-    bd: 'rgba(255,42,42,.55)'
-  },
-  dark: {
-    bg: 'rgba(255,255,255,.06)',
-    fg: '#E6E0E3',
-    bd: 'rgba(255,255,255,.2)'
-  }
-};
 const BTN_M = {
   main: {
     bg: 'var(--alt)',
@@ -2802,8 +2579,7 @@ function Btn({
   snd = 'click',
   style
 }) {
-  const set = UI.mono ? BTN_M : BTN_V;
-  const v = set[variant] || set.main;
+  const v = BTN_M[variant] || BTN_M.main;
   return React.createElement("button", {
     type: "button",
     disabled: disabled,
@@ -2909,7 +2685,6 @@ function Segmented({
 function Modal({
   onClose,
   title,
-  code,
   children,
   footer,
   full
@@ -2951,8 +2726,6 @@ function Modal({
   }, React.createElement("div", {
     className: "min-w-0"
   }, React.createElement("div", {
-    className: "micro deco"
-  }, code || 'SYS.DIALOG // EDIT'), React.createElement("div", {
     className: "modal-title mt-1"
   }, title)), onClose && React.createElement(IconBtn, {
     icon: X,
@@ -2983,18 +2756,12 @@ function Dialog({
     className: "fixed inset-0 z-[90] flex items-center justify-center p-5 modal-bg"
   }, React.createElement(Frame, {
     className: "w-full max-w-[400px] dlg-in",
-    color: d.danger ? '#FF2A2A' : 'var(--main)',
     cut: 16,
-    bg: "linear-gradient(180deg,rgba(26,12,20,.98),rgba(8,7,12,.98))",
-    mc: d.danger ? 'rgba(255,69,58,.45)' : 'transparent',
-    mb: "#1C1C1E"
+    color: d.danger ? 'rgba(255,69,58,.45)' : 'transparent',
+    bg: "#1C1C1E"
   }, React.createElement("div", {
     className: "p-5"
   }, React.createElement("div", {
-    className: "micro deco flex items-center gap-2"
-  }, React.createElement(AlertTriangle, {
-    size: 11
-  }), " ", d.code || 'SYSTEM MESSAGE'), React.createElement("div", {
     className: "text-[21px] font-bold mt-1 uppercase tracking-wide leading-tight",
     style: {
       color: d.danger ? '#FF4D4D' : 'var(--main)'
@@ -3060,9 +2827,8 @@ function Sheet({
     }
   }, React.createElement(Frame, {
     cut: 14,
-    bg: "linear-gradient(180deg,rgba(26,12,20,.98),rgba(8,7,12,.98))",
-    mc: "transparent",
-    mb: "#1C1C1E"
+    color: "transparent",
+    bg: "#1C1C1E"
   }, React.createElement("div", {
     className: "p-2"
   }, React.createElement("div", {
@@ -3090,7 +2856,6 @@ function Sheet({
 }
 function ReorderModal({
   title,
-  code,
   list,
   setList,
   row,
@@ -3109,7 +2874,6 @@ function ReorderModal({
   };
   return React.createElement(Modal, {
     title: title,
-    code: code,
     onClose: onClose,
     footer: React.createElement(React.Fragment, null, React.createElement(Btn, {
       variant: "ghost",
@@ -3408,8 +3172,6 @@ function CropDialog({
   }, React.createElement("div", {
     className: "min-w-0"
   }, React.createElement("div", {
-    className: "micro deco"
-  }, "IMAGE // CROP"), React.createElement("div", {
     className: "modal-title mt-1"
   }, "\u041A\u0430\u0434\u0440\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u0435")), React.createElement(IconBtn, {
     icon: X,
@@ -3548,12 +3310,11 @@ function Empty({
   }, children));
 }
 function ScreenHeader({
-  code,
   title,
   sub,
   right
 }) {
-  if (UI.mono) return React.createElement("div", {
+  return React.createElement("div", {
     className: "px-4 pt-6 pb-1"
   }, React.createElement("div", {
     className: "flex items-end justify-between gap-3"
@@ -3564,22 +3325,6 @@ function ScreenHeader({
   }, title), sub && React.createElement("div", {
     className: "text-[13px] text-white/45 mt-1"
   }, sub)), right));
-  return React.createElement("div", {
-    className: "px-4 pt-4 pb-1"
-  }, React.createElement("div", {
-    className: "flex items-end justify-between gap-3"
-  }, React.createElement("div", {
-    className: "min-w-0"
-  }, React.createElement("div", {
-    className: "micro mb-1"
-  }, code), React.createElement("h1", {
-    className: "h1 glitch",
-    "data-text": title
-  }, title), sub && React.createElement("div", {
-    className: "text-[12px] text-white/45 mt-1 f-read"
-  }, sub)), right), React.createElement("div", {
-    className: "hdr-line"
-  }));
 }
 function TagChip({
   tag,
@@ -3603,293 +3348,48 @@ function TagChip({
     }
   }, "#", tag.name);
 }
-const burstPts = (cx, cy, ro, ri, n) => {
-  const p = [];
-  for (let i = 0; i < n * 2; i++) {
-    const r = i % 2 ? ri : ro,
-      a = Math.PI * i / n - Math.PI / 2;
-    p.push(`${(cx + r * Math.cos(a)).toFixed(1)},${(cy + r * Math.sin(a)).toFixed(1)}`);
-  }
-  return p.join(' ');
+const STICKER_NAMES = {
+  donut: 'Питание',
+  apple: 'Фрукты',
+  water: 'Вода',
+  coffee: 'Кофе',
+  sleep: 'Сон',
+  sun: 'Ранний подъём',
+  dumbbell: 'Силовая',
+  run: 'Бег',
+  steps: 'Шаги',
+  bolt: 'Энергия',
+  heart: 'Здоровье',
+  pill: 'Витамины',
+  lotus: 'Медитация',
+  brain: 'Мозг',
+  book: 'Чтение',
+  pen: 'Дневник',
+  globe: 'Языки',
+  code: 'Код',
+  target: 'Фокус',
+  clock: 'Время',
+  coin: 'Финансы',
+  broom: 'Уборка',
+  plant: 'Рост',
+  music: 'Музыка',
+  eye: 'Экранное время',
+  chip: 'Гаджеты',
+  nophone: 'Без телефона',
+  nosmoke: 'Без курения',
+  noalco: 'Без алкоголя',
+  game: 'Игры',
+  skull: 'Вредные привычки',
+  mountain: 'Походы',
+  bike: 'Велосипед',
+  phone: 'Звонок близким',
+  fire: 'Стрик',
+  star: 'Цель'
 };
-const ICONS = {
-  donut: ['Питание', React.createElement(React.Fragment, null, React.createElement("circle", {
-    cx: "16",
-    cy: "16",
-    r: "12"
-  }), React.createElement("circle", {
-    cx: "16",
-    cy: "16",
-    r: "4.5"
-  }), React.createElement("path", {
-    d: "M5 13 q2.5 -3 5 0 t5 0 t5 0 t5 0 t3 -1"
-  }), React.createElement("path", {
-    d: "M10 9 l2 1 M20 8 l1 2 M23 19 l2 -1 M9 21 l1.5 1.5"
-  }))],
-  apple: ['Фрукты', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M16 9 c-4 -3 -11 -1 -11 7 c0 7 5 12 8 12 c1 0 2 -1 3 -1 s2 1 3 1 c3 0 8 -5 8 -12 c0 -8 -7 -10 -11 -7 z"
-  }), React.createElement("path", {
-    d: "M16 9 c0 -3 1 -5 4 -6"
-  }), React.createElement("path", {
-    d: "M10 15 c0 -2 1 -3 2 -3"
-  }))],
-  water: ['Вода', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M16 3 C16 3 6 14 6 20 a10 10 0 0 0 20 0 C26 14 16 3 16 3 Z"
-  }), React.createElement("path", {
-    d: "M11 20 a5 5 0 0 0 4 5"
-  }))],
-  coffee: ['Кофе', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M5 12 h17 v7 a7 7 0 0 1 -7 7 h-3 a7 7 0 0 1 -7 -7 z"
-  }), React.createElement("path", {
-    d: "M22 14 h2.5 a3 3 0 0 1 0 6 h-2.5"
-  }), React.createElement("path", {
-    d: "M10 3 c-1.5 2 1.5 3 0 6 M15 3 c-1.5 2 1.5 3 0 6"
-  }))],
-  sleep: ['Сон', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M19 5 A12 12 0 1 0 28 21 A9.5 9.5 0 1 1 19 5 Z"
-  }), React.createElement("path", {
-    d: "M21 4 h5 l-5 5 h5"
-  }), React.createElement("path", {
-    d: "M26 11 h3 l-3 3 h3"
-  }))],
-  sun: ['Ранний подъём', React.createElement(React.Fragment, null, React.createElement("circle", {
-    cx: "16",
-    cy: "16",
-    r: "6"
-  }), React.createElement("path", {
-    d: "M16 2 v4 M16 26 v4 M2 16 h4 M26 16 h4 M6 6 l3 3 M23 23 l3 3 M26 6 l-3 3 M9 23 l-3 3"
-  }))],
-  dumbbell: ['Силовая', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M4 16 h24"
-  }), React.createElement("path", {
-    d: "M7 10 v12 M11 7 v18 M21 7 v18 M25 10 v12"
-  }))],
-  run: ['Бег', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M3 22 h21 c3 0 5 -1.5 5 -3.5 c0 -2 -2 -3 -5 -3.5 l-5 -1 l-4 -6 l-4 2 l1 4 l-4 1 l-5 -3 z"
-  }), React.createElement("path", {
-    d: "M3 22 v3 h26 v-3"
-  }), React.createElement("path", {
-    d: "M12 16 l2 -1 M15 18 l2 -1"
-  }))],
-  steps: ['Шаги', React.createElement(React.Fragment, null, React.createElement("ellipse", {
-    cx: "10",
-    cy: "11",
-    rx: "4",
-    ry: "6"
-  }), React.createElement("circle", {
-    cx: "10",
-    cy: "22.5",
-    r: "2.5"
-  }), React.createElement("ellipse", {
-    cx: "22",
-    cy: "14",
-    rx: "4",
-    ry: "6"
-  }), React.createElement("circle", {
-    cx: "22",
-    cy: "25.5",
-    r: "2.5"
-  }))],
-  bolt: ['Энергия', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M18 3 L7 18 h8 l-2 11 L25 13 h-8 Z"
-  }))],
-  heart: ['Здоровье', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M16 27 C6 20 3 15 3 10.5 C3 6.5 6 4 9.5 4 C12.5 4 14.5 6 16 8 C17.5 6 19.5 4 22.5 4 C26 4 29 6.5 29 10.5 C29 15 26 20 16 27 Z"
-  }), React.createElement("path", {
-    d: "M7 14 h5 l2 -4 l3 8 l2 -4 h6"
-  }))],
-  pill: ['Витамины', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M7 22 l13 -13 a5 5 0 0 1 7 7 l-13 13 a5 5 0 0 1 -7 -7 z"
-  }), React.createElement("path", {
-    d: "M13.5 15.5 l7 7"
-  }))],
-  lotus: ['Медитация', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M16 26 c-6 0 -11 -4 -12 -9 c5 0 9 2 12 6 c3 -4 7 -6 12 -6 c-1 5 -6 9 -12 9 z"
-  }), React.createElement("path", {
-    d: "M16 23 c-3 -4 -3 -10 0 -16 c3 6 3 12 0 16 z"
-  }))],
-  brain: ['Мозг', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M16 6 c-3 -3 -9 -2 -9 3 c-4 1 -4 7 -1 8 c-2 3 0 8 4 8 c1 3 5 3 6 0 z"
-  }), React.createElement("path", {
-    d: "M16 6 c3 -3 9 -2 9 3 c4 1 4 7 1 8 c2 3 0 8 -4 8 c-1 3 -5 3 -6 0 z"
-  }), React.createElement("path", {
-    d: "M16 6 v19 M10 13 h3 M19 17 h3"
-  }))],
-  book: ['Чтение', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M16 8 C12 5 7 5 3 6 v19 c4 -1 9 -1 13 2 c4 -3 9 -3 13 -2 v-19 c-4 -1 -9 -1 -13 2 z"
-  }), React.createElement("path", {
-    d: "M16 8 v19"
-  }))],
-  pen: ['Дневник', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M22 4 l6 6 l-16 16 l-8 2 l2 -8 z"
-  }), React.createElement("path", {
-    d: "M19 7 l6 6"
-  }))],
-  globe: ['Языки', React.createElement(React.Fragment, null, React.createElement("circle", {
-    cx: "16",
-    cy: "16",
-    r: "12"
-  }), React.createElement("path", {
-    d: "M16 4 c-5 4 -5 20 0 24 c5 -4 5 -20 0 -24"
-  }), React.createElement("path", {
-    d: "M4 16 h24 M6 10 h20 M6 22 h20"
-  }))],
-  code: ['Код', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M11 9 L4 16 L11 23 M21 9 L28 16 L21 23 M18 6 L14 26"
-  }))],
-  target: ['Фокус', React.createElement(React.Fragment, null, React.createElement("circle", {
-    cx: "16",
-    cy: "16",
-    r: "12"
-  }), React.createElement("circle", {
-    cx: "16",
-    cy: "16",
-    r: "6.5"
-  }), React.createElement("circle", {
-    cx: "16",
-    cy: "16",
-    r: "1.5"
-  }), React.createElement("path", {
-    d: "M16 1 v6 M16 25 v6 M1 16 h6 M25 16 h6"
-  }))],
-  clock: ['Время', React.createElement(React.Fragment, null, React.createElement("circle", {
-    cx: "16",
-    cy: "16",
-    r: "12"
-  }), React.createElement("path", {
-    d: "M16 8 v8 l5 4"
-  }))],
-  coin: ['Финансы', React.createElement(React.Fragment, null, React.createElement("circle", {
-    cx: "16",
-    cy: "16",
-    r: "13"
-  }), React.createElement("path", {
-    d: "M20 11 c-1 -2 -3 -2 -4 -2 c-3 0 -5 1 -5 3.5 c0 5 9 2.5 9 7.5 c0 2.5 -2 3.5 -5 3.5 c-2 0 -4 -1 -5 -2 M15.5 6 v20"
-  }))],
-  broom: ['Уборка', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M25 3 L15 14"
-  }), React.createElement("path", {
-    d: "M10 14 h9 l3 4 l-4 10 h-11 l-1 -10 z"
-  }), React.createElement("path", {
-    d: "M11 21 l-1 7 M15 21 v7 M19 21 l1 6"
-  }))],
-  plant: ['Рост', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M16 28 V13"
-  }), React.createElement("path", {
-    d: "M16 18 c-6 0 -10 -4 -10 -10 c6 0 10 4 10 10 z"
-  }), React.createElement("path", {
-    d: "M16 14 c0 -6 4 -10 10 -10 c0 6 -4 10 -10 10 z"
-  }), React.createElement("path", {
-    d: "M10 28 h12"
-  }))],
-  music: ['Музыка', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M12 24 V7 L26 4 V21"
-  }), React.createElement("path", {
-    d: "M12 24 a4 3.5 0 1 1 -8 0 a4 3.5 0 1 1 8 0 M26 21 a4 3.5 0 1 1 -8 0 a4 3.5 0 1 1 8 0"
-  }), React.createElement("path", {
-    d: "M12 11 L26 8"
-  }))],
-  eye: ['Экранное время', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M2 16 Q16 3 30 16 Q16 29 2 16 Z"
-  }), React.createElement("circle", {
-    cx: "16",
-    cy: "16",
-    r: "5"
-  }), React.createElement("path", {
-    d: "M1 16 h4 M27 16 h4"
-  }))],
-  chip: ['Импланты', React.createElement(React.Fragment, null, React.createElement("rect", {
-    x: "8",
-    y: "8",
-    width: "16",
-    height: "16"
-  }), React.createElement("rect", {
-    x: "12.5",
-    y: "12.5",
-    width: "7",
-    height: "7"
-  }), React.createElement("path", {
-    d: "M12 3 v5 M16 3 v5 M20 3 v5 M12 24 v5 M16 24 v5 M20 24 v5 M3 12 h5 M3 16 h5 M3 20 h5 M24 12 h5 M24 16 h5 M24 20 h5"
-  }))],
-  nophone: ['Без телефона', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M10 3 h12 a2 2 0 0 1 2 2 v22 a2 2 0 0 1 -2 2 h-12 a2 2 0 0 1 -2 -2 v-22 a2 2 0 0 1 2 -2 z"
-  }), React.createElement("path", {
-    d: "M14 25 h4"
-  }), React.createElement("path", {
-    d: "M3 4 L29 28"
-  }))],
-  nosmoke: ['Без курения', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M3 18 h19 v5 h-19 z M25 18 v5 M28 18 v5"
-  }), React.createElement("path", {
-    d: "M24 15 c0 -3 3 -3 3 -6 c0 -2 -1 -3 -2 -4"
-  }), React.createElement("path", {
-    d: "M4 4 L28 28"
-  }))],
-  noalco: ['Без алкоголя', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M10 4 h12 c0 7 -2 11 -6 11 c-4 0 -6 -4 -6 -11 z"
-  }), React.createElement("path", {
-    d: "M16 15 v11 M11 27 h10"
-  }), React.createElement("path", {
-    d: "M5 4 L27 28"
-  }))],
-  game: ['Игры', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M9 10 h14 a6 6 0 0 1 6 6 v3 a4 4 0 0 1 -7 3 l-2 -2 h-8 l-2 2 a4 4 0 0 1 -7 -3 v-3 a6 6 0 0 1 6 -6 z"
-  }), React.createElement("path", {
-    d: "M10 14 v5 M7.5 16.5 h5 M21 15 h.1 M24 18 h.1"
-  }))],
-  skull: ['Вредные привычки', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M16 3 c-7 0 -12 5 -12 11 c0 4 2 6 4 7 v5 h16 v-5 c2 -1 4 -3 4 -7 c0 -6 -5 -11 -12 -11 z"
-  }), React.createElement("circle", {
-    cx: "11",
-    cy: "15",
-    r: "2.6"
-  }), React.createElement("circle", {
-    cx: "21",
-    cy: "15",
-    r: "2.6"
-  }), React.createElement("path", {
-    d: "M13 26 v-3 M16 26 v-3 M19 26 v-3"
-  }))],
-  mountain: ['Походы', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M2 27 L12 10 L18 19 L22 14 L30 27 Z"
-  }), React.createElement("path", {
-    d: "M9 15 l3 2 l2 -3"
-  }))],
-  bike: ['Велосипед', React.createElement(React.Fragment, null, React.createElement("circle", {
-    cx: "8",
-    cy: "22",
-    r: "5"
-  }), React.createElement("circle", {
-    cx: "24",
-    cy: "22",
-    r: "5"
-  }), React.createElement("path", {
-    d: "M8 22 L13 12 H21 L24 22 M13 12 L17 22 H8 M19 8 h4 M11 10 h4"
-  }))],
-  phone: ['Звонок близким', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M8 4 h4 l2 6 l-3 2 c2 4 4 6 8 8 l2 -3 l6 2 v4 c0 2 -2 3 -4 3 C13 26 6 19 5 8 c0 -2 1 -4 3 -4 z"
-  }))],
-  fire: ['Стрик', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M16 29 c-6 0 -10 -4 -10 -9 c0 -6 6 -9 6 -15 c4 3 6 6 6 10 c1 -1 2 -3 2 -5 c3 3 6 6 6 11 c0 5 -4 8 -10 8 z"
-  }), React.createElement("path", {
-    d: "M16 29 c-3 0 -4 -2 -4 -4 c0 -3 4 -5 4 -8 c2 2 4 4 4 8 c0 2 -1 4 -4 4 z"
-  }))],
-  star: ['Цель', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M16 3 l3.8 8.2 l9 1 l-6.7 6 l1.9 8.8 l-8 -4.6 l-8 4.6 l1.9 -8.8 l-6.7 -6 l9 -1 z"
-  }))]
-};
-const STICKERS = Object.keys(ICONS).map(k => `st:${k}`);
+const STICKERS = Object.keys(STICKER_NAMES).map(k => `st:${k}`);
 const STICKER_FRAMES = [['oct', 'Окта'], ['hex', 'Гекс'], ['shield', 'Щит'], ['diamond', 'Ромб'], ['cut', 'Срез'], ['circle', 'Круг']];
-const FRAME_PTS = {
-  oct: [[20, 3], [44, 3], [61, 20], [61, 44], [44, 61], [20, 61], [3, 44], [3, 20]],
-  hex: [[32, 2], [59, 17], [59, 47], [32, 62], [5, 47], [5, 17]],
-  shield: [[6, 5], [58, 5], [58, 36], [32, 62], [6, 36]],
-  diamond: [[32, 1], [63, 32], [32, 63], [1, 32]],
-  cut: [[3, 3], [49, 3], [61, 15], [61, 61], [15, 61], [3, 49]]
-};
-const ptsStr = (pts, k = 1) => pts.map(([x, y]) => `${(32 + (x - 32) * k).toFixed(1)},${(32 + (y - 32) * k).toFixed(1)}`).join(' ');
 const stickerLabel = icon => {
-  if (icon.startsWith('st:')) return (ICONS[icon.slice(3)] || ['Стикер'])[0];
+  if (icon.startsWith('st:')) return STICKER_NAMES[icon.slice(3)] || 'Стикер';
   return icon.startsWith('url:') ? 'Своя картинка' : 'Эмодзи';
 };
 const OL = '#121212';
@@ -5091,11 +4591,11 @@ const TOON = {
     d: spark(9, 53, 3.6)
   })))
 };
-function ToonSticker({
-  icon,
-  color,
-  size,
-  frame
+function Sticker({
+  icon = 'st:star',
+  color = '#FCEE0A',
+  size = 96,
+  frame = 'oct'
 }) {
   const id = useMemo(() => uid('tn'), []);
   const mini = size < 40;
@@ -5149,204 +4649,23 @@ function ToonSticker({
     fontSize: "30"
   }, icon.slice(3)));
 }
-function Sticker({
-  icon = 'st:star',
-  color = '#FCEE0A',
-  size = 96,
-  frame = 'oct',
-  toon = UI.mono
-}) {
-  if (toon) return React.createElement(ToonSticker, {
-    icon: icon,
-    color: color,
-    size: size,
-    frame: frame
-  });
-  return React.createElement(NeonSticker, {
-    icon: icon,
-    color: color,
-    size: size,
-    frame: frame
-  });
-}
-function NeonSticker({
-  icon,
-  color,
-  size,
-  frame
-}) {
-  const id = useMemo(() => uid('stk'), []);
-  const mini = size < 40;
-  const shape = FRAME_PTS[frame] ? frame : frame === 'circle' ? 'circle' : 'oct';
-  const outline = (props, k = 1) => shape === 'circle' ? React.createElement("circle", _extends({
-    cx: "32",
-    cy: "32",
-    r: 30 * k
-  }, props)) : React.createElement("polygon", _extends({
-    points: ptsStr(FRAME_PTS[shape], k),
-    strokeLinejoin: "round"
-  }, props));
-  const key = icon.startsWith('st:') ? icon.slice(3) : null;
-  const glyph = key && ICONS[key] ? ICONS[key][1] : null;
-  const k = shape === 'diamond' ? 0.95 : shape === 'shield' ? 1.08 : 1.2;
-  const pic = useImgSrc(icon.startsWith('url:') ? icon.slice(4) : '', mini);
-  return React.createElement("svg", {
-    viewBox: "0 0 64 64",
-    width: size,
-    height: size,
-    style: {
-      display: 'block',
-      overflow: 'visible'
-    },
-    "aria-label": stickerLabel(icon)
-  }, React.createElement("defs", null, React.createElement("radialGradient", {
-    id: `${id}g`,
-    cx: "50%",
-    cy: "42%",
-    r: "60%"
-  }, React.createElement("stop", {
-    offset: "0",
-    stopColor: color,
-    stopOpacity: ".38"
-  }), React.createElement("stop", {
-    offset: "1",
-    stopColor: color,
-    stopOpacity: "0"
-  })), React.createElement("clipPath", {
-    id: `${id}c`
-  }, outline({})), React.createElement("pattern", {
-    id: `${id}p`,
-    width: "4",
-    height: "3",
-    patternUnits: "userSpaceOnUse"
-  }, React.createElement("rect", {
-    width: "4",
-    height: "1",
-    fill: color,
-    opacity: ".22"
-  }))), outline({
-    fill: '#0a0810',
-    stroke: color,
-    strokeWidth: mini ? 3 : 2,
-    style: {
-      filter: `drop-shadow(0 0 ${mini ? 2 : 4}px ${color})`
-    }
-  }), React.createElement("g", {
-    clipPath: `url(#${id}c)`
-  }, React.createElement("rect", {
-    width: "64",
-    height: "64",
-    fill: `url(#${id}g)`
-  }), pic && React.createElement("image", {
-    href: pic,
-    x: "0",
-    y: "0",
-    width: "64",
-    height: "64",
-    preserveAspectRatio: "xMidYMid slice"
-  }), !mini && React.createElement("rect", {
-    width: "64",
-    height: "64",
-    fill: `url(#${id}p)`
-  })), !mini && outline({
-    fill: 'none',
-    stroke: color,
-    strokeOpacity: 0.35,
-    strokeWidth: 0.8
-  }, 0.84), glyph && React.createElement("g", {
-    transform: `translate(${32 - 16 * k} ${(shape === 'shield' ? 29 : 32) - 16 * k}) scale(${k})`,
-    fill: "none",
-    stroke: color,
-    strokeWidth: mini ? 3 : 2.1,
-    strokeLinecap: "round",
-    strokeLinejoin: "round",
-    style: {
-      filter: `drop-shadow(0 0 ${mini ? 1.5 : 3}px ${color})`
-    }
-  }, glyph), icon.startsWith('em:') && React.createElement("text", {
-    x: "32",
-    y: "34",
-    textAnchor: "middle",
-    dominantBaseline: "central",
-    fontSize: "28"
-  }, icon.slice(3)), !mini && React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M2 10 V2 H10",
-    fill: "none",
-    stroke: "#fff",
-    strokeOpacity: ".7",
-    strokeWidth: "1.2"
-  }), React.createElement("path", {
-    d: "M62 54 V62 H54",
-    fill: "none",
-    stroke: "#fff",
-    strokeOpacity: ".7",
-    strokeWidth: "1.2"
-  }), React.createElement("rect", {
-    x: "52",
-    y: "4",
-    width: "6",
-    height: "2",
-    fill: color,
-    opacity: ".9"
-  })));
-}
 function ChipIcon({
   active,
   dim,
   kind
 }) {
-  if (UI.mono) {
-    const I = kind === 'shard' ? FileText : Flag;
-    return React.createElement("span", {
-      className: "mono-dot",
-      style: {
-        background: active ? 'var(--alt)' : '#1C1C1F',
-        color: active ? '#000' : '#8E8E93',
-        opacity: dim ? 0.5 : 1
-      }
-    }, React.createElement(I, {
-      size: 14,
-      strokeWidth: 2.3
-    }));
-  }
-  return React.createElement("svg", {
-    width: "30",
-    height: "44",
-    viewBox: "0 0 30 44",
+  const I = kind === 'shard' ? FileText : Flag;
+  return React.createElement("span", {
+    className: "mono-dot",
     style: {
-      opacity: dim ? 0.4 : 1,
-      filter: active ? 'drop-shadow(0 0 5px var(--main))' : 'none'
+      background: active ? 'var(--alt)' : '#1C1C1F',
+      color: active ? '#000' : '#8E8E93',
+      opacity: dim ? 0.5 : 1
     }
-  }, React.createElement("g", {
-    transform: "rotate(-9 15 22)"
-  }, React.createElement("path", {
-    d: "M6 3 h14 l6 6 v29 a3 3 0 0 1 -3 3 h-17 a3 3 0 0 1 -3 -3 v-32 a3 3 0 0 1 3 -3z",
-    style: {
-      fill: active ? 'rgba(var(--main-rgb),.38)' : 'rgba(var(--main-rgb),.16)',
-      stroke: 'var(--main)'
-    },
-    strokeWidth: "1.6"
-  }), React.createElement("path", {
-    d: "M10 8 h9 M10 12 h5",
-    style: {
-      stroke: 'var(--main)'
-    },
-    strokeWidth: "1.4"
-  }), React.createElement("path", {
-    d: "M19 20 a6.5 6.5 0 1 0 1 6",
-    style: {
-      stroke: 'var(--main)'
-    },
-    strokeWidth: "2.2",
-    fill: "none"
-  }), React.createElement("circle", {
-    cx: "14.5",
-    cy: "26.5",
-    r: "2.3",
-    style: {
-      fill: 'var(--main)'
-    }
-  })));
+  }, React.createElement(I, {
+    size: 14,
+    strokeWidth: 2.3
+  }));
 }
 function MissionBadge({
   badge,
@@ -5356,161 +4675,45 @@ function MissionBadge({
   if (!b.shape || b.shape === 'none') return null;
   const c = b.color || '#F5B83D',
     t = String(b.text || '').slice(0, 7);
-  const fs = t.length > 4 ? 6.5 : t.length > 2 ? 9 : 12;
-  if (UI.mono) {
-    const [r, g, bl] = hexRgb(c).split(',').map(Number);
-    const ink = r * 0.299 + g * 0.587 + bl * 0.114 > 150 ? '#111' : '#fff';
-    const mfs = t.length > 4 ? 7 : t.length > 2 ? 9.5 : 13;
-    return React.createElement("div", {
-      className: "shrink-0 flex items-center justify-center",
-      style: {
-        width: size + 8
-      }
-    }, React.createElement("svg", {
-      width: size,
-      height: size,
-      viewBox: "0 0 50 50"
-    }, b.shape === 'diamond' && React.createElement("path", {
-      d: "M22.2 4.8 Q25 2 27.8 4.8 L45.2 22.2 Q48 25 45.2 27.8 L27.8 45.2 Q25 48 22.2 45.2 L4.8 27.8 Q2 25 4.8 22.2 Z",
-      fill: c
-    }), b.shape === 'square' && React.createElement("rect", {
-      x: "5",
-      y: "5",
-      width: "40",
-      height: "40",
-      rx: "12",
-      fill: c
-    }), b.shape === 'triangle' && React.createElement("path", {
-      d: "M22.3 7 Q25 2.5 27.7 7 L46 39.5 Q48 44 43 44 H7 Q2 44 4 39.5 Z",
-      fill: c
-    }), b.shape === 'circle' && React.createElement("circle", {
-      cx: "25",
-      cy: "25",
-      r: "21",
-      fill: c
-    }), React.createElement("text", {
-      x: "25",
-      y: b.shape === 'triangle' ? 36 : 25 + mfs * 0.36,
-      textAnchor: "middle",
-      fontSize: mfs,
-      fontWeight: "700",
-      fill: ink,
-      fontFamily: "Unbounded, Inter, sans-serif"
-    }, t)));
-  }
+  const [r, g, bl] = hexRgb(c).split(',').map(Number);
+  const ink = r * 0.299 + g * 0.587 + bl * 0.114 > 150 ? '#111' : '#fff';
+  const mfs = t.length > 4 ? 7 : t.length > 2 ? 9.5 : 13;
   return React.createElement("div", {
-    className: "shrink-0 flex flex-col items-center",
+    className: "shrink-0 flex items-center justify-center",
     style: {
       width: size + 8
     }
   }, React.createElement("svg", {
     width: size,
     height: size,
-    viewBox: "0 0 50 50",
-    style: {
-      filter: 'drop-shadow(0 0 3px rgba(0,0,0,.6))'
-    }
-  }, b.shape === 'diamond' && React.createElement(React.Fragment, null, React.createElement("polygon", {
-    points: "25,2 48,25 25,48 2,25",
-    fill: "#0d0d10",
-    stroke: "#fff",
-    strokeWidth: "1.6"
-  }), React.createElement("polygon", {
-    points: "25,4.5 45.5,25 4.5,25",
+    viewBox: "0 0 50 50"
+  }, b.shape === 'diamond' && React.createElement("path", {
+    d: "M22.2 4.8 Q25 2 27.8 4.8 L45.2 22.2 Q48 25 45.2 27.8 L27.8 45.2 Q25 48 22.2 45.2 L4.8 27.8 Q2 25 4.8 22.2 Z",
     fill: c
-  }), [[17, 15, 3, 10], [21, 11, 3, 14], [25, 9, 3, 16], [29, 12, 3, 13], [33, 16, 3, 9]].map(([x, y, w, h], i) => React.createElement("rect", {
-    key: i,
-    x: x - 1.5,
-    y: y,
-    width: w,
-    height: h,
-    fill: "#fff",
-    opacity: ".9"
-  })), React.createElement("text", {
-    x: "25",
-    y: "37",
-    textAnchor: "middle",
-    fontSize: fs,
-    fontWeight: "800",
-    fill: "#fff",
-    fontFamily: "Rajdhani, sans-serif"
-  }, t)), b.shape === 'square' && React.createElement(React.Fragment, null, React.createElement("rect", {
-    x: "3",
-    y: "3",
-    width: "44",
-    height: "44",
-    fill: "#0d0d10",
-    stroke: "#fff",
-    strokeWidth: "1.6"
-  }), React.createElement("rect", {
+  }), b.shape === 'square' && React.createElement("rect", {
     x: "5",
     y: "5",
     width: "40",
-    height: "11",
+    height: "40",
+    rx: "12",
     fill: c
-  }), React.createElement("text", {
-    x: "25",
-    y: "13.6",
-    textAnchor: "middle",
-    fontSize: fs,
-    fontWeight: "800",
-    fill: "#fff",
-    fontFamily: "Rajdhani, sans-serif"
-  }, t), [[9, 20, 8, 6], [19, 20, 12, 6], [33, 20, 8, 6], [9, 29, 14, 7], [25, 29, 16, 7], [9, 39, 32, 4]].map(([x, y, w, h], i) => React.createElement("rect", {
-    key: i,
-    x: x,
-    y: y,
-    width: w,
-    height: h,
-    fill: "#fff",
-    opacity: i % 2 ? 0.85 : 0.55
-  }))), b.shape === 'triangle' && React.createElement(React.Fragment, null, React.createElement("polygon", {
-    points: "25,4 47,44 3,44",
-    fill: c,
-    stroke: "#111",
-    strokeWidth: "2"
-  }), React.createElement("polygon", {
-    points: "25,13 39,39 11,39",
-    fill: "#0d0d10"
-  }), React.createElement("text", {
-    x: "25",
-    y: "35",
-    textAnchor: "middle",
-    fontSize: fs,
-    fontWeight: "800",
-    fill: "#fff",
-    fontFamily: "Rajdhani, sans-serif"
-  }, t)), b.shape === 'circle' && React.createElement(React.Fragment, null, React.createElement("circle", {
+  }), b.shape === 'triangle' && React.createElement("path", {
+    d: "M22.3 7 Q25 2.5 27.7 7 L46 39.5 Q48 44 43 44 H7 Q2 44 4 39.5 Z",
+    fill: c
+  }), b.shape === 'circle' && React.createElement("circle", {
     cx: "25",
     cy: "25",
     r: "21",
-    fill: "#0d0d10",
-    stroke: c,
-    strokeWidth: "3"
-  }), React.createElement("circle", {
-    cx: "25",
-    cy: "25",
-    r: "16",
-    fill: "none",
-    stroke: c,
-    strokeWidth: "1",
-    strokeDasharray: "3 2"
+    fill: c
   }), React.createElement("text", {
     x: "25",
-    y: 25 + fs * 0.36,
+    y: b.shape === 'triangle' ? 36 : 25 + mfs * 0.36,
     textAnchor: "middle",
-    fontSize: fs,
-    fontWeight: "800",
-    fill: c,
-    fontFamily: "Rajdhani, sans-serif"
-  }, t))), React.createElement("div", {
-    className: "f-mono text-center leading-[1.05] mt-0.5",
-    style: {
-      fontSize: 4.6,
-      letterSpacing: '.04em',
-      color: 'rgba(255,255,255,.55)'
-    }
-  }, "CERTIFIED TO ACCESS", React.createElement("br", null), "OR DISABLE THIS ITEM"));
+    fontSize: mfs,
+    fontWeight: "700",
+    fill: ink,
+    fontFamily: "Unbounded, Inter, sans-serif"
+  }, t)));
 }
 function Ring({
   avg,
@@ -5532,8 +4735,8 @@ function Ring({
     cy: size / 2,
     r: r,
     fill: "none",
-    stroke: UI.mono ? '#2C2C2E' : 'rgba(255,255,255,.13)',
-    strokeWidth: UI.mono ? stroke : stroke - 0.6,
+    stroke: "#2C2C2E",
+    strokeWidth: stroke,
     strokeDasharray: dashed ? '3 3' : undefined
   }), avg != null && React.createElement("circle", {
     cx: size / 2,
@@ -5544,10 +4747,7 @@ function Ring({
     strokeWidth: stroke,
     strokeDasharray: `${C * pct} ${C}`,
     strokeLinecap: "round",
-    transform: `rotate(-90 ${size / 2} ${size / 2})`,
-    style: UI.mono ? undefined : {
-      filter: `drop-shadow(0 0 3px ${color})`
-    }
+    transform: `rotate(-90 ${size / 2} ${size / 2})`
   }));
 }
 const AVATAR_PRESETS = ['preset:m', 'preset:optics', 'preset:chip', 'preset:eye'];
@@ -5555,153 +4755,67 @@ const isPresetAvatar = v => !v || String(v).startsWith('preset:');
 function AvatarGlyph({
   id = 'preset:m'
 }) {
-  if (UI.mono) {
-    const K = {
-        fill: '#000'
-      },
-      L = {
-        stroke: '#000',
-        fill: 'none'
-      };
-    return React.createElement("svg", {
-      viewBox: "0 0 64 64",
-      className: "w-full h-full block"
-    }, React.createElement("circle", {
-      cx: "32",
-      cy: "32",
-      r: "32",
-      style: {
-        fill: 'var(--alt)'
-      }
-    }), React.createElement("g", {
-      transform: "translate(32 32) scale(.66) translate(-32 -32)"
-    }, id === 'preset:optics' ? React.createElement(React.Fragment, null, React.createElement("path", {
-      d: "M14 22 L32 14 L50 22 L48 40 L32 52 L16 40 Z",
-      style: L,
-      strokeWidth: "5",
-      strokeLinejoin: "round"
-    }), React.createElement("path", {
-      d: "M18 29 H29 L31 34 H20 Z M46 29 H35 L33 34 H44 Z",
-      style: K
-    })) : id === 'preset:chip' ? React.createElement(React.Fragment, null, React.createElement("rect", {
-      x: "17",
-      y: "17",
-      width: "30",
-      height: "30",
-      rx: "5",
-      style: L,
-      strokeWidth: "5"
-    }), React.createElement("rect", {
-      x: "26",
-      y: "26",
-      width: "12",
-      height: "12",
-      rx: "2",
-      style: K
-    }), [24, 32, 40].map(p => React.createElement("path", {
-      key: p,
-      d: `M${p} 6 V15 M${p} 49 V58 M6 ${p} H15 M49 ${p} H58`,
-      style: L,
-      strokeWidth: "4",
-      strokeLinecap: "round"
-    }))) : id === 'preset:eye' ? React.createElement(React.Fragment, null, React.createElement("path", {
-      d: "M6 32 Q32 8 58 32 Q32 56 6 32 Z",
-      style: L,
-      strokeWidth: "5",
-      strokeLinejoin: "round"
-    }), React.createElement("circle", {
-      cx: "32",
-      cy: "32",
-      r: "9",
-      style: K
-    })) : React.createElement("path", {
-      d: "M10 52 V12 L32 30 L54 12 V52 H44 V33 L32 43 L20 33 V52 Z",
-      style: K
-    })));
-  }
-  const M = {
-      fill: 'var(--main)'
+  const K = {
+      fill: '#000'
     },
-    A = {
-      stroke: 'var(--alt)'
-    },
-    S = {
-      stroke: 'var(--main)'
+    L = {
+      stroke: '#000',
+      fill: 'none'
     };
   return React.createElement("svg", {
     viewBox: "0 0 64 64",
-    className: "w-full h-full block",
+    className: "w-full h-full block"
+  }, React.createElement("circle", {
+    cx: "32",
+    cy: "32",
+    r: "32",
     style: {
-      filter: 'drop-shadow(0 0 6px rgba(var(--main-rgb),.55))'
+      fill: 'var(--alt)'
     }
+  }), React.createElement("g", {
+    transform: "translate(32 32) scale(.66) translate(-32 -32)"
   }, id === 'preset:optics' ? React.createElement(React.Fragment, null, React.createElement("path", {
     d: "M14 22 L32 14 L50 22 L48 40 L32 52 L16 40 Z",
-    fill: "none",
-    style: S,
-    strokeWidth: "2.5",
+    style: L,
+    strokeWidth: "5",
     strokeLinejoin: "round"
   }), React.createElement("path", {
-    d: "M18 29 H29 L31 33 H20 Z M46 29 H35 L33 33 H44 Z",
-    style: M
-  }), React.createElement("path", {
-    d: "M32 40 V47 M26 44 H38",
-    fill: "none",
-    style: A,
-    strokeWidth: "2"
-  }), React.createElement("path", {
-    d: "M8 30 H13 M51 30 H56",
-    fill: "none",
-    style: A,
-    strokeWidth: "2"
+    d: "M18 29 H29 L31 34 H20 Z M46 29 H35 L33 34 H44 Z",
+    style: K
   })) : id === 'preset:chip' ? React.createElement(React.Fragment, null, React.createElement("rect", {
-    x: "18",
-    y: "18",
-    width: "28",
-    height: "28",
-    fill: "none",
-    style: S,
-    strokeWidth: "2.5"
+    x: "17",
+    y: "17",
+    width: "30",
+    height: "30",
+    rx: "5",
+    style: L,
+    strokeWidth: "5"
   }), React.createElement("rect", {
-    x: "25",
-    y: "25",
-    width: "14",
-    height: "14",
-    style: M
-  }), [22, 28, 34, 40].map(p => React.createElement("path", {
+    x: "26",
+    y: "26",
+    width: "12",
+    height: "12",
+    rx: "2",
+    style: K
+  }), [24, 32, 40].map(p => React.createElement("path", {
     key: p,
-    d: `M${p} 10 V18 M${p} 46 V54 M10 ${p} H18 M46 ${p} H54`,
-    fill: "none",
-    style: A,
-    strokeWidth: "2"
+    d: `M${p} 6 V15 M${p} 49 V58 M6 ${p} H15 M49 ${p} H58`,
+    style: L,
+    strokeWidth: "4",
+    strokeLinecap: "round"
   }))) : id === 'preset:eye' ? React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M8 32 Q32 10 56 32 Q32 54 8 32 Z",
-    fill: "none",
-    style: S,
-    strokeWidth: "2.5"
+    d: "M6 32 Q32 8 58 32 Q32 56 6 32 Z",
+    style: L,
+    strokeWidth: "5",
+    strokeLinejoin: "round"
   }), React.createElement("circle", {
     cx: "32",
     cy: "32",
     r: "9",
-    style: M
-  }), React.createElement("circle", {
-    cx: "32",
-    cy: "32",
-    r: "3.5",
-    fill: "#07080A"
-  }), React.createElement("path", {
-    d: "M6 32 H58",
-    fill: "none",
-    style: A,
-    strokeWidth: "1.2",
-    strokeDasharray: "3 3"
-  })) : React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M14 48 V16 L32 31 L50 16 V48 H42 V33 L32 41 L22 33 V48 Z",
-    style: M
-  }), React.createElement("path", {
-    d: "M10 10 H18 M10 10 V18 M54 54 H46 M54 54 V46",
-    fill: "none",
-    style: A,
-    strokeWidth: "2"
+    style: K
+  })) : React.createElement("path", {
+    d: "M10 52 V12 L32 30 L54 12 V52 H44 V33 L32 43 L20 33 V52 Z",
+    style: K
   })));
 }
 function AvatarSlot({
@@ -5712,11 +4826,10 @@ function AvatarSlot({
     data
   } = useApp();
   const {
-    avatar,
-    avatarHolo
+    avatar
   } = data.settings;
   const img = !isPresetAvatar(avatar);
-  if (UI.mono) return React.createElement("div", {
+  return React.createElement("div", {
     className: "relative shrink-0",
     style: {
       width: size,
@@ -5751,54 +4864,6 @@ function AvatarSlot({
     size: 12,
     strokeWidth: 2.6
   })));
-  return React.createElement("div", {
-    className: "relative shrink-0",
-    style: {
-      width: size,
-      height: size
-    }
-  }, React.createElement("button", {
-    type: "button",
-    onClick: onClick ? () => {
-      sfx('open');
-      onClick();
-    } : undefined,
-    "aria-label": "\u0421\u043C\u0435\u043D\u0438\u0442\u044C \u0430\u0432\u0430\u0442\u0430\u0440",
-    className: "cut block w-full h-full",
-    style: {
-      '--cut': `${Math.round(size / 6)}px`,
-      padding: 2,
-      background: 'linear-gradient(135deg,var(--main),rgba(var(--main-rgb),.25) 45%,var(--alt))',
-      cursor: onClick ? 'pointer' : 'default'
-    }
-  }, React.createElement("div", {
-    className: `cut w-full h-full relative overflow-hidden ${img && avatarHolo ? 'holo' : ''}`,
-    style: {
-      '--cut': `${Math.round(size / 6) - 2}px`,
-      background: 'radial-gradient(circle at 50% 35%,rgba(var(--main-rgb),.22),#08070c 70%)'
-    }
-  }, img ? React.createElement(Img, {
-    src: avatar,
-    thumb: size <= 120,
-    className: "w-full h-full object-cover block"
-  }) : React.createElement("div", {
-    className: "w-full h-full",
-    style: {
-      padding: size * 0.14
-    }
-  }, React.createElement(AvatarGlyph, {
-    id: avatar
-  })))), onClick && React.createElement("span", {
-    className: "absolute -bottom-1 -right-1 w-6 h-6 flex items-center justify-center cut pointer-events-none",
-    style: {
-      '--cut': '5px',
-      background: 'var(--alt)',
-      color: '#06080a'
-    }
-  }, React.createElement(Pencil, {
-    size: 12,
-    strokeWidth: 2.6
-  })));
 }
 function AvatarEditor({
   onClose
@@ -5814,7 +4879,6 @@ function AvatarEditor({
   }));
   return React.createElement(Modal, {
     title: "\u0410\u0432\u0430\u0442\u0430\u0440",
-    code: "BIOMONITOR // AVATAR.SET",
     onClose: onClose,
     footer: React.createElement(Btn, {
       className: "flex-1",
@@ -5857,18 +4921,6 @@ function AvatarEditor({
     onChange: v => set({
       avatar: v || 'preset:m'
     })
-  })), !isPresetAvatar(s.avatar) && React.createElement("div", {
-    className: "px-3 py-1",
-    style: {
-      boxShadow: 'inset 0 0 0 1px rgba(255,255,255,.1)'
-    }
-  }, React.createElement(Toggle, {
-    on: s.avatarHolo,
-    onChange: v => set({
-      avatarHolo: v
-    }),
-    label: "\u0413\u043E\u043B\u043E\u0433\u0440\u0430\u0444\u0438\u0447\u0435\u0441\u043A\u0438\u0439 \u0444\u0438\u043B\u044C\u0442\u0440",
-    hint: "\u041E\u043A\u0440\u0430\u0448\u0438\u0432\u0430\u0435\u0442 \u0444\u043E\u0442\u043E \u0432 \u0446\u0432\u0435\u0442 \u0438\u043D\u0442\u0435\u0440\u0444\u0435\u0439\u0441\u0430 \u0441\u043E \u0441\u043A\u0430\u043D\u043B\u0430\u0439\u043D\u0430\u043C\u0438"
   })));
 }
 const TAG_COLORS = ['#FF4655', '#00F0FF', '#FCEE0A', '#59FF00', '#FF7A00', '#B98CF0', '#FF2E8C', '#FFFFFF'];
@@ -5877,13 +4929,11 @@ function useDirOps() {
     data,
     up,
     ask,
-    toast,
     undoable
   } = useApp();
   const addSection = async () => {
     const name = await ask({
       title: 'Новый раздел',
-      code: 'DIR.SECTIONS // ADD',
       input: true,
       placeholder: 'Например: САМОРАЗВИТИЕ',
       ok: 'Создать'
@@ -5902,7 +4952,6 @@ function useDirOps() {
     if (!s) return;
     const name = await ask({
       title: 'Переименовать раздел',
-      code: 'DIR.SECTIONS // RENAME',
       input: true,
       value: nice(s.name),
       ok: 'Сохранить'
@@ -5928,7 +4977,6 @@ function useDirOps() {
     const text = !ids.length ? `Раздел «${s.name}» пуст и будет удалён.` : other ? `В разделе «${s.name}» ${ids.length} ${plural(ids.length, 'миссия', 'миссии', 'миссий')}. Они будут перенесены в «${other.name}».` : `Вместе с разделом будут удалены ${ids.length} ${plural(ids.length, 'миссия', 'миссии', 'миссий')}.`;
     const ok = await ask({
       title: 'Удалить раздел?',
-      code: 'DIR.SECTIONS // DELETE',
       text,
       ok: 'Удалить',
       danger: true
@@ -5948,7 +4996,6 @@ function useDirOps() {
   const addTag = async () => {
     const name = await ask({
       title: 'Новый тег',
-      code: 'DIR.TAGS // ADD',
       input: true,
       placeholder: 'например: работа',
       ok: 'Создать'
@@ -5968,7 +5015,6 @@ function useDirOps() {
     if (!t) return;
     const name = await ask({
       title: 'Переименовать тег',
-      code: 'DIR.TAGS // RENAME',
       input: true,
       value: t.name,
       ok: 'Сохранить'
@@ -5987,7 +5033,6 @@ function useDirOps() {
     if (!t) return;
     const ok = await ask({
       title: 'Удалить тег?',
-      code: 'DIR.TAGS // DELETE',
       text: `Тег #${t.name} будет снят со всех записей дневника.`,
       ok: 'Удалить',
       danger: true
@@ -6012,28 +5057,6 @@ function useDirOps() {
     deleteTag
   };
 }
-function TriangleIcon({
-  collapsed
-}) {
-  return React.createElement("svg", {
-    width: "22",
-    height: "18",
-    viewBox: "0 0 22 18",
-    style: {
-      transform: collapsed ? 'rotate(-90deg)' : 'none',
-      transition: 'transform .2s',
-      filter: 'drop-shadow(0 0 4px var(--main))'
-    }
-  }, React.createElement("polygon", {
-    points: "2,2 20,2 11,16",
-    fill: "none",
-    style: {
-      stroke: 'var(--main)'
-    },
-    strokeWidth: "1.8",
-    strokeLinejoin: "round"
-  }));
-}
 function SectionHeader({
   name,
   count,
@@ -6041,7 +5064,7 @@ function SectionHeader({
   onToggle,
   onMenu
 }) {
-  if (UI.mono) return React.createElement("div", {
+  return React.createElement("div", {
     className: "flex items-center gap-1 pt-1"
   }, React.createElement("button", {
     type: "button",
@@ -6073,54 +5096,13 @@ function SectionHeader({
       transition: 'transform .2s'
     }
   })));
-  return React.createElement("div", {
-    className: "flex items-stretch"
-  }, React.createElement("div", {
-    className: "w-[4px] mr-1.5 shrink-0",
-    style: {
-      background: 'rgba(var(--main-rgb),.6)',
-      boxShadow: '0 0 8px rgba(var(--main-rgb),.5)'
-    }
-  }), React.createElement(Frame, {
-    cut: 16,
-    className: "flex-1 min-w-0",
-    color: "rgba(var(--main-rgb),.6)",
-    bg: "linear-gradient(90deg,rgba(42,20,46,.94),rgba(22,14,34,.94))"
-  }, React.createElement("div", {
-    className: "flex items-center"
-  }, React.createElement("button", {
-    type: "button",
-    onClick: onToggle,
-    className: "flex-1 flex items-center gap-2.5 pl-4 pr-2 py-3.5 text-left min-w-0"
-  }, React.createElement("span", {
-    className: "sec-title truncate"
-  }, name), React.createElement("span", {
-    className: "f-mono text-[11px] text-white/40 shrink-0"
-  }, "[", count, "]")), onMenu && React.createElement("button", {
-    type: "button",
-    "aria-label": "\u041C\u0435\u043D\u044E \u0440\u0430\u0437\u0434\u0435\u043B\u0430",
-    onClick: () => {
-      sfx();
-      onMenu();
-    },
-    className: "px-2 py-3 text-white/45"
-  }, React.createElement(MoreVertical, {
-    size: 18
-  })), onToggle && React.createElement("button", {
-    type: "button",
-    "aria-label": "\u0421\u0432\u0435\u0440\u043D\u0443\u0442\u044C",
-    onClick: onToggle,
-    className: "pr-4 pl-1 py-3"
-  }, React.createElement(TriangleIcon, {
-    collapsed: collapsed
-  })))));
 }
 function ArchiveHeader({
   count,
   open,
   onToggle
 }) {
-  if (UI.mono) return React.createElement("button", {
+  return React.createElement("button", {
     type: "button",
     onClick: onToggle,
     className: "mono-row w-full flex items-center gap-3 px-4 py-3.5 text-left"
@@ -6139,64 +5121,6 @@ function ArchiveHeader({
       transition: 'transform .2s'
     }
   }));
-  return React.createElement("div", {
-    className: "flex items-stretch"
-  }, React.createElement("div", {
-    className: "w-[4px] mr-1.5 shrink-0",
-    style: {
-      background: 'rgba(var(--alt-rgb),.55)',
-      boxShadow: '0 0 8px rgba(var(--alt-rgb),.45)'
-    }
-  }), React.createElement(Frame, {
-    cut: 16,
-    className: "flex-1 min-w-0",
-    color: "rgba(var(--alt-rgb),.55)",
-    bg: "repeating-linear-gradient(135deg,rgba(10,18,24,.95) 0 10px,rgba(14,24,32,.95) 10px 20px)"
-  }, React.createElement("button", {
-    type: "button",
-    onClick: onToggle,
-    className: "w-full flex items-center gap-3 pl-4 pr-4 py-3 text-left"
-  }, React.createElement(Database, {
-    size: 18,
-    className: "txt-alt shrink-0",
-    style: {
-      filter: 'drop-shadow(0 0 4px var(--alt))'
-    }
-  }), React.createElement("span", {
-    className: "min-w-0 flex-1"
-  }, React.createElement("span", {
-    className: "block text-[17px] font-bold tracking-[.06em] uppercase txt-alt glow-alt leading-tight"
-  }, "\u0410\u0440\u0445\u0438\u0432: \u0437\u0430\u0432\u0435\u0440\u0448\u0451\u043D\u043D\u044B\u0435 \u043C\u0438\u0441\u0441\u0438\u0438"), React.createElement("span", {
-    className: "block micro mt-1",
-    style: {
-      color: 'rgba(var(--alt-rgb),.6)'
-    }
-  }, "ARCHIVE // CLOSED.CONTRACTS")), React.createElement("span", {
-    className: "cut shrink-0 f-orb font-black text-[14px] px-2 py-1",
-    style: {
-      '--cut': '5px',
-      color: '#06080a',
-      background: 'var(--alt)'
-    }
-  }, count), React.createElement("svg", {
-    width: "20",
-    height: "16",
-    viewBox: "0 0 22 18",
-    className: "shrink-0",
-    style: {
-      transform: open ? 'none' : 'rotate(-90deg)',
-      transition: 'transform .2s',
-      filter: 'drop-shadow(0 0 4px var(--alt))'
-    }
-  }, React.createElement("polygon", {
-    points: "2,2 20,2 11,16",
-    fill: "none",
-    style: {
-      stroke: 'var(--alt)'
-    },
-    strokeWidth: "1.8",
-    strokeLinejoin: "round"
-  })))));
 }
 function useMissionDrag(onDrop, onStart) {
   const [drag, setDrag] = useState(null);
@@ -6455,10 +5379,8 @@ function MissionRow({
     className: "block w-full text-left"
   }, React.createElement(Frame, {
     cut: 14,
-    color: open ? 'var(--sel2)' : m.done ? 'rgba(var(--alt-rgb),.3)' : 'rgba(var(--main-rgb),.42)',
-    bg: open ? 'linear-gradient(90deg,var(--sel1),var(--sel2))' : m.done ? 'repeating-linear-gradient(135deg,rgba(14,12,20,.96) 0 8px,rgba(20,17,28,.96) 8px 16px)' : undefined,
-    mc: open ? 'rgba(var(--alt-rgb),.55)' : undefined,
-    mb: open ? '#1C1C1E' : undefined
+    color: open ? 'rgba(var(--alt-rgb),.55)' : undefined,
+    bg: open ? '#1C1C1E' : undefined
   }, React.createElement("div", {
     className: "flex items-center gap-2 pl-2.5 pr-3 py-3"
   }, React.createElement(MissionBadge, {
@@ -6486,7 +5408,7 @@ function MissionRow({
   }, "NEW") : React.createElement("span", null), m.steps.length > 0 && React.createElement("span", {
     className: "f-mono text-[11px]",
     style: {
-      color: open && !UI.mono ? 'rgba(0,0,0,.6)' : 'rgba(255,255,255,.5)'
+      color: 'rgba(255,255,255,.5)'
     }
   }, done, "/", m.steps.length)))))));
 }
@@ -6513,14 +5435,10 @@ function MissionDetail({
   return React.createElement("div", {
     className: "ml-[38px] mt-1.5 mb-1"
   }, React.createElement(Frame, {
-    cut: 14,
-    color: "rgba(var(--main-rgb),.35)",
-    bg: "linear-gradient(180deg,rgba(16,8,14,.97),rgba(8,6,12,.97))"
+    cut: 14
   }, React.createElement("div", {
     className: "p-4"
   }, React.createElement("div", {
-    className: "micro deco mb-1"
-  }, archived ? 'ARCHIVE.RECORD' : 'MISSION.DATA', " // ", m.id.slice(-6).toUpperCase()), React.createElement("div", {
     className: "text-[22px] font-semibold tracking-wider uppercase txt-main glow-main leading-tight"
   }, nice(m.title)), archived && React.createElement("div", {
     className: "mt-2 flex flex-wrap items-center gap-2"
@@ -6548,7 +5466,7 @@ function MissionDetail({
   }, " [OPTIONAL]"))))), m.image && React.createElement("div", {
     className: "mt-4"
   }, React.createElement("div", {
-    className: `cut ${m.holo ? 'holo' : ''}`,
+    className: "cut",
     style: {
       '--cut': '14px',
       background: 'rgba(var(--main-rgb),.5)',
@@ -6656,7 +5574,7 @@ function DangerIcon({
     const h = 6 + i * 5,
       x = 2 + i * 8;
     const on = i < level;
-    if (UI.mono) return React.createElement("rect", {
+    return React.createElement("rect", {
       key: i,
       x: x + 0.5,
       y: 24 - h + 0.5,
@@ -6668,17 +5586,6 @@ function DangerIcon({
       style: {
         fill: on ? color : 'none',
         stroke: color
-      }
-    });
-    return React.createElement("polygon", {
-      key: i,
-      points: `${x + 3},${24 - h} ${x + 7},${24 - h} ${x + 4},24 ${x},24`,
-      strokeOpacity: on ? 1 : 0.35,
-      strokeWidth: "1",
-      style: {
-        fill: on ? color : 'none',
-        stroke: color,
-        filter: on ? `drop-shadow(0 0 3px ${color})` : 'none'
       }
     });
   }));
@@ -6733,7 +5640,6 @@ function MissionEditor({
   return React.createElement(Modal, {
     full: true,
     title: isNew ? 'Новая миссия' : 'Редактор миссии',
-    code: "JOURNAL // MISSION.EDIT",
     onClose: onClose,
     footer: React.createElement(React.Fragment, null, React.createElement(Btn, {
       variant: "ghost",
@@ -6948,17 +5854,6 @@ function MissionEditor({
       imageCaption: e.target.value
     }),
     placeholder: "\u041D\u0430\u043F\u0440\u0438\u043C\u0435\u0440: \u0421\u0445\u0435\u043C\u0430"
-  })), React.createElement("div", {
-    className: "mb-4 px-3 py-1",
-    style: {
-      boxShadow: 'inset 0 0 0 1px rgba(255,255,255,.1)'
-    }
-  }, React.createElement(Toggle, {
-    on: m.holo,
-    onChange: v => set({
-      holo: v
-    }),
-    label: "\u0413\u043E\u043B\u043E\u0433\u0440\u0430\u0444\u0438\u0447\u0435\u0441\u043A\u0438\u0439 \u043A\u0440\u0430\u0441\u043D\u044B\u0439 \u0444\u0438\u043B\u044C\u0442\u0440"
   }))), React.createElement(Field, {
     label: "\u041E\u043F\u0438\u0441\u0430\u043D\u0438\u0435"
   }, React.createElement("textarea", {
@@ -7018,8 +5913,7 @@ function ShardItem({
     kind: "shard"
   })), React.createElement(Frame, {
     cut: 14,
-    className: "flex-1 min-w-0",
-    color: "rgba(var(--main-rgb),.4)"
+    className: "flex-1 min-w-0"
   }, React.createElement("div", {
     className: "p-3 flex gap-3"
   }, s.image && React.createElement(Img, {
@@ -7066,7 +5960,6 @@ function ShardReader({
   return React.createElement(Modal, {
     full: true,
     title: s.title || 'Без названия',
-    code: "DATA SHARD // READ MODE",
     onClose: onClose,
     footer: React.createElement(React.Fragment, null, React.createElement(Btn, {
       variant: "dangerGhost",
@@ -7099,7 +5992,7 @@ function ShardReader({
     className: "text-white/35"
   }, "\u041F\u0443\u0441\u0442\u0430\u044F \u0437\u0430\u043F\u0438\u0441\u044C")), React.createElement("div", {
     className: "micro mt-8"
-  }, UI.mono ? '' : '// END OF SHARD · ', words, " ", plural(words, 'слово', 'слова', 'слов')));
+  }, words, " ", plural(words, 'слово', 'слова', 'слов')));
 }
 function ShardEditor({
   initial,
@@ -7136,7 +6029,6 @@ function ShardEditor({
   return React.createElement(Modal, {
     full: true,
     title: isNew ? 'Новая запись' : 'Редактор записи',
-    code: "DATA SHARD // WRITE",
     onClose: onClose,
     footer: React.createElement(React.Fragment, null, React.createElement(Btn, {
       variant: "ghost",
@@ -7288,7 +6180,6 @@ function MissionsScreen() {
   const deleteMission = async m => {
     const ok = await ask({
       title: 'Удалить миссию?',
-      code: 'JOURNAL // DELETE',
       text: `«${m.title}» будет удалена вместе с привязанным таймером.`,
       ok: 'Удалить',
       danger: true
@@ -7343,7 +6234,6 @@ function MissionsScreen() {
   const purgeMission = async m => {
     const ok = await ask({
       title: 'Удалить навсегда?',
-      code: 'ARCHIVE // PURGE',
       text: `Запись о миссии «${nice(m.title)}» будет стёрта из архива.`,
       ok: 'Удалить навсегда',
       danger: true
@@ -7397,7 +6287,6 @@ function MissionsScreen() {
   const deleteShard = async s => {
     const ok = await ask({
       title: 'Удалить запись?',
-      code: 'DATA SHARD // ERASE',
       text: `«${s.title || 'Без названия'}» будет удалена.`,
       ok: 'Удалить',
       danger: true
@@ -7620,16 +6509,14 @@ function MissionsScreen() {
   return React.createElement("div", {
     className: "pb-8"
   }, wide ? React.createElement(React.Fragment, null, React.createElement(ScreenHeader, {
-    code: "PROTOCOL 4520-A48 // JOURNAL.EXE",
     title: "\u041C\u0438\u0441\u0441\u0438\u0438 \u0438 \u0436\u0443\u0440\u043D\u0430\u043B"
   }), React.createElement("div", {
     className: "desk-cols"
-  }, React.createElement("div", null, colHead(UI.mono ? Flag : Crosshair, 'Миссии', `${activeN} активных · ${doneN} завершено`), React.createElement("div", {
+  }, React.createElement("div", null, colHead(Flag, 'Миссии', `${activeN} активных · ${doneN} завершено`), React.createElement("div", {
     className: "px-4"
-  }, searchRow(true)), missionsBlock), React.createElement("div", null, colHead(UI.mono ? FileText : Cpu, 'Журнал', shardsSub), React.createElement("div", {
+  }, searchRow(true)), missionsBlock), React.createElement("div", null, colHead(FileText, 'Журнал', shardsSub), React.createElement("div", {
     className: "px-4"
   }, searchRow(false)), shardsBlock))) : React.createElement(React.Fragment, null, React.createElement(ScreenHeader, {
-    code: "PROTOCOL 4520-A48 // JOURNAL.EXE",
     title: mode === 'missions' ? 'Журнал миссий' : 'Журнал',
     sub: mode === 'missions' ? `${activeN} активных · ${doneN} завершено` : shardsSub
   }), React.createElement("div", {
@@ -7643,11 +6530,11 @@ function MissionsScreen() {
     options: [{
       v: 'missions',
       l: 'Миссии',
-      i: UI.mono ? Flag : Crosshair
+      i: Flag
     }, {
       v: 'shards',
       l: 'Журнал',
-      i: UI.mono ? FileText : Cpu
+      i: FileText
     }]
   }), searchRow(mode === 'missions')), mode === 'missions' ? missionsBlock : shardsBlock), sheetSection && React.createElement(Sheet, {
     title: `РАЗДЕЛ // ${sheetSection.name}`,
@@ -7746,7 +6633,7 @@ function ScoreBox({
 }) {
   const has = typeof score === 'number';
   const c = has ? SCORE_COLOR[score] : '#6a6a72';
-  if (UI.mono) return React.createElement("span", {
+  return React.createElement("span", {
     className: "shrink-0 flex items-center justify-center st-score",
     style: {
       width: size,
@@ -7757,36 +6644,6 @@ function ScoreBox({
       background: has ? alpha(c, 0.14) : 'rgba(255,255,255,.06)'
     }
   }, has ? score : '—');
-  return React.createElement("span", {
-    className: "cut shrink-0 flex items-center justify-center f-orb font-black",
-    style: {
-      '--cut': `${Math.round(size / 5)}px`,
-      width: size,
-      height: size,
-      fontSize: Math.round(size * 0.46),
-      color: c,
-      background: has ? alpha(c, 0.12) : 'rgba(255,255,255,.04)',
-      boxShadow: `inset 0 0 0 1.5px ${has ? c : 'rgba(255,255,255,.2)'}`,
-      textShadow: has ? `0 0 10px ${alpha(c, 0.6)}` : 'none'
-    }
-  }, has ? score : '—');
-}
-function SegBar({
-  avg,
-  color
-}) {
-  const on = avg == null ? 0 : Math.round(avg * 2);
-  return React.createElement("div", {
-    className: "seg-bar"
-  }, Array.from({
-    length: 10
-  }, (_, i) => React.createElement("i", {
-    key: i,
-    style: i < on ? {
-      background: color,
-      boxShadow: UI.mono ? 'none' : `0 0 6px ${color}`
-    } : undefined
-  })));
 }
 function CalendarView({
   sel,
@@ -7835,7 +6692,7 @@ function CalendarView({
   const todayRated = !!data.ratings[todayK];
   const col = avg != null ? ringColor(avg, s.thr) : '#6a6a72';
   const scored = rec ? Object.values(rec.scores).filter(v => typeof v.score === 'number').length : 0;
-  return React.createElement("div", null, UI.mono ? React.createElement("div", {
+  return React.createElement("div", null, React.createElement("div", {
     className: "px-4 mt-6 flex flex-col items-center text-center"
   }, React.createElement(AvatarSlot, {
     size: 84,
@@ -7861,51 +6718,14 @@ function CalendarView({
     }
   }, cap(dayStatus(avg, s.thr))), React.createElement("div", {
     className: "text-[12.5px] text-white/45 mt-0.5"
-  }, sel === todayK ? 'Сегодня · ' : '', fmtDay(sel), " \xB7 ", rec ? `${scored} ${plural(scored, 'оценка', 'оценки', 'оценок')}` : 'не оценён')) : React.createElement("div", {
-    className: "px-4 mt-4"
-  }, React.createElement(Frame, {
-    cut: 18,
-    color: "rgba(var(--main-rgb),.55)"
-  }, React.createElement("div", {
-    className: "p-4 flex items-center gap-4"
-  }, React.createElement(AvatarSlot, {
-    size: 88,
-    onClick: () => setAvEdit(true)
-  }), React.createElement("div", {
-    className: "min-w-0 flex-1"
-  }, React.createElement("div", {
-    className: "sec-title text-[18px]"
-  }, "\u0418\u0442\u043E\u0433\u0438 \u0434\u043D\u044F"), React.createElement("div", {
-    className: "flex items-baseline gap-1.5 mt-2"
-  }, React.createElement("span", {
-    className: "st-score text-[42px]",
-    style: {
-      color: col,
-      textShadow: avg != null ? `0 0 18px ${alpha(col, 0.55)}` : 'none'
-    }
-  }, avg != null ? avg.toFixed(1) : '—'), React.createElement("span", {
-    className: "st-score text-[17px] text-white/35"
-  }, "/ 5")), React.createElement("div", {
-    className: "f-mono text-[11px] tracking-[.14em] mt-1.5",
-    style: {
-      color: col
-    }
-  }, "\u0421\u0422\u0410\u0422\u0423\u0421: ", dayStatus(avg, s.thr)))), React.createElement("div", {
-    className: "px-4 pb-4"
-  }, React.createElement(SegBar, {
-    avg: avg,
-    color: col
-  }), React.createElement("div", {
-    className: "flex justify-between gap-2 mt-2 f-mono text-[10px] tracking-wider text-white/50"
-  }, React.createElement("span", null, sel === todayK ? 'СЕГОДНЯ · ' : '', fmtShort(sel)), React.createElement("span", null, rec ? `${scored} ${plural(scored, 'ОЦЕНКА', 'ОЦЕНКИ', 'ОЦЕНОК')}` : 'НЕ ОЦЕНЁН'))))), React.createElement("div", {
+  }, sel === todayK ? 'Сегодня · ' : '', fmtDay(sel), " \xB7 ", rec ? `${scored} ${plural(scored, 'оценка', 'оценки', 'оценок')}` : 'не оценён')), React.createElement("div", {
     className: "px-4 mt-4"
   }, React.createElement(Frame, {
     cut: 16,
-    color: "rgba(var(--main-rgb),.4)",
-    mc: "transparent",
-    mb: "transparent"
+    color: "transparent",
+    bg: "transparent"
   }, React.createElement("div", {
-    className: UI.mono ? 'py-3' : 'p-3'
+    className: "py-3"
   }, React.createElement("div", {
     className: "flex items-center justify-between gap-1 mb-3"
   }, React.createElement("div", {
@@ -7937,7 +6757,7 @@ function CalendarView({
   }, MONTHS[ym.m], " ", ym.y), React.createElement("div", {
     className: "micro mt-1",
     style: {
-      color: UI.mono ? '#8E8E93' : 'rgba(var(--alt-rgb),.7)'
+      color: '#8E8E93'
     }
   }, mAvg != null ? `СРЕДНЕЕ ЗА МЕСЯЦ · ${mAvg.toFixed(1)}` : 'НЕТ ОЦЕНОК')), React.createElement("div", {
     className: "flex gap-1"
@@ -7957,7 +6777,7 @@ function CalendarView({
     key: w,
     className: "f-mono text-[10px] tracking-widest uppercase pb-1",
     style: {
-      color: UI.mono ? '#636366' : 'rgba(var(--main-rgb),.65)'
+      color: '#636366'
     }
   }, w)), cells.map((d, i) => {
     if (!d) return React.createElement("div", {
@@ -7982,13 +6802,13 @@ function CalendarView({
     }), React.createElement(Ring, {
       avg: r ? r.avg : null,
       color: ringColor(r ? r.avg : null, s.thr),
-      size: UI.mono ? 40 : 38,
-      stroke: UI.mono ? 2.6 : 2.8,
+      size: 40,
+      stroke: 2.6,
       dashed: !!r && r.avg == null
     }), React.createElement("span", {
       className: "relative text-[15px] font-bold day-n",
       style: {
-        color: UI.mono ? future ? '#48484A' : r || isSel ? '#fff' : '#8E8E93' : future ? 'rgba(255,255,255,.22)' : isSel ? 'var(--main)' : r ? '#fff' : 'rgba(255,255,255,.6)'
+        color: future ? '#48484A' : r || isSel ? '#fff' : '#8E8E93'
       }
     }, d), isToday && React.createElement("span", {
       className: "day-today"
@@ -7999,10 +6819,10 @@ function CalendarView({
     key: c,
     className: "flex items-center gap-1"
   }, React.createElement("i", {
-    className: UI.mono ? 'w-2 h-2 rounded-full inline-block' : 'w-2.5 h-1.5 inline-block',
+    className: "w-2 h-2 rounded-full inline-block",
     style: {
       background: c,
-      boxShadow: UI.mono ? 'none' : `0 0 6px ${c}`
+      boxShadow: 'none'
     }
   }), "\u2265", Number(v).toFixed(1))))))), React.createElement("div", {
     className: "px-4 mt-4"
@@ -8040,8 +6860,7 @@ function DayDetail({
     count: entries.length
   }), fDay.length > 0 && React.createElement(Frame, {
     cut: 12,
-    className: "mt-2.5",
-    color: "rgba(var(--alt-rgb),.35)"
+    className: "mt-2.5"
   }, React.createElement("div", {
     className: "flex items-center gap-3 p-3"
   }, React.createElement(Brain, {
@@ -8062,8 +6881,7 @@ function DayDetail({
     const c = cardsById[cid];
     return React.createElement(Frame, {
       key: cid,
-      cut: 12,
-      color: "rgba(var(--main-rgb),.35)"
+      cut: 12
     }, React.createElement("div", {
       className: "flex items-center gap-3 p-3"
     }, React.createElement("div", {
@@ -8092,8 +6910,7 @@ function DayDetail({
     icon: Layers,
     title: "\u041D\u0435\u0442 \u043E\u0446\u0435\u043D\u043E\u043A"
   }), r.note && React.createElement(Frame, {
-    cut: 12,
-    color: "rgba(var(--alt-rgb),.35)"
+    cut: 12
   }, React.createElement("div", {
     className: "p-3"
   }, React.createElement("div", {
@@ -8123,94 +6940,14 @@ function HabitCardView({
   } = useApp();
   const tr = data.persona.traits.find(t => t.id === card.trait);
   const trText = tr ? `${tr.name}${traitHero(tr, data.persona) ? ` · ${traitHero(tr, data.persona)}` : ''}` : '';
-  if (UI.mono) {
-    const has = typeof score === 'number';
-    return React.createElement("div", {
-      className: "mono-card",
-      style: {
-        background: `linear-gradient(180deg, ${alpha(card.glow, 1)} 0%, ${alpha(card.glow, 0.45)} 30%, #000 62%)`
-      }
-    }, React.createElement("div", {
-      className: "flex justify-end gap-2 px-4 pt-4"
-    }, React.createElement(IconBtn, {
-      sm: true,
-      icon: Pencil,
-      onClick: onEdit,
-      title: "\u0420\u0435\u0434\u0430\u043A\u0442\u0438\u0440\u043E\u0432\u0430\u0442\u044C"
-    }), React.createElement(IconBtn, {
-      sm: true,
-      red: true,
-      icon: Trash2,
-      onClick: onDelete,
-      title: "\u0423\u0434\u0430\u043B\u0438\u0442\u044C"
-    })), React.createElement("div", {
-      className: "flex justify-center -mt-3"
-    }, React.createElement(Sticker, {
-      icon: card.icon,
-      color: card.iconColor,
-      frame: card.iconFrame,
-      size: 150
-    })), React.createElement("h3", {
-      className: "text-[30px] font-bold text-center mt-6 leading-tight px-4 text-white tracking-[-.02em]"
-    }, card.name), React.createElement("div", {
-      className: "text-center text-[12.5px] text-white/45 mt-1 px-4"
-    }, cap(schedText(card))), tr && React.createElement("div", {
-      className: "text-center text-[12.5px] font-semibold mt-1 px-4 truncate",
-      style: {
-        color: tr.color || '#fff'
-      }
-    }, trText), React.createElement("div", {
-      className: "mono-score mx-auto mt-4"
-    }, React.createElement("span", {
-      className: "st-score text-[44px] leading-none",
-      style: {
-        color: has ? SCORE_COLOR[score] : '#636366'
-      }
-    }, has ? score : '–'), React.createElement("span", {
-      className: "st-score text-[18px]",
-      style: {
-        color: '#636366'
-      }
-    }, "/ 5")), score === null && React.createElement("div", {
-      className: "text-center text-[12.5px] text-white/45 mt-2"
-    }, "\u041F\u0440\u043E\u043F\u0443\u0449\u0435\u043D\u043E \u0432 \u0432\u044B\u0431\u0440\u0430\u043D\u043D\u044B\u0439 \u0434\u0435\u043D\u044C"), React.createElement("div", {
-      className: "px-5 mt-6 pb-6"
-    }, React.createElement("div", {
-      className: "mono-crit head"
-    }, React.createElement("span", null, "\u041E\u0446\u0435\u043D\u043A\u0430"), React.createElement("span", null, "\u041A\u0440\u0438\u0442\u0435\u0440\u0438\u0438")), [5, 4, 3, 2, 1].map(n => React.createElement("div", {
-      key: n,
-      className: "mono-crit",
-      style: score === n ? {
-        background: alpha(SCORE_COLOR[n], 0.1),
-        borderRadius: 14
-      } : undefined
-    }, React.createElement("span", {
-      className: "st-score text-[24px]",
-      style: {
-        color: SCORE_COLOR[n]
-      }
-    }, n), React.createElement("span", {
-      className: "text-[14.5px] leading-snug px-1",
-      style: {
-        color: '#9A9AA0'
-      }
-    }, card.criteria[n] || '—')))));
-  }
-  return React.createElement(Frame, {
-    cut: 20,
-    color: alpha(card.glow, 1),
-    bg: `linear-gradient(180deg, ${alpha(card.glow, 0.95)} 0%, rgba(16,10,20,.97) 46%, rgba(8,7,12,.98) 100%)`
-  }, React.createElement("div", {
-    className: "relative"
-  }, React.createElement("div", {
-    className: "flex items-center justify-between px-4 pt-3"
-  }, React.createElement("span", {
-    className: "micro",
+  const has = typeof score === 'number';
+  return React.createElement("div", {
+    className: "mono-card",
     style: {
-      color: 'rgba(255,255,255,.55)'
+      background: `linear-gradient(180deg, ${alpha(card.glow, 1)} 0%, ${alpha(card.glow, 0.45)} 30%, #000 62%)`
     }
-  }, "CARD // ", card.id.slice(-6).toUpperCase()), React.createElement("div", {
-    className: "flex gap-2"
+  }, React.createElement("div", {
+    className: "flex justify-end gap-2 px-4 pt-4"
   }, React.createElement(IconBtn, {
     sm: true,
     icon: Pencil,
@@ -8222,76 +6959,58 @@ function HabitCardView({
     icon: Trash2,
     onClick: onDelete,
     title: "\u0423\u0434\u0430\u043B\u0438\u0442\u044C"
-  }))), React.createElement("div", {
-    className: "flex justify-center pt-3"
+  })), React.createElement("div", {
+    className: "flex justify-center -mt-3"
   }, React.createElement(Sticker, {
     icon: card.icon,
     color: card.iconColor,
     frame: card.iconFrame,
-    size: 118
+    size: 150
   })), React.createElement("h3", {
-    className: "text-[30px] font-bold text-center mt-4 leading-tight px-4 uppercase tracking-wide txt-main glow-main"
+    className: "text-[30px] font-bold text-center mt-6 leading-tight px-4 text-white tracking-[-.02em]"
   }, card.name), React.createElement("div", {
-    className: "text-center micro mt-1.5 px-4",
-    style: {
-      color: 'rgba(var(--alt-rgb),.75)'
-    }
-  }, schedText(card)), tr && React.createElement("div", {
-    className: "text-center micro mt-1 px-4 truncate",
+    className: "text-center text-[12.5px] text-white/45 mt-1 px-4"
+  }, cap(schedText(card))), tr && React.createElement("div", {
+    className: "text-center text-[12.5px] font-semibold mt-1 px-4 truncate",
     style: {
       color: tr.color || '#fff'
     }
   }, trText), React.createElement("div", {
-    className: "flex justify-center mt-4"
-  }, React.createElement("div", {
-    className: "cut flex items-baseline justify-center gap-1.5 px-8 py-3",
-    style: {
-      '--cut': '12px',
-      background: 'rgba(0,0,0,.5)',
-      boxShadow: 'inset 0 0 0 1px rgba(var(--main-rgb),.45)'
-    }
+    className: "mono-score mx-auto mt-4"
   }, React.createElement("span", {
-    className: "st-score text-[40px]",
+    className: "st-score text-[44px] leading-none",
     style: {
-      color: typeof score === 'number' ? SCORE_COLOR[score] : '#6a6a72',
-      textShadow: typeof score === 'number' ? `0 0 16px ${alpha(SCORE_COLOR[score], 0.5)}` : 'none'
+      color: has ? SCORE_COLOR[score] : '#636366'
     }
-  }, typeof score === 'number' ? score : '—'), React.createElement("span", {
-    className: "st-score text-[16px] text-white/35"
-  }, "/ 5"))), score === null && React.createElement("div", {
-    className: "text-center micro mt-2"
-  }, "\u041F\u0420\u041E\u041F\u0423\u0429\u0415\u041D\u041E \u0412 \u0412\u042B\u0411\u0420\u0410\u041D\u041D\u042B\u0419 \u0414\u0415\u041D\u042C"), React.createElement("div", {
-    className: "px-4 mt-5 pb-5"
+  }, has ? score : '–'), React.createElement("span", {
+    className: "st-score text-[18px]",
+    style: {
+      color: '#636366'
+    }
+  }, "/ 5")), score === null && React.createElement("div", {
+    className: "text-center text-[12.5px] text-white/45 mt-2"
+  }, "\u041F\u0440\u043E\u043F\u0443\u0449\u0435\u043D\u043E \u0432 \u0432\u044B\u0431\u0440\u0430\u043D\u043D\u044B\u0439 \u0434\u0435\u043D\u044C"), React.createElement("div", {
+    className: "px-5 mt-6 pb-6"
   }, React.createElement("div", {
-    className: "crit-row",
-    style: {
-      paddingTop: 0
-    }
-  }, React.createElement("span", {
-    className: "lbl text-center",
-    style: {
-      marginBottom: 0
-    }
-  }, "\u041E\u0446\u0435\u043D\u043A\u0430"), React.createElement("span", {
-    className: "lbl",
-    style: {
-      marginBottom: 0
-    }
-  }, "\u041A\u0440\u0438\u0442\u0435\u0440\u0438\u0438")), [5, 4, 3, 2, 1].map(n => React.createElement("div", {
+    className: "mono-crit head"
+  }, React.createElement("span", null, "\u041E\u0446\u0435\u043D\u043A\u0430"), React.createElement("span", null, "\u041A\u0440\u0438\u0442\u0435\u0440\u0438\u0438")), [5, 4, 3, 2, 1].map(n => React.createElement("div", {
     key: n,
-    className: "crit-row",
+    className: "mono-crit",
     style: score === n ? {
-      background: alpha(SCORE_COLOR[n], 0.09),
-      boxShadow: `inset 3px 0 0 ${SCORE_COLOR[n]}`
+      background: alpha(SCORE_COLOR[n], 0.1),
+      borderRadius: 14
     } : undefined
-  }, React.createElement("div", {
-    className: "flex justify-center"
-  }, React.createElement(ScoreBox, {
-    score: n,
-    size: 34
-  })), React.createElement("div", {
-    className: "text-[14px] text-white/70 leading-snug pr-1 f-read"
-  }, card.criteria[n] || '—'))))));
+  }, React.createElement("span", {
+    className: "st-score text-[24px]",
+    style: {
+      color: SCORE_COLOR[n]
+    }
+  }, n), React.createElement("span", {
+    className: "text-[14.5px] leading-snug px-1",
+    style: {
+      color: '#9A9AA0'
+    }
+  }, card.criteria[n] || '—')))));
 }
 const CRIT_PH = {
   5: 'Идеальное выполнение',
@@ -8341,7 +7060,6 @@ function CardEditor({
   return React.createElement(Modal, {
     full: true,
     title: isNew ? 'Новая карточка' : 'Редактор карточки',
-    code: "CATALOG // CARD.EDIT",
     onClose: onClose,
     footer: React.createElement(React.Fragment, null, React.createElement(Btn, {
       variant: "ghost",
@@ -8356,10 +7074,8 @@ function CardEditor({
   }, React.createElement(Frame, {
     cut: 14,
     className: "mb-5",
-    color: alpha(c.glow, 1),
-    bg: `linear-gradient(180deg, ${alpha(c.glow, 0.95)}, rgba(8,7,12,.97))`,
-    mc: "transparent",
-    mb: `linear-gradient(180deg, ${alpha(c.glow, 1)}, #000)`
+    color: "transparent",
+    bg: `linear-gradient(180deg, ${alpha(c.glow, 1)}, #000)`
   }, React.createElement("div", {
     className: "flex items-center gap-4 p-4"
   }, React.createElement(Sticker, {
@@ -8411,7 +7127,7 @@ function CardEditor({
     size: 30
   }), React.createElement("span", {
     className: "f-mono text-[9px] text-white/55 uppercase"
-  }, UI.mono ? TOON_FRAME_NAMES[v] : l))))), React.createElement(Field, {
+  }, TOON_FRAME_NAMES[v]))))), React.createElement(Field, {
     label: `Иконка · ${stickerLabel(c.icon)}`
   }, React.createElement("div", {
     className: "grid grid-cols-6 gap-1.5"
@@ -8438,9 +7154,9 @@ function CardEditor({
   })))), React.createElement("div", {
     className: "micro mt-2",
     style: {
-      color: UI.mono ? '#8E8E93' : 'rgba(var(--alt-rgb),.7)'
+      color: '#8E8E93'
     }
-  }, STICKERS.length, " \u0418\u041A\u041E\u041D\u041E\u041A \xB7 6 \u0420\u0410\u041C\u041E\u041A \xB7 \u041B\u042E\u0411\u041E\u0419 ", UI.mono ? '' : 'НЕОНОВЫЙ ', "\u0426\u0412\u0415\u0422"), React.createElement("div", {
+  }, STICKERS.length, " \u0418\u041A\u041E\u041D\u041E\u041A \xB7 6 \u0420\u0410\u041C\u041E\u041A \xB7 \u041B\u042E\u0411\u041E\u0419 \u0426\u0412\u0415\u0422"), React.createElement("div", {
     className: "flex gap-2 mt-2"
   }, React.createElement("input", {
     className: "inp flex-1 min-w-0",
@@ -8468,7 +7184,7 @@ function CardEditor({
       icon: v ? `url:${v}` : 'st:star'
     })
   }))), React.createElement(Field, {
-    label: UI.mono ? 'Цвет стикера' : 'Неоновый цвет стикера'
+    label: "\u0426\u0432\u0435\u0442 \u0441\u0442\u0438\u043A\u0435\u0440\u0430"
   }, React.createElement(ColorRow, {
     value: c.iconColor,
     onChange: v => set({
@@ -8476,7 +7192,7 @@ function CardEditor({
     }),
     presets: ['#FCEE0A', '#00F0FF', '#FF4655', '#B98CF0', '#59FF00', '#FF7A00', '#FF2E8C', '#FFFFFF']
   })), React.createElement(Field, {
-    label: UI.mono ? 'Цвет фона карточки' : 'Цвет свечения карточки'
+    label: "\u0426\u0432\u0435\u0442 \u0444\u043E\u043D\u0430 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438"
   }, React.createElement(ColorRow, {
     value: c.glow,
     onChange: v => set({
@@ -8661,7 +7377,6 @@ function CardCatalog({
   const del = async c => {
     const ok = await ask({
       title: 'Удалить карточку?',
-      code: 'CATALOG // DELETE',
       text: `«${c.name}» исчезнет из каталога. Прошлые оценки останутся в календаре.`,
       ok: 'Удалить',
       danger: true
@@ -8680,7 +7395,7 @@ function CardCatalog({
   }, "\u041A\u0430\u0442\u0430\u043B\u043E\u0433 \u043A\u0430\u0440\u0442\u043E\u0447\u0435\u043A"), React.createElement("div", {
     className: "micro mt-1",
     style: {
-      color: UI.mono ? '#8E8E93' : 'rgba(var(--alt-rgb),.7)'
+      color: '#8E8E93'
     }
   }, cards.length, " ", plural(cards.length, 'КАРТОЧКА', 'КАРТОЧКИ', 'КАРТОЧЕК'), " \xB7 \u0411\u0410\u041B\u041B\u042B \u0417\u0410 ", fmtShort(sel))), React.createElement("div", {
     className: "flex items-center gap-2 shrink-0"
@@ -8740,7 +7455,6 @@ function CardCatalog({
     onClose: () => setEdit(null)
   }), order && React.createElement(ReorderModal, {
     title: "\u041F\u043E\u0440\u044F\u0434\u043E\u043A \u043A\u0430\u0440\u0442\u043E\u0447\u0435\u043A",
-    code: "CATALOG // ORDER",
     list: order,
     setList: setOrder,
     onClose: () => setOrder(null),
@@ -8822,7 +7536,10 @@ const tcLum = hex => {
     };
   return 0.2126 * ch(v >> 16) + 0.7152 * ch(v >> 8 & 255) + 0.0722 * ch(v & 255);
 };
-const traitBg = (t, i = 0) => t.bg || (t.img ? 'custom' : TIMER_BGS[i % (TIMER_BGS.length - 1)][0]);
+const traitBg = (t, i = 0) => {
+  const keys = Object.keys(TIMER_BGS).filter(k => k !== 'custom');
+  return t.bg || (t.img ? 'custom' : keys[i % keys.length]);
+};
 function TraitFace({
   t,
   i,
@@ -8863,7 +7580,7 @@ function TraitFace({
     className: "pf-hero",
     style: {
       color: ac,
-      textShadow: UI.mono ? 'none' : `0 0 12px ${alpha(ac, 0.7)}`
+      textShadow: 'none'
     }
   }, hero || 'Персонаж'), React.createElement("div", {
     className: "pf-name",
@@ -8888,7 +7605,7 @@ function TraitFace({
     className: "pf-count",
     style: {
       color: ac,
-      textShadow: UI.mono ? 'none' : `0 0 10px ${ac}`
+      textShadow: 'none'
     }
   }, week.plan ? `${week.done}/${week.plan}` : '—'), React.createElement("span", null, nice('7 ДНЕЙ'))), React.createElement("div", {
     className: "pf-line",
@@ -8945,7 +7662,6 @@ function TraitEditor({
   return React.createElement(Modal, {
     full: true,
     title: exists ? 'Карточка персоны' : 'Новая карточка персоны',
-    code: "PERSONA // CARD.EDIT",
     onClose: onClose,
     footer: React.createElement(React.Fragment, null, React.createElement(Btn, {
       variant: "ghost",
@@ -8992,7 +7708,7 @@ function TraitEditor({
     label: "\u0424\u043E\u043D \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438"
   }, React.createElement("div", {
     className: "grid grid-cols-3 gap-2"
-  }, TIMER_BGS.map(([k, name, css]) => React.createElement("button", {
+  }, Object.entries(TIMER_BGS).map(([k, [name,, css]]) => React.createElement("button", {
     key: k,
     type: "button",
     onClick: () => {
@@ -9004,7 +7720,7 @@ function TraitEditor({
     className: "cut h-20 flex items-end p-2 text-left",
     style: {
       '--cut': '8px',
-      background: UI.mono ? MONO_TBG[k][2] : css,
+      background: css,
       boxShadow: t.bg === k ? 'inset 0 0 0 2px var(--alt)' : 'inset 0 0 0 1px rgba(255,255,255,.15)'
     }
   }, React.createElement("span", {
@@ -9012,7 +7728,7 @@ function TraitEditor({
     style: {
       textShadow: '0 1px 3px #000'
     }
-  }, UI.mono ? MONO_TBG[k][0] : name))))), t.bg === 'custom' && React.createElement(Field, {
+  }, name))))), t.bg === 'custom' && React.createElement(Field, {
     label: "\u0421\u0432\u043E\u0451 \u0444\u043E\u0442\u043E \u0444\u043E\u043D\u0430"
   }, React.createElement(ImageInput, {
     aspect: "full",
@@ -9261,7 +7977,7 @@ function PersonaTable({
   }, "\u041A\u043E\u043B\u043B\u0435\u043A\u0446\u0438\u044F"), React.createElement("div", {
     className: "micro mt-1",
     style: {
-      color: UI.mono ? '#8E8E93' : 'rgba(var(--alt-rgb),.7)'
+      color: '#8E8E93'
     }
   }, list.length, " ", plural(list.length, 'КАРТОЧКА', 'КАРТОЧКИ', 'КАРТОЧЕК'), " \xB7 \u041B\u0418\u041D\u0418\u042F \u0417\u0410 ", TRAIT_DAYS, " \u0414\u041D\u0415\u0419")), React.createElement("div", {
     className: "flex items-center gap-2 shrink-0"
@@ -9374,7 +8090,6 @@ function PersonaFeed() {
   const del = async t => {
     const ok = await ask({
       title: 'Удалить карточку персоны?',
-      code: 'PERSONA // DELETE',
       text: `«${t.name}» исчезнет из ленты и отвяжется от карточек каталога. Оценки в календаре останутся.`,
       ok: 'Удалить',
       danger: true
@@ -9425,8 +8140,6 @@ function PersonaFeed() {
     links: data.cards.filter(c => c.trait === t.id),
     live: Math.abs(i - page) <= 1
   }), React.createElement("div", {
-    className: "pf-no micro deco"
-  }, "PERSONA.FEED // ", pad(i + 1), "/", pad(list.length)), UI.mono ? React.createElement("div", {
     className: "pf-rail flex flex-col items-center gap-3"
   }, React.createElement("button", {
     type: "button",
@@ -9468,53 +8181,16 @@ function PersonaFeed() {
     }
   }, React.createElement(Trash2, {
     size: 18
-  }))) : React.createElement("div", {
-    className: "pf-rail flex flex-col items-center gap-6"
-  }, React.createElement("button", {
-    type: "button",
-    "aria-label": "\u0412\u0441\u0435 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438",
-    className: "rail-b",
-    onClick: () => {
-      sfx('open');
-      showTable(true);
-    }
-  }, React.createElement(LayoutGrid, {
-    size: 22
-  }), React.createElement("span", null, "ALL")), React.createElement("button", {
-    type: "button",
-    className: "rail-b",
-    onClick: () => {
-      sfx('open');
-      setEdit(t);
-    }
-  }, React.createElement(Pencil, {
-    size: 22
-  }), React.createElement("span", null, "EDIT")), React.createElement("button", {
-    type: "button",
-    className: "rail-b",
-    onClick: () => {
-      sfx('open');
-      setEdit(blank());
-    }
-  }, React.createElement(Plus, {
-    size: 24
-  }), React.createElement("span", null, "NEW")), React.createElement("button", {
-    type: "button",
-    className: "rail-b",
-    onClick: () => {
-      sfx();
-      del(t);
-    }
-  }, React.createElement(Trash2, {
-    size: 20
-  }), React.createElement("span", null, "DEL")))), React.createElement("div", {
+  })))), React.createElement("div", {
     className: "pg-dim"
   })))) : React.createElement("section", {
     className: "tk flex items-center justify-center"
-  }, UI.mono ? React.createElement(MonoTimerBg, {
-    k: "smoke",
+  }, React.createElement(TimerBg, {
+    t: {
+      bg: 'smoke'
+    },
     live: true
-  }) : React.createElement(SmokeBG, null), React.createElement("div", {
+  }), React.createElement("div", {
     className: "relative"
   }, React.createElement(Empty, {
     icon: Layers,
@@ -9584,7 +8260,6 @@ function StatsScreen({
   if (UI.wide) return React.createElement("div", {
     className: "pb-8"
   }, React.createElement(ScreenHeader, {
-    code: "BIOMONITOR 7.2 // DAILY.LOG",
     title: "\u0421\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043A\u0430 \u0434\u043D\u044F",
     sub: "\u0418\u0442\u043E\u0433\u0438, \u043A\u043E\u043B\u044C\u0446\u0430 \u043F\u0440\u043E\u0433\u0440\u0435\u0441\u0441\u0430 \u0438 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438 \u043F\u0440\u0438\u0432\u044B\u0447\u0435\u043A"
   }), React.createElement("div", {
@@ -9621,7 +8296,6 @@ function StatsScreen({
   return React.createElement("div", {
     className: "pb-8"
   }, React.createElement(ScreenHeader, {
-    code: "BIOMONITOR 7.2 // DAILY.LOG",
     title: "\u0421\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043A\u0430 \u0434\u043D\u044F",
     sub: "\u0418\u0442\u043E\u0433\u0438, \u043A\u043E\u043B\u044C\u0446\u0430 \u043F\u0440\u043E\u0433\u0440\u0435\u0441\u0441\u0430 \u0438 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438 \u043F\u0440\u0438\u0432\u044B\u0447\u0435\u043A"
   }), React.createElement("div", {
@@ -9652,7 +8326,6 @@ function StatsScreen({
 }
 function RateModal({
   date,
-  source,
   onClose
 }) {
   const {
@@ -9695,7 +8368,6 @@ function RateModal({
     if (pending) {
       const ok = await ask({
         title: 'Не все карточки оценены',
-        code: 'PROTOCOL // CHECK',
         text: `Без оценки: ${pending}. Они не попадут в средний балл.`,
         ok: 'Сохранить так'
       });
@@ -9758,11 +8430,9 @@ function RateModal({
     toast(`День оценён: ${rec.avg != null ? rec.avg.toFixed(1) : '—'} / 5`);
     onClose();
   };
-  const head = source === 'evening' ? 'ВЕЧЕРНЕЕ ОКНО ОЦЕНКИ' : source === 'retro' ? 'РЕТРОСПЕКТИВНАЯ ОЦЕНКА' : 'ПРОТОКОЛ ОЦЕНКИ ДНЯ';
   return React.createElement(Modal, {
     full: true,
     title: `Итоги · ${fmtDay(date)}`,
-    code: `${head} // ${date}`,
     onClose: onClose,
     footer: cards.length ? React.createElement(React.Fragment, null, React.createElement(Btn, {
       variant: "ghost",
@@ -9779,8 +8449,7 @@ function RateModal({
     }, "\u0417\u0430\u043A\u0440\u044B\u0442\u044C")
   }, cards.length ? React.createElement(React.Fragment, null, React.createElement(Frame, {
     cut: 14,
-    className: "mb-4",
-    color: "rgba(var(--main-rgb),.5)"
+    className: "mb-4"
   }, React.createElement("div", {
     className: "p-3"
   }, React.createElement("div", {
@@ -9816,10 +8485,8 @@ function RateModal({
       key: c.id,
       cut: 16,
       className: "mb-4",
-      color: alpha(c.glow, 1),
-      bg: `linear-gradient(180deg, ${alpha(c.glow, 0.75)}, rgba(10,8,14,.96) 62%)`,
-      mc: "transparent",
-      mb: `linear-gradient(180deg, ${alpha(c.glow, 0.95)}, #111113 55%)`
+      color: "transparent",
+      bg: `linear-gradient(180deg, ${alpha(c.glow, 0.95)}, #111113 55%)`
     }, React.createElement("div", {
       className: "flex items-center gap-3 p-3"
     }, React.createElement(Sticker, {
@@ -9909,231 +8576,12 @@ const TIMER_FONTS = {
   rajdhani: ["'Rajdhani','Exo 2',sans-serif", 'Rajdhani'],
   mono: ["'Share Tech Mono','JetBrains Mono',monospace", 'Mono']
 };
-const TIMER_BGS = [['smoke', 'Багровый дым', 'radial-gradient(circle at 30% 30%,#c0134f,#3a0a2e 55%,#120818)'], ['grid', 'Кибер-сетка', 'linear-gradient(180deg,#12021f,#4a0a4f 55%,#00444d)'], ['city', 'Неоновый город', 'linear-gradient(180deg,#0b0221,#3a0a3f 60%,#ff4655)'], ['matrix', 'Матрица', 'linear-gradient(180deg,#020a04,#0a3a14)'], ['aurora', 'Северное сияние', 'linear-gradient(180deg,#020814,#0b5a4a 40%,#3a1a6e 72%,#01040a)'], ['space', 'Космос', 'radial-gradient(circle at 25% 85%,#ff7ab6 0,#7a2fbf 16%,transparent 32%),radial-gradient(ellipse at 70% 25%,#3b1a6e,transparent 55%),#03020a'], ['custom', 'Своё фото', 'repeating-linear-gradient(45deg,#1c1c1c 0 6px,#2c2c2c 6px 12px)']];
 const TIMER_LAYOUTS = [['classic', 'Классика'], ['flip', 'Табло'], ['ring', 'Кольцо'], ['units', 'Блоки'], ['poster', 'Постер']];
 const timerLayout = t => TIMER_LAYOUTS.some(([k]) => k === t.layout) ? t.layout : 'classic';
 const TEXT_SIZES = [['s', 'Мелкий', 0.82], ['m', 'Обычный', 1], ['l', 'Крупный', 1.18]];
 const textK = x => (TEXT_SIZES.find(([k]) => k === x.txt) || [0, 0, 1])[2];
 const MILESTONES = [7, 14, 30, 60, 90, 100, 180, 365, 500, 730, 1000, 1500, 2000, 3650];
-const MATRIX_CHARS = 'ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎ0123456789Z:=*+<>';
-function SmokeBG({
-  seed = 4
-}) {
-  const id = useMemo(() => uid('smk'), []);
-  return React.createElement("div", {
-    className: "absolute inset-0 overflow-hidden",
-    style: {
-      background: '#140818'
-    }
-  }, React.createElement("svg", {
-    className: "absolute inset-0 w-full h-full smoke-drift",
-    viewBox: "0 0 400 720",
-    preserveAspectRatio: "xMidYMid slice"
-  }, React.createElement("filter", {
-    id: id,
-    x: "0",
-    y: "0",
-    width: "100%",
-    height: "100%",
-    colorInterpolationFilters: "sRGB"
-  }, React.createElement("feTurbulence", {
-    type: "fractalNoise",
-    baseFrequency: "0.0055 0.008",
-    numOctaves: "5",
-    seed: seed
-  }), React.createElement("feColorMatrix", {
-    type: "matrix",
-    values: "2.6 0 0 0 -0.92  0.2 0 0 0 -0.06  0.8 0 0 0 -0.16  0 0 0 0 1"
-  })), React.createElement("rect", {
-    width: "400",
-    height: "720",
-    filter: `url(#${id})`
-  })), React.createElement("div", {
-    className: "absolute inset-0",
-    style: {
-      background: 'radial-gradient(ellipse at 50% 45%,transparent 30%,rgba(10,4,20,.55) 100%)'
-    }
-  }));
-}
-function GridBG() {
-  return React.createElement("div", {
-    className: "absolute inset-0 overflow-hidden",
-    style: {
-      background: 'linear-gradient(180deg,#07010f 0%,#1d0330 38%,#3d0748 57%,#07010d 100%)'
-    }
-  }, React.createElement("div", {
-    className: "grid-sun"
-  }), React.createElement("div", {
-    className: "absolute left-0 right-0",
-    style: {
-      top: '57%',
-      height: 2,
-      background: '#ff2e8c',
-      boxShadow: '0 0 22px 2px #ff2e8c'
-    }
-  }), React.createElement("div", {
-    className: "grid-floor",
-    style: {
-      top: '57%',
-      bottom: 'auto',
-      height: '62%'
-    }
-  }));
-}
-function CityBG() {
-  const g = useMemo(() => {
-    const R = rng(77),
-      back = [],
-      front = [],
-      wins = [];
-    let x = -5;
-    while (x < 405) {
-      const w = 18 + R() * 40,
-        h = 160 + R() * 280;
-      back.push(React.createElement("rect", {
-        key: `b${back.length}`,
-        x: x,
-        y: 720 - h - 70,
-        width: w,
-        height: h + 70,
-        fill: "#1f0b35"
-      }));
-      x += w + 2;
-    }
-    x = -10;
-    while (x < 410) {
-      const w = 28 + R() * 50,
-        h = 90 + R() * 230;
-      front.push(React.createElement("rect", {
-        key: `f${front.length}`,
-        x: x,
-        y: 720 - h,
-        width: w,
-        height: h,
-        fill: "#06030c"
-      }));
-      for (let wy = 720 - h + 10; wy < 712; wy += 12) for (let wx = x + 5; wx < x + w - 6; wx += 9) {
-        if (R() > 0.74) wins.push(React.createElement("rect", {
-          key: `w${wins.length}`,
-          x: wx,
-          y: wy,
-          width: "4",
-          height: "5",
-          fill: R() > 0.5 ? '#FCEE0A' : '#00F0FF',
-          opacity: (0.4 + R() * 0.55).toFixed(2)
-        }));
-      }
-      x += w + 3;
-    }
-    return {
-      back,
-      front,
-      wins
-    };
-  }, []);
-  return React.createElement("div", {
-    className: "absolute inset-0 overflow-hidden",
-    style: {
-      background: 'linear-gradient(180deg,#05010f 0%,#1c0631 42%,#5a0d3d 72%,#ff4655 100%)'
-    }
-  }, React.createElement("svg", {
-    className: "absolute inset-0 w-full h-full",
-    viewBox: "0 0 400 720",
-    preserveAspectRatio: "xMidYMax slice"
-  }, React.createElement("circle", {
-    cx: "300",
-    cy: "170",
-    r: "50",
-    fill: "#ff2e8c",
-    opacity: ".3"
-  }), g.back, g.front, g.wins), React.createElement("div", {
-    className: "rain"
-  }));
-}
-function MatrixBG() {
-  const cols = useMemo(() => Array.from({
-    length: 16
-  }, (_, i) => ({
-    x: i / 16 * 100 + 1,
-    dur: 5 + i * 37 % 7,
-    delay: -(i * 53 % 9),
-    chars: Array.from({
-      length: 30
-    }, () => MATRIX_CHARS[Math.floor(Math.random() * MATRIX_CHARS.length)]).join('')
-  })), []);
-  return React.createElement("div", {
-    className: "absolute inset-0 overflow-hidden",
-    style: {
-      background: 'radial-gradient(ellipse at 50% 40%,#06200d,#010603 75%)'
-    }
-  }, cols.map((c, i) => React.createElement("div", {
-    key: i,
-    className: "mx-col f-mono",
-    style: {
-      left: `${c.x}%`,
-      animationDuration: `${c.dur}s`,
-      animationDelay: `${c.delay}s`
-    }
-  }, c.chars)));
-}
-function AuroraBG() {
-  return React.createElement("div", {
-    className: "absolute inset-0 overflow-hidden",
-    style: {
-      background: 'linear-gradient(180deg,#020814 0%,#04121f 55%,#01040a 100%)'
-    }
-  }, React.createElement("div", {
-    className: "aur a1"
-  }), React.createElement("div", {
-    className: "aur a2"
-  }), React.createElement("div", {
-    className: "aur a3"
-  }), React.createElement("div", {
-    className: "absolute inset-0",
-    style: {
-      background: 'radial-gradient(ellipse at 50% 115%,rgba(0,0,0,.75),transparent 60%)'
-    }
-  }));
-}
-function SpaceBG() {
-  const stars = useMemo(() => {
-    const R = rng(19);
-    return Array.from({
-      length: 150
-    }, () => ({
-      x: R() * 400,
-      y: R() * 720,
-      r: R() < 0.9 ? 0.4 + R() * 0.8 : 1.3 + R() * 0.9,
-      o: 0.35 + R() * 0.65,
-      tw: R() < 0.2,
-      d: (R() * 4).toFixed(2)
-    }));
-  }, []);
-  return React.createElement("div", {
-    className: "absolute inset-0 overflow-hidden",
-    style: {
-      background: 'radial-gradient(ellipse at 70% 25%,#3b1a6e 0%,transparent 45%),radial-gradient(ellipse at 20% 70%,#0b3a6b 0%,transparent 50%),#03020a'
-    }
-  }, React.createElement("svg", {
-    className: "absolute inset-0 w-full h-full space-drift",
-    viewBox: "0 0 400 720",
-    preserveAspectRatio: "xMidYMid slice"
-  }, stars.map((s, i) => React.createElement("circle", {
-    key: i,
-    cx: s.x,
-    cy: s.y,
-    r: s.r,
-    fill: "#fff",
-    opacity: s.o,
-    className: s.tw ? 'twk' : undefined,
-    style: s.tw ? {
-      animationDelay: `${s.d}s`
-    } : undefined
-  }))), React.createElement("div", {
-    className: "planet"
-  }));
-}
-const MONO_TBG = {
+const TIMER_BGS = {
   smoke: ['Гранат', '#C2185B', 'linear-gradient(180deg,#5A0F2B 0%,#1E0610 45%,#000 85%)'],
   grid: ['Океан', '#2F6BFF', 'linear-gradient(180deg,#0F2A6B 0%,#081330 45%,#000 85%)'],
   city: ['Закат', '#FF7A1A', 'linear-gradient(180deg,#6B2A06 0%,#2A1003 45%,#000 85%)'],
@@ -10142,11 +8590,17 @@ const MONO_TBG = {
   space: ['Фиалка', '#8B5CF6', 'linear-gradient(180deg,#3B1A6E 0%,#170A2E 45%,#000 85%)'],
   custom: ['Своё фото', '#888', 'repeating-linear-gradient(45deg,#1c1c1e 0 6px,#2c2c2e 6px 12px)']
 };
-function MonoTimerBg({
-  k,
+function TimerBg({
+  t,
   live
 }) {
-  const p = MONO_TBG[k] || MONO_TBG.smoke;
+  if (t.bg === 'custom' && t.bgUrl && live) return React.createElement(React.Fragment, null, React.createElement(Img, {
+    src: t.bgUrl,
+    className: "absolute inset-0 w-full h-full object-cover"
+  }), React.createElement("div", {
+    className: "absolute inset-0 bg-black/40"
+  }));
+  const p = TIMER_BGS[t.bg] || TIMER_BGS.smoke;
   return React.createElement("div", {
     className: "absolute inset-0 overflow-hidden",
     style: {
@@ -10158,34 +8612,6 @@ function MonoTimerBg({
       background: `radial-gradient(circle, ${alpha(p[1], 0.55)} 0%, transparent 62%)`
     }
   }));
-}
-function TimerBg({
-  t,
-  live
-}) {
-  if (UI.mono && !(t.bg === 'custom' && t.bgUrl && live)) return React.createElement(MonoTimerBg, {
-    k: t.bg,
-    live: live
-  });
-  const preset = TIMER_BGS.find(b => b[0] === t.bg) || TIMER_BGS[0];
-  if (!live) return React.createElement("div", {
-    className: "absolute inset-0",
-    style: {
-      background: preset[2]
-    }
-  });
-  if (t.bg === 'custom' && t.bgUrl) return React.createElement(React.Fragment, null, React.createElement(Img, {
-    src: t.bgUrl,
-    className: "absolute inset-0 w-full h-full object-cover"
-  }), React.createElement("div", {
-    className: "absolute inset-0 bg-black/40"
-  }));
-  if (t.bg === 'grid') return React.createElement(GridBG, null);
-  if (t.bg === 'city') return React.createElement(CityBG, null);
-  if (t.bg === 'matrix') return React.createElement(MatrixBG, null);
-  if (t.bg === 'aurora') return React.createElement(AuroraBG, null);
-  if (t.bg === 'space') return React.createElement(SpaceBG, null);
-  return React.createElement(SmokeBG, null);
 }
 const dayParts = ms => {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -10312,27 +8738,19 @@ function RingFace({
     fill: "none",
     stroke: "rgba(255,255,255,.14)",
     strokeWidth: "2.2"
-  }), !UI.mono && React.createElement("circle", {
-    cx: "50",
-    cy: "50",
-    r: "41",
-    fill: "none",
-    stroke: "rgba(255,255,255,.25)",
-    strokeWidth: "1.6",
-    strokeDasharray: "0.5 3.793"
   }), React.createElement("circle", {
     cx: "50",
     cy: "50",
     r: R,
     fill: "none",
     stroke: accent,
-    strokeWidth: UI.mono ? 3.2 : 2.6,
-    strokeLinecap: UI.mono ? 'round' : 'butt',
+    strokeWidth: 3.2,
+    strokeLinecap: "round",
     strokeDasharray: C,
     strokeDashoffset: C * (1 - st.pct),
     style: {
       transition: 'stroke-dashoffset 1s linear',
-      filter: UI.mono ? 'none' : `drop-shadow(0 0 2.5px ${accent})`
+      filter: 'none'
     }
   })), React.createElement("div", {
     className: "relative flex flex-col items-center"
@@ -10426,7 +8844,7 @@ function PosterFace({
     style: {
       fontWeight: fw,
       fontSize: len > 3 ? 'min(34vw,26vh,250px)' : undefined,
-      filter: UI.mono ? 'none' : `drop-shadow(0 0 14px ${alpha(accent, 0.55)})`
+      filter: 'none'
     }
   }, st.days), React.createElement("div", {
     className: "poster-bottom"
@@ -10446,7 +8864,7 @@ function PosterFace({
     className: "poster-dot",
     style: {
       background: accent,
-      boxShadow: UI.mono ? 'none' : `0 0 8px ${accent}`
+      boxShadow: 'none'
     }
   }), st.done ? 'COMPLETE' : st.hms)));
 }
@@ -10619,11 +9037,6 @@ function TimerCard({
       background: 'linear-gradient(180deg,rgba(0,0,0,.25),transparent 25%,transparent 70%,rgba(0,0,0,.55))'
     }
   }), React.createElement("div", {
-    className: "absolute top-4 left-4 micro deco",
-    style: {
-      color: 'rgba(255,255,255,.65)'
-    }
-  }, "COUNTDOWN.FEED // ", pad(index + 1), "/", pad(total)), UI.mono ? React.createElement("div", {
     className: "absolute right-3 top-5 flex flex-col items-center gap-3 z-10"
   }, React.createElement("button", {
     type: "button",
@@ -10675,56 +9088,7 @@ function TimerCard({
     }
   }, React.createElement(Trash2, {
     size: 18
-  }))) : React.createElement("div", {
-    className: "absolute right-3 top-14 flex flex-col items-center gap-6 z-10"
-  }, React.createElement("button", {
-    type: "button",
-    className: "rail-b",
-    onClick: () => {
-      sfx('open');
-      onEdit();
-    }
-  }, React.createElement(Pencil, {
-    size: 22
-  }), React.createElement("span", null, "EDIT")), t.mode === 'since' && React.createElement("button", {
-    type: "button",
-    "aria-label": "\u0421\u0431\u0440\u043E\u0441\u0438\u0442\u044C \u043E\u0442\u0441\u0447\u0451\u0442",
-    className: "rail-b",
-    onClick: () => {
-      sfx();
-      onReset();
-    }
-  }, React.createElement(RotateCcw, {
-    size: 21
-  }), React.createElement("span", null, "RESET")), React.createElement("button", {
-    type: "button",
-    className: "rail-b",
-    onClick: () => {
-      sfx('open');
-      onAdd();
-    }
-  }, React.createElement(Plus, {
-    size: 24
-  }), React.createElement("span", null, "NEW")), total > 1 && React.createElement("button", {
-    type: "button",
-    "aria-label": "\u041F\u043E\u0440\u044F\u0434\u043E\u043A \u0442\u0430\u0439\u043C\u0435\u0440\u043E\u0432",
-    className: "rail-b",
-    onClick: () => {
-      sfx('open');
-      onOrder();
-    }
-  }, React.createElement(ArrowUpDown, {
-    size: 21
-  }), React.createElement("span", null, "SORT")), React.createElement("button", {
-    type: "button",
-    className: "rail-b",
-    onClick: () => {
-      sfx();
-      onDelete();
-    }
-  }, React.createElement(Trash2, {
-    size: 20
-  }), React.createElement("span", null, "DEL"))), React.createElement("div", {
+  }))), React.createElement("div", {
     className: "absolute inset-0",
     style: tk === 1 ? undefined : {
       zoom: tk
@@ -10771,9 +9135,9 @@ function TimerCard({
     className: "text-[13px]",
     style: {
       color: accent,
-      textShadow: UI.mono ? 'none' : `0 0 10px ${accent}`
+      textShadow: 'none'
     }
-  }, (st.pct * 100).toFixed(1), "%"), React.createElement("span", null, st.right)), UI.mono ? React.createElement("div", {
+  }, (st.pct * 100).toFixed(1), "%"), React.createElement("span", null, st.right)), React.createElement("div", {
     className: "relative h-[8px] rounded-full overflow-hidden",
     style: {
       background: 'rgba(255,255,255,.16)'
@@ -10785,27 +9149,7 @@ function TimerCard({
       background: accent,
       transition: 'width 1s linear'
     }
-  })) : React.createElement("div", {
-    className: "relative h-[7px]",
-    style: {
-      background: 'rgba(255,255,255,.12)',
-      boxShadow: 'inset 0 0 0 1px rgba(255,255,255,.18)'
-    }
-  }, React.createElement("div", {
-    className: "absolute left-0 top-0 bottom-0",
-    style: {
-      width: `${st.pct * 100}%`,
-      background: accent,
-      boxShadow: `0 0 12px ${accent}, 0 0 26px ${accent}`,
-      transition: 'width 1s linear'
-    }
-  }), [1, 2, 3, 4, 5, 6, 7, 8, 9].map(i => React.createElement("i", {
-    key: i,
-    className: "absolute top-0 bottom-0 w-px bg-black/50",
-    style: {
-      left: `${i * 10}%`
-    }
-  })))));
+  }))));
 }
 function TimerEditor({
   initial,
@@ -10855,7 +9199,6 @@ function TimerEditor({
   return React.createElement(Modal, {
     full: true,
     title: isNew ? 'Новый таймер' : 'Редактор таймера',
-    code: "COUNTDOWN // EDIT",
     onClose: onClose,
     footer: React.createElement(React.Fragment, null, React.createElement(Btn, {
       variant: "ghost",
@@ -10998,7 +9341,7 @@ function TimerEditor({
     label: "\u0424\u043E\u043D \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438"
   }, React.createElement("div", {
     className: "grid grid-cols-3 gap-2"
-  }, TIMER_BGS.map(([k, name, css]) => React.createElement("button", {
+  }, Object.entries(TIMER_BGS).map(([k, [name,, css]]) => React.createElement("button", {
     key: k,
     type: "button",
     onClick: () => {
@@ -11010,7 +9353,7 @@ function TimerEditor({
     className: "cut h-20 flex items-end p-2 text-left",
     style: {
       '--cut': '8px',
-      background: UI.mono ? MONO_TBG[k][2] : css,
+      background: css,
       boxShadow: t.bg === k ? 'inset 0 0 0 2px var(--alt)' : 'inset 0 0 0 1px rgba(255,255,255,.15)'
     }
   }, React.createElement("span", {
@@ -11018,7 +9361,7 @@ function TimerEditor({
     style: {
       textShadow: '0 1px 3px #000'
     }
-  }, UI.mono ? MONO_TBG[k][0] : name))))), t.bg === 'custom' && React.createElement(Field, {
+  }, name))))), t.bg === 'custom' && React.createElement(Field, {
     label: "\u0421\u0432\u043E\u0451 \u0444\u043E\u0442\u043E \u0444\u043E\u043D\u0430"
   }, React.createElement(ImageInput, {
     aspect: "full",
@@ -11102,7 +9445,6 @@ function CountdownScreen() {
     const days = timerState(t, Date.now()).days;
     const ok = await ask({
       title: 'Сбросить отсчёт?',
-      code: 'COUNTDOWN // RESET',
       text: `«${t.title}» начнёт считать с нуля. Сейчас: ${days} ${dayWord(days)}.`,
       ok: 'Сбросить',
       danger: true
@@ -11129,7 +9471,6 @@ function CountdownScreen() {
   const delTimer = async t => {
     const ok = await ask({
       title: 'Удалить таймер?',
-      code: 'COUNTDOWN // DELETE',
       text: `«${t.title}» исчезнет из ленты.${t.missionId ? ' Дедлайн миссии останется.' : ''}`,
       ok: 'Удалить',
       danger: true
@@ -11164,10 +9505,12 @@ function CountdownScreen() {
     onReset: () => resetTimer(t)
   })) : React.createElement("section", {
     className: "tk flex items-center justify-center"
-  }, UI.mono ? React.createElement(MonoTimerBg, {
-    k: "smoke",
+  }, React.createElement(TimerBg, {
+    t: {
+      bg: 'smoke'
+    },
     live: true
-  }) : React.createElement(SmokeBG, null), React.createElement("div", {
+  }), React.createElement("div", {
     className: "relative"
   }, React.createElement(Empty, {
     icon: Hourglass,
@@ -11194,7 +9537,6 @@ function CountdownScreen() {
     onDelete: () => delTimer(edit)
   }), order && React.createElement(ReorderModal, {
     title: "\u041F\u043E\u0440\u044F\u0434\u043E\u043A \u0442\u0430\u0439\u043C\u0435\u0440\u043E\u0432",
-    code: "COUNTDOWN // ORDER",
     list: order.list,
     setList: l => setOrder(o => ({
       ...o,
@@ -11212,7 +9554,7 @@ function CountdownScreen() {
         className: "w-1.5 h-9 shrink-0",
         style: {
           background: t.accent || '#FF4655',
-          borderRadius: UI.mono ? 3 : 0
+          borderRadius: 3
         }
       }), React.createElement("span", {
         className: "min-w-0"
@@ -11401,8 +9743,7 @@ function ParkedRow({
 }) {
   const ops = useParkOps();
   return React.createElement(Frame, {
-    cut: 10,
-    color: "rgba(var(--alt-rgb),.3)"
+    cut: 10
   }, React.createElement("div", {
     className: "flex items-center gap-2 pl-3 pr-2 py-2"
   }, React.createElement(StickyNote, {
@@ -11509,13 +9850,12 @@ function FocusSetup({
   return React.createElement(Modal, {
     onClose: onClose,
     title: "\u041D\u043E\u0432\u0430\u044F \u0441\u0435\u0441\u0441\u0438\u044F",
-    code: "NEURAL LINK // CALIBRATE",
     footer: React.createElement(Btn, {
       className: "flex-1",
       icon: mode === 'active' ? Eye : Play,
       snd: "open",
       onClick: start
-    }, UI.mono ? 'Начать' : 'Подключиться', " \xB7 ", mode === 'active' ? 'без лимита' : `${dur} мин`)
+    }, "\u041D\u0430\u0447\u0430\u0442\u044C \xB7 ", mode === 'active' ? 'без лимита' : `${dur} мин`)
   }, React.createElement(Field, {
     label: "\u0420\u0435\u0436\u0438\u043C"
   }, React.createElement(Segmented, {
@@ -11627,15 +9967,7 @@ function FocusRing({
     r: r,
     fill: "none",
     stroke: "rgba(255,255,255,.08)",
-    strokeWidth: UI.mono ? 10 : 6
-  }), !UI.mono && React.createElement("circle", {
-    cx: size / 2,
-    cy: size / 2,
-    r: r + 8,
-    fill: "none",
-    stroke: "rgba(var(--main-rgb),.35)",
-    strokeWidth: "1",
-    strokeDasharray: "2 6"
+    strokeWidth: 10
   }), React.createElement("circle", {
     className: "f-ring",
     cx: size / 2,
@@ -11643,8 +9975,8 @@ function FocusRing({
     r: r,
     fill: "none",
     stroke: "var(--alt)",
-    strokeWidth: UI.mono ? 10 : 6,
-    strokeLinecap: UI.mono ? 'round' : 'butt',
+    strokeWidth: 10,
+    strokeLinecap: "round",
     strokeDasharray: c,
     strokeDashoffset: c * (1 - clamp(p, 0, 1)),
     style: {
@@ -11834,7 +10166,6 @@ function FocusSession() {
     const done = Math.floor((Date.now() - a.startAt) / 60e3);
     const ans = await ask({
       title: 'Завершить сессию?',
-      code: 'NEURAL LINK // DISCONNECT',
       text: isActive ? `Прошло ${done} мин. Всё это время будет засчитано.` : `Прошло ${done} из ${a.planMin} мин. Сессия будет записана как прерванная.`,
       ok: 'Завершить',
       cancel: 'Продолжить',
@@ -11905,7 +10236,6 @@ function FocusSession() {
   const discard = async () => {
     const ok = await ask({
       title: 'Не сохранять сессию?',
-      code: 'NEURAL LINK // PURGE',
       text: 'Сессия и отложенные мысли будут удалены.',
       ok: 'Удалить',
       danger: true
@@ -11945,14 +10275,12 @@ function FocusSession() {
     }, React.createElement("div", {
       className: "flex-1 overflow-y-auto noscb -mx-5 px-5"
     }, React.createElement("div", {
-      className: "micro deco"
-    }, "NEURAL LINK // DEBRIEF"), React.createElement("div", {
       className: "h1 mt-1"
     }, isActive ? a.lapsed ? 'Внимание потеряно' : 'Сессия завершена' : a.stoppedAt ? 'Сессия прервана' : 'Сессия завершена'), a.lapsed && React.createElement("div", {
       className: "f-alert cut mt-3 px-4 py-3"
     }, React.createElement("div", {
       className: "font-bold tracking-[.1em] uppercase text-[14px]"
-    }, UI.mono ? 'Отметка пропущена' : 'Сигнал не подтверждён'), React.createElement("div", {
+    }, "\u041E\u0442\u043C\u0435\u0442\u043A\u0430 \u043F\u0440\u043E\u043F\u0443\u0449\u0435\u043D\u0430"), React.createElement("div", {
       className: "text-[12.5px] mt-0.5 opacity-85 f-read leading-snug"
     }, "\u0417\u043D\u0430\u0447\u043E\u043A \u043D\u0435 \u043D\u0430\u0436\u0430\u0442 \u0437\u0430 ", a.win, " \u0441. \u0417\u0430\u0441\u0447\u0438\u0442\u0430\u043D\u043E \u0432\u0440\u0435\u043C\u044F \u0434\u043E \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0435\u0439 \u043E\u0442\u043C\u0435\u0442\u043A\u0438, \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u0435 ", fmtMin(a.lostMs / 60e3), " \u043D\u0435 \u0432 \u0441\u0447\u0451\u0442.")), (title || a.goal) && React.createElement("div", {
       className: "mt-2 text-[14px] text-white/60 f-read leading-snug"
@@ -12042,7 +10370,7 @@ function FocusSession() {
       className: "mt-5 mb-2 p-3 flex items-center gap-3 text-[13px] leading-snug f-read",
       style: {
         boxShadow: 'inset 0 0 0 1px rgba(var(--alt-rgb),.3)',
-        borderRadius: UI.mono ? 14 : 0,
+        borderRadius: 14,
         color: 'rgba(255,255,255,.75)'
       }
     }, React.createElement(Flame, {
@@ -12078,8 +10406,6 @@ function FocusSession() {
   }, React.createElement("div", {
     className: "flex-1 min-w-0"
   }, React.createElement("div", {
-    className: "micro deco"
-  }, "NEURAL LINK // ACTIVE"), React.createElement("div", {
     className: "text-[15px] font-semibold uppercase tracking-wider txt-alt glow-alt truncate mt-0.5"
   }, nice(title || 'Фокус-сессия'))), React.createElement(IconBtn, {
     icon: X,
@@ -12098,7 +10424,7 @@ function FocusSession() {
     className: "f-alert cut absolute top-0 left-0 right-0 px-4 py-3 text-center z-10"
   }, React.createElement("div", {
     className: "font-bold tracking-[.12em] uppercase text-[15px]"
-  }, UI.mono ? 'Ты выходил из приложения' : 'Связь прервана'), React.createElement("div", {
+  }, "\u0422\u044B \u0432\u044B\u0445\u043E\u0434\u0438\u043B \u0438\u0437 \u043F\u0440\u0438\u043B\u043E\u0436\u0435\u043D\u0438\u044F"), React.createElement("div", {
     className: "text-[12.5px] mt-0.5 opacity-80"
   }, "\u0412\u043D\u0435 \u0441\u0435\u0441\u0441\u0438\u0438 ", fmtClock(flash.away), " \xB7 \u0432\u044B\u0445\u043E\u0434 \u2116", flash.n)), isActive ? React.createElement("div", {
     className: "relative",
@@ -12256,7 +10582,6 @@ function FocusBgModal({
   return React.createElement(Modal, {
     onClose: onClose,
     title: "\u0424\u043E\u043D \u0441\u0435\u0441\u0441\u0438\u0438",
-    code: "NEURAL LINK // BACKDROP",
     footer: React.createElement(Btn, {
       className: "flex-1",
       icon: Check,
@@ -12266,7 +10591,7 @@ function FocusBgModal({
     className: "relative h-[230px] overflow-hidden focus-bg cut mb-4 flex flex-col items-center justify-center",
     style: {
       '--cut': '14px',
-      borderRadius: UI.mono ? 18 : 0,
+      borderRadius: 18,
       boxShadow: 'inset 0 0 0 1px rgba(255,255,255,.12)'
     }
   }, React.createElement(FocusBackdrop, {
@@ -12388,7 +10713,6 @@ function FocusScreen() {
   return React.createElement("div", {
     className: "pb-8"
   }, React.createElement(ScreenHeader, {
-    code: "NEURAL LINK 2.0 // FOCUS.EXE",
     title: "\u0424\u043E\u043A\u0443\u0441",
     sub: "\u0422\u0440\u0435\u043D\u0438\u0440\u043E\u0432\u043A\u0430 \u043A\u043E\u043D\u0446\u0435\u043D\u0442\u0440\u0430\u0446\u0438\u0438: \u043E\u0434\u043D\u0430 \u0446\u0435\u043B\u044C, \u043D\u043E\u043B\u044C \u043F\u0435\u0440\u0435\u043A\u043B\u044E\u0447\u0435\u043D\u0438\u0439"
   }), React.createElement("div", {
@@ -12397,9 +10721,8 @@ function FocusScreen() {
     className: "px-4 mt-4"
   }, React.createElement(Frame, {
     cut: 18,
-    color: "rgba(var(--alt-rgb),.5)",
-    mc: "transparent",
-    mb: "#111113"
+    color: "transparent",
+    bg: "#111113"
   }, React.createElement("div", {
     className: "p-4"
   }, React.createElement("div", {
@@ -12409,26 +10732,24 @@ function FocusScreen() {
     style: {
       '--cut': '12px',
       background: st.n ? 'rgba(var(--warn-rgb),.12)' : 'rgba(255,255,255,.05)',
-      boxShadow: UI.mono ? 'none' : `inset 0 0 0 1px ${st.n ? 'rgba(var(--warn-rgb),.55)' : 'rgba(255,255,255,.15)'}`,
-      borderRadius: UI.mono ? 20 : 0
+      boxShadow: 'none',
+      borderRadius: 20
     }
   }, React.createElement(Flame, {
     size: 34,
     style: {
       color: st.n ? 'var(--warn)' : 'rgba(255,255,255,.3)',
-      filter: UI.mono || !st.n ? 'none' : 'drop-shadow(0 0 6px var(--warn))'
+      filter: 'none'
     }
   })), React.createElement("div", {
     className: "min-w-0 flex-1"
   }, React.createElement("div", {
-    className: "micro deco"
-  }, "STREAK.PROTOCOL"), React.createElement("div", {
     className: "flex items-baseline gap-2"
   }, React.createElement("span", {
     className: "st-score text-[38px]",
     style: {
       color: st.n ? 'var(--warn)' : 'rgba(255,255,255,.4)',
-      textShadow: UI.mono || !st.n ? 'none' : '0 0 14px rgba(var(--warn-rgb),.5)'
+      textShadow: 'none'
     }
   }, st.n), React.createElement("span", {
     className: "sec-title text-[17px]"
@@ -12447,15 +10768,15 @@ function FocusScreen() {
     className: "mt-1.5 h-2 overflow-hidden",
     style: {
       background: 'rgba(255,255,255,.08)',
-      borderRadius: UI.mono ? 4 : 0
+      borderRadius: 4
     }
   }, React.createElement("div", {
     className: "h-full",
     style: {
       width: `${Math.min(100, st.todayMin / st.goal * 100)}%`,
       background: st.todayDone ? 'var(--warn)' : 'var(--alt)',
-      boxShadow: UI.mono ? 'none' : '0 0 8px var(--alt)',
-      borderRadius: UI.mono ? 4 : 0,
+      boxShadow: 'none',
+      borderRadius: 4,
       transition: 'width .3s'
     }
   })), React.createElement("div", {
@@ -12474,7 +10795,7 @@ function FocusScreen() {
     size: 18,
     style: {
       color: i < st.freezes ? ICE : 'rgba(255,255,255,.15)',
-      filter: i < st.freezes && !UI.mono ? `drop-shadow(0 0 4px ${ICE})` : 'none'
+      filter: 'none'
     }
   })), React.createElement("span", {
     className: "text-[12.5px] text-white/55 f-read ml-1"
@@ -12535,8 +10856,7 @@ function FocusScreen() {
       setBgEdit(true);
     }
   }, React.createElement(Frame, {
-    cut: 12,
-    color: "rgba(var(--main-rgb),.3)"
+    cut: 12
   }, React.createElement("div", {
     className: "flex items-center gap-3 p-2.5"
   }, f.bg ? React.createElement(Img, {
@@ -12545,14 +10865,14 @@ function FocusScreen() {
     className: "w-11 h-11 object-cover cut shrink-0",
     style: {
       '--cut': '6px',
-      borderRadius: UI.mono ? 10 : 0
+      borderRadius: 10
     }
   }) : React.createElement("span", {
     className: "w-11 h-11 shrink-0 flex items-center justify-center cut txt-alt",
     style: {
       '--cut': '6px',
       background: 'rgba(var(--alt-rgb),.08)',
-      borderRadius: UI.mono ? 10 : 0
+      borderRadius: 10
     }
   }, React.createElement(ImagePlus, {
     size: 20
@@ -12572,8 +10892,7 @@ function FocusScreen() {
     count: st.n
   }), React.createElement(Frame, {
     cut: 14,
-    className: "mt-2.5",
-    color: "rgba(var(--main-rgb),.35)"
+    className: "mt-2.5"
   }, React.createElement("div", {
     className: "p-3"
   }, React.createElement("div", {
@@ -12599,7 +10918,7 @@ function FocusScreen() {
       style: {
         '--cut': '5px',
         background: bg,
-        borderRadius: UI.mono ? 7 : 0,
+        borderRadius: 7,
         boxShadow: k === todayK ? 'inset 0 0 0 1.5px var(--warn)' : fut ? 'inset 0 0 0 1px rgba(255,255,255,.06)' : 'none'
       }
     }, fz ? React.createElement(Snowflake, {
@@ -12621,7 +10940,7 @@ function FocusScreen() {
     className: "inline-block w-2.5 h-2.5",
     style: {
       background: 'var(--alt)',
-      borderRadius: UI.mono ? 3 : 0
+      borderRadius: 3
     }
   }), "\u0446\u0435\u043B\u044C \u0432\u044B\u043F\u043E\u043B\u043D\u0435\u043D\u0430"), React.createElement("span", {
     className: "flex items-center gap-1"
@@ -12629,7 +10948,7 @@ function FocusScreen() {
     className: "inline-block w-2.5 h-2.5",
     style: {
       background: 'rgba(var(--alt-rgb),.35)',
-      borderRadius: UI.mono ? 3 : 0
+      borderRadius: 3
     }
   }), "\u0447\u0430\u0441\u0442\u0438\u0447\u043D\u043E"), React.createElement("span", {
     className: "flex items-center gap-1"
@@ -12678,8 +10997,7 @@ function FocusScreen() {
         setSheet(s.id);
       }
     }, React.createElement(Frame, {
-      cut: 12,
-      color: "rgba(var(--main-rgb),.3)"
+      cut: 12
     }, React.createElement("div", {
       className: "flex items-center gap-3 p-3"
     }, React.createElement(ScoreBox, {
@@ -12734,9 +11052,7 @@ function SetBlock({
 }) {
   return React.createElement(Frame, {
     cut: 16,
-    className: "mb-4",
-    color: "rgba(var(--main-rgb),.45)",
-    bg: "linear-gradient(180deg,rgba(18,10,20,.96),rgba(8,7,12,.96))"
+    className: "mb-4"
   }, React.createElement("div", {
     className: "set-head"
   }, React.createElement("span", {
@@ -12784,7 +11100,6 @@ function SyncLoginModal({
       if (!mode) {
         const ans = await ask({
           title: 'На сервере уже есть данные',
-          code: 'SYNC // FIRST.LINK',
           text: 'Это устройство подключается к аккаунту впервые.\n\n«Взять с сервера» — данные этого устройства заменятся серверными. Подходит для нового устройства.\n\n«Объединить» — сольются записи с обеих сторон, при совпадении останется версия с сервера.',
           ok: 'Взять с сервера',
           extra: 'Объединить'
@@ -12807,7 +11122,6 @@ function SyncLoginModal({
   return React.createElement(Modal, {
     onClose: busy ? null : onClose,
     title: "\u041F\u043E\u0434\u043A\u043B\u044E\u0447\u0438\u0442\u044C \u0441\u0435\u0440\u0432\u0435\u0440",
-    code: "SYNC // LINK.DEVICE",
     footer: React.createElement(Btn, {
       className: "w-full",
       icon: KeyRound,
@@ -12892,7 +11206,6 @@ function SyncBlock({
   const logout = async () => {
     const ok = await ask({
       title: 'Отключить синхронизацию?',
-      code: 'SYNC // UNLINK',
       text: `Данные на этом устройстве останутся, но перестанут обмениваться с сервером.${s.pending ? `\n\nНе отправлено изменений: ${s.pending}. Они останутся только здесь.` : ''}`,
       ok: 'Отключить',
       danger: !!s.pending
@@ -12978,7 +11291,6 @@ function SnapList() {
     }
     const ok = await ask({
       title: 'Вернуть снимок?',
-      code: 'SYS // SNAPSHOT',
       text: `Снимок от ${fmtDT(r.at)}\nМиссий: ${nd.missions.length} · записей: ${nd.shards.length} · оценённых дней: ${Object.keys(nd.ratings).length}\n\nТекущие данные будут заменены, копия останется в снимках.${syncOn() ? '\n\nСинхронизация включена: изменение дойдёт до всех устройств.' : ''}`,
       ok: 'Вернуть',
       danger: true
@@ -13097,7 +11409,6 @@ function SettingsScreen({
       const photos = imgs.filter(([k]) => !k.endsWith('.t')).length + listImages(nd).filter(isInline).length;
       const ok = await ask({
         title: 'Импорт данных',
-        code: 'SYS // RESTORE',
         text: `Файл: ${f.name}\nМиссий: ${nd.missions.length} · записей: ${nd.shards.length} · оценённых дней: ${Object.keys(nd.ratings).length} · таймеров: ${nd.timers.length} · фото: ${photos}\n\nТекущие данные будут заменены.${syncNote}`,
         ok: 'Восстановить',
         danger: true
@@ -13122,7 +11433,6 @@ function SettingsScreen({
   const resetDemo = async () => {
     const ok = await ask({
       title: 'Сбросить до демо?',
-      code: 'SYS // RESET.DEMO',
       text: `Все миссии, записи, карточки, оценки и таймеры будут заменены примерами со скриншотов. Настройки сохранятся.${syncNote}`,
       ok: 'Сбросить',
       danger: true
@@ -13142,7 +11452,6 @@ function SettingsScreen({
   const clearAll = async () => {
     const ok = await ask({
       title: 'Очистить все данные?',
-      code: 'SYS // WIPE',
       text: `Будут удалены ВСЕ миссии, записи журнала, карточки, оценки и таймеры. Останутся пустые разделы, базовые теги и настройки.\n\nСовет: сначала сделай экспорт бэкапа.${syncNote}`,
       ok: 'Стереть всё',
       danger: true
@@ -13170,7 +11479,6 @@ function SettingsScreen({
     }
     const ok = await ask({
       title: 'Взять данные из основной версии?',
-      code: 'BETA // SYNC',
       text: 'Данные тестовой версии заменятся текущими данными основного приложения. Основное приложение не изменится.',
       ok: 'Заменить'
     });
@@ -13184,7 +11492,6 @@ function SettingsScreen({
   return React.createElement("div", {
     className: "pb-8"
   }, React.createElement(ScreenHeader, {
-    code: "SYS://ROOT/CONFIG \u2014 TERMINAL v1.0",
     title: "\u0421\u0438\u0441\u0442\u0435\u043C\u0430",
     sub: "\u041D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438, \u0441\u043F\u0440\u0430\u0432\u043E\u0447\u043D\u0438\u043A\u0438 \u0438 \u0440\u0435\u0437\u0435\u0440\u0432\u043D\u044B\u0435 \u043A\u043E\u043F\u0438\u0438"
   }), React.createElement("div", {
@@ -13293,7 +11600,7 @@ function SettingsScreen({
     onClick: simulateSkip
   }, "\u0421\u0438\u043C\u0443\u043B\u0438\u0440\u043E\u0432\u0430\u0442\u044C \u043F\u0440\u043E\u043F\u0443\u0441\u043A \u0432\u0447\u0435\u0440\u0430\u0448\u043D\u0435\u0433\u043E \u0434\u043D\u044F"))), React.createElement(SetBlock, {
     n: "02",
-    title: UI.mono ? 'Внешний вид' : 'Персонализация и FX',
+    title: "\u0412\u043D\u0435\u0448\u043D\u0438\u0439 \u0432\u0438\u0434",
     icon: Palette
   }, React.createElement("span", {
     className: "lbl"
@@ -13315,7 +11622,7 @@ function SettingsScreen({
     className: "lbl"
   }, "\u0410\u043A\u0446\u0435\u043D\u0442\u043D\u044B\u0439 \u0446\u0432\u0435\u0442"), React.createElement("div", {
     className: "grid grid-cols-3 gap-2"
-  }, MONO_ACCENTS.map(a => React.createElement("button", {
+  }, ACCENTS.map(a => React.createElement("button", {
     key: a.id,
     type: "button",
     onClick: () => {
@@ -13337,10 +11644,10 @@ function SettingsScreen({
   }), React.createElement("span", {
     className: "text-[13px] font-semibold text-white/90 truncate"
   }, a.name)))), React.createElement("div", {
-    className: UI.mono ? 'mt-3' : '',
-    style: UI.mono ? {
+    className: "mt-3",
+    style: {
       borderTop: '1px solid rgba(255,255,255,.07)'
-    } : undefined
+    }
   }, React.createElement(Toggle, {
     on: s.sound,
     onChange: v => {
@@ -13350,7 +11657,7 @@ function SettingsScreen({
       });
     },
     label: "\u0417\u0432\u0443\u043A\u043E\u0432\u043E\u0439 \u043E\u0442\u043A\u043B\u0438\u043A \u0438\u043D\u0442\u0435\u0440\u0444\u0435\u0439\u0441\u0430",
-    hint: UI.mono ? 'Мягкие щелчки при нажатиях' : 'Синтезированные sci-fi клики (Web Audio API)'
+    hint: "\u041C\u044F\u0433\u043A\u0438\u0435 \u0449\u0435\u043B\u0447\u043A\u0438 \u043F\u0440\u0438 \u043D\u0430\u0436\u0430\u0442\u0438\u044F\u0445"
   })), s.sound && React.createElement(Btn, {
     small: true,
     variant: "dark",
@@ -13586,7 +11893,7 @@ function SettingsScreen({
     className: "px-4"
   }, React.createElement("div", {
     className: "micro text-center mt-6 mb-2"
-  }, UI.mono ? 'CYBERJOURNAL' : 'CYBER//JOURNAL 2077', " \xB7 v", APP_VERSION, " \xB7 BUILD ", window.CJ_BUILD || 'DEV', " \xB7 ", cloudOn ? 'LOCAL + CLOUD SYNC' : syncOn() ? 'LOCAL + SERVER SYNC' : 'LOCAL STORAGE')), avEdit && React.createElement(AvatarEditor, {
+  }, "CYBERJOURNAL \xB7 v", APP_VERSION, " \xB7 BUILD ", window.CJ_BUILD || 'DEV', " \xB7 ", cloudOn ? 'LOCAL + CLOUD SYNC' : syncOn() ? 'LOCAL + SERVER SYNC' : 'LOCAL STORAGE')), avEdit && React.createElement(AvatarEditor, {
     onClose: () => setAvEdit(false)
   }));
 }
@@ -13640,39 +11947,24 @@ function SideFoot() {
 }
 const TABS = [{
   id: 'missions',
-  label: 'МИССИИ',
-  sub: 'И ЖУРНАЛ',
-  icon: Crosshair,
-  mLabel: 'Миссии',
-  mIcon: ListChecks
+  label: 'Миссии',
+  icon: ListChecks
 }, {
   id: 'stats',
-  label: 'СТАТИСТИКА',
-  sub: 'ДНЯ',
-  icon: Activity,
-  mLabel: 'Итоги',
-  mIcon: CalendarDays
+  label: 'Итоги',
+  icon: CalendarDays
 }, {
   id: 'focus',
-  label: 'ФОКУС',
-  sub: 'НЕЙРОЛИНК',
-  icon: Brain,
-  mLabel: 'Фокус',
-  mIcon: Target
+  label: 'Фокус',
+  icon: Target
 }, {
   id: 'timer',
-  label: 'ОТСЧЁТ',
-  sub: 'ВРЕМЕНИ',
-  icon: Hourglass,
-  mLabel: 'Отсчёт',
-  mIcon: Timer
+  label: 'Отсчёт',
+  icon: Timer
 }, {
   id: 'system',
-  label: 'СИСТЕМА',
-  sub: 'НАСТРОЙКИ',
-  icon: Terminal,
-  mLabel: 'Система',
-  mIcon: Settings
+  label: 'Система',
+  icon: Settings
 }];
 const FONTS_URL = 'https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Exo+2:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Orbitron:wght@500;700;900&family=Oswald:wght@400;500;600;700&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Unbounded:wght@500;700&display=swap';
 const SAFE_BTN = {
@@ -13945,14 +12237,10 @@ function MainApp({
   const toastTimer = useRef(null);
   SFX.on = !!data.settings.sound;
   SFX.vib = !!data.settings.haptics;
-  const mono = true;
-  UI.mono = mono;
-  SFX.soft = mono;
   const wide = useWide();
   UI.wide = wide;
-  const th = THEMES[data.settings.theme] || THEMES.classic;
-  const acc = (MONO_ACCENTS.find(a => a.id === data.settings.monoAccent) || MONO_ACCENTS[0]).c;
-  const pageBg = mono ? '#000000' : th.bg2;
+  const acc = (ACCENTS.find(a => a.id === data.settings.monoAccent) || ACCENTS[0]).c;
+  const pageBg = '#000000';
   const switched = useRef(false);
   const mainRef = useRef(null);
   const setTab = t => {
@@ -14159,7 +12447,6 @@ function MainApp({
         const n = SYNC.hold;
         const ans = await ask({
           title: 'Синхронизация остановлена',
-          code: 'SYNC // GUARD',
           text: `Это устройство собирается удалить на сервере ${n} ${plural(n, 'запись', 'записи', 'записей')} сразу. Так бывает после сбоя, поэтому на сервер пока ничего не ушло.\n\n«Взять с сервера» вернёт данные на это устройство.\n\n«Удалить на сервере» подтвердит удаление на всех устройствах.`,
           ok: 'Взять с сервера',
           extra: 'Удалить на сервере',
@@ -14257,7 +12544,6 @@ function MainApp({
   const askRetro = useCallback(async y => {
     const ans = await ask({
       title: 'Пропущенный день',
-      code: 'RETRO.CHECK // MISSED DAY',
       text: `Не подведены итоги за вчерашний день (${fmtDay(y)}). Провести оценку сейчас?`,
       ok: 'Оценить',
       cancel: 'Позже',
@@ -14312,7 +12598,6 @@ function MainApp({
         const share = canShareFiles();
         const ans = await ask({
           title: 'Пора сделать бэкап',
-          code: 'SYS // BACKUP.CHECK',
           text: `${last ? `Последний экспорт был ${age} ${plural(age, 'день', 'дня', 'дней')} назад.` : 'Экспорта данных ещё не было.'}\n\nВсе записи хранятся только в памяти этого браузера. ${share ? 'Отправь бэкап в надёжное место: Telegram «Избранное» или Google Диск' : 'Сохрани файл .json в надёжное место (например, на Google Диск)'}, чтобы не потерять их.`,
           ok: share ? 'Отправить' : 'Экспорт сейчас',
           cancel: 'Позже'
@@ -14377,7 +12662,6 @@ function MainApp({
     if (data.ratings[y]) {
       const ok = await ask({
         title: 'Симуляция пропуска',
-        code: 'SYS // TEST',
         text: `Оценка за ${fmtDay(y)} будет удалена, чтобы проверить сценарий ретроспективной оценки. Продолжить?`,
         ok: 'Удалить и проверить',
         danger: true
@@ -14400,7 +12684,7 @@ function MainApp({
     });
     setTimeout(() => askRetro(y), 350);
   };
-  const vars = mono ? {
+  const vars = {
     '--main': '#F2F2F7',
     '--alt': acc,
     '--warn': '#FFD60A',
@@ -14413,20 +12697,6 @@ function MainApp({
     '--main-rgb': hexRgb('#F2F2F7'),
     '--alt-rgb': hexRgb(acc),
     '--warn-rgb': hexRgb('#FFD60A')
-  } : {
-    '--main': th.main,
-    '--alt': th.alt,
-    '--warn': th.warn,
-    '--bg1': th.bg1,
-    '--bg2': th.bg2,
-    '--sel1': th.sel[0],
-    '--sel2': th.sel[1],
-    '--sel-fg': th.selFg,
-    '--sel-sub': th.selSub,
-    '--sel-shadow': th.selFg ? 'none' : '0 1px 3px rgba(0,0,0,.55)',
-    '--main-rgb': hexRgb(th.main),
-    '--alt-rgb': hexRgb(th.alt),
-    '--warn-rgb': hexRgb(th.warn)
   };
   const ctx = useMemo(() => ({
     data,
@@ -14455,36 +12725,29 @@ function MainApp({
   return React.createElement(AppCtx.Provider, {
     value: ctx
   }, React.createElement("div", {
-    className: `cj-root ${wide ? 'cj-wide' : ''} ${mono ? 'ui-mono' : `${data.settings.glitch ? 'fx-glitch' : ''} ${data.settings.crt ? 'crt-on' : ''}`}`,
+    className: `cj-root ${wide ? 'cj-wide' : ''} ui-mono`,
     style: vars
-  }, React.createElement("style", null, mono ? CSS + MONO_CSS : CSS), wide ? React.createElement("div", {
+  }, React.createElement("style", null, CSS + MONO_CSS), wide ? React.createElement("div", {
     className: "h-full flex"
   }, React.createElement("aside", {
     className: "side"
   }, React.createElement("div", {
     className: "side-logo"
-  }, React.createElement("b", null, mono ? 'CyberJournal' : 'CYBER//JOURNAL'), React.createElement("div", {
-    className: "micro deco mt-1.5"
-  }, "NIGHT CITY // 2077")), React.createElement("nav", {
+  }, React.createElement("b", null, "CyberJournal")), React.createElement("nav", {
     className: "flex flex-col"
   }, TABS.map(t => React.createElement("button", {
     key: t.id,
     type: "button",
     onClick: () => setTab(t.id),
     className: `side-b ${tab === t.id ? 'on' : ''}`
-  }, mono ? React.createElement(t.mIcon, {
-    size: 20,
-    strokeWidth: 2
-  }) : React.createElement(t.icon, {
+  }, React.createElement(t.icon, {
     size: 20,
     strokeWidth: 2
   }), React.createElement("span", {
     className: "min-w-0"
   }, React.createElement("span", {
     className: "nl"
-  }, mono ? t.mLabel : t.label), !mono && React.createElement("span", {
-    className: "ns"
-  }, t.sub))))), React.createElement(SideFoot, null)), React.createElement("main", {
+  }, t.label))))), React.createElement(SideFoot, null)), React.createElement("main", {
     key: tab,
     ref: mainRef,
     className: `flex-1 min-w-0 relative ${tab === 'timer' ? 'overflow-hidden' : 'overflow-y-auto overscroll-contain'}`
@@ -14503,20 +12766,14 @@ function MainApp({
     type: "button",
     onClick: () => setTab(t.id),
     className: `nav-b ${tab === t.id ? 'on' : ''}`
-  }, mono ? React.createElement(t.mIcon, {
+  }, React.createElement(t.icon, {
     size: 22,
-    strokeWidth: 2
-  }) : React.createElement(t.icon, {
-    size: 20,
     strokeWidth: 2
   }), React.createElement("span", {
     className: "nl"
-  }, mono ? t.mLabel : t.label), !mono && React.createElement("span", {
-    className: "ns"
-  }, t.sub))))), rate && React.createElement(RateModal, {
+  }, t.label))))), rate && React.createElement(RateModal, {
     key: `${rate.date}-${rate.source}`,
     date: rate.date,
-    source: rate.source,
     onClose: () => setRate(null)
   }), focusSetup && !data.focus.active && React.createElement(FocusSetup, {
     missionId: focusSetup.missionId,
@@ -14547,10 +12804,6 @@ function MainApp({
     }
   }, React.createElement(Undo2, {
     size: 14
-  }), toastMsg.action.label)), !mono && data.settings.crt && React.createElement("div", {
-    className: "crt"
-  }), !mono && data.settings.scanlines && React.createElement("div", {
-    className: "scan"
-  })));
+  }), toastMsg.action.label))));
 }
 ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App, null));

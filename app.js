@@ -1,4 +1,4 @@
-/* CJ_BUILD 20261029-011046 */
+/* CJ_BUILD 20261101-010453 */
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
 const {
   useState,
@@ -28,9 +28,7 @@ const {
   Link,
   Clock,
   Activity,
-  Crosshair,
   Hourglass,
-  Terminal,
   Database,
   RotateCcw,
   AlertTriangle,
@@ -67,7 +65,8 @@ const {
   LogOut,
   KeyRound,
   Eye,
-  ArrowUpDown
+  ArrowUpDown,
+  LayoutGrid
 } = LucideReact;
 const BETA = typeof window !== 'undefined' && !!window.CJ_BETA;
 const MAIN_KEY = 'cyberjournal2077.v1';
@@ -75,7 +74,6 @@ const BETA_KEY = 'cyberjournal2077.beta';
 const LS_KEY = BETA ? BETA_KEY : MAIN_KEY;
 const APP_VERSION = '1.0.0';
 const UI = {
-  mono: false,
   wide: false
 };
 const WIDE_MQ = '(min-width: 1000px)';
@@ -104,7 +102,22 @@ function useWide() {
   return w;
 }
 const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : s;
-const nice = s => UI.mono && s && s === s.toUpperCase() ? cap(s) : s;
+const PLAIN = {
+  'MAIN JOBS': 'Основные',
+  'SIDE JOBS': 'Побочные',
+  GIGS: 'Подработки',
+  'CYBERPSYCHO SIGHTING': 'Другое',
+  'DANGER: LOW': 'Сложность: низкая',
+  'DANGER: MODERATE': 'Сложность: средняя',
+  'DANGER: HIGH': 'Сложность: высокая',
+  'DANGER: VERY HIGH': 'Сложность: очень высокая'
+};
+const nice = s => {
+  if (!s) return s;
+  if (PLAIN[s]) return PLAIN[s];
+  if (s.startsWith('REWARD: ')) return `Награда: ${s.slice(8)}`;
+  return s === s.toUpperCase() ? cap(s) : s;
+};
 const uid = (p = 'id') => `${p}_${Math.random().toString(36).slice(2, 8)}${Date.now().toString(36).slice(-4)}`;
 const pad = n => String(n).padStart(2, '0');
 const dKey = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -145,15 +158,6 @@ const plural = (n, one, few, many) => {
   if (b === 1) return one;
   return many;
 };
-function rng(seed) {
-  let a = seed >>> 0;
-  return () => {
-    a = a + 0x6D2B79F5 | 0;
-    let t = Math.imul(a ^ a >>> 15, 1 | a);
-    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-    return ((t ^ t >>> 14) >>> 0) / 4294967296;
-  };
-}
 const MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
 const MONTHS_GEN = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
 const WD = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
@@ -217,53 +221,7 @@ const schedText = (c, withW = true) => {
   const w = withW ? weightText(cardW(c)) : '';
   return w ? `${s} · ${w}` : s;
 };
-const THEMES = {
-  classic: {
-    name: 'Cyberpunk Classic',
-    sub: 'Red / Cyan',
-    main: '#FF4655',
-    alt: '#00F0FF',
-    warn: '#FCEE0A',
-    bg1: '#18080C',
-    bg2: '#0A0A0F',
-    sel: ['#D9524C', '#F2906F']
-  },
-  gold: {
-    name: 'Night City Gold',
-    sub: 'Yellow / Cyan',
-    main: '#FCEE0A',
-    alt: '#00F0FF',
-    warn: '#FF9F1C',
-    bg1: '#161305',
-    bg2: '#09090B',
-    sel: ['#B7A800', '#E9DB4A'],
-    selFg: '#0B0B10',
-    selSub: '#6B1500'
-  },
-  bio: {
-    name: 'Bio-Monitor',
-    sub: 'Neon Green',
-    main: '#3DFF6E',
-    alt: '#C6FF3D',
-    warn: '#E5FF00',
-    bg1: '#04150A',
-    bg2: '#040806',
-    sel: ['#159A3E', '#47D873'],
-    selFg: '#02110A',
-    selSub: '#0A3A18'
-  },
-  arasaka: {
-    name: 'Arasaka Corp',
-    sub: 'Minimal Red / White',
-    main: '#E8112D',
-    alt: '#F4F4F4',
-    warn: '#FFFFFF',
-    bg1: '#111113',
-    bg2: '#060607',
-    sel: ['#9E0C1F', '#E8112D']
-  }
-};
-const MONO_ACCENTS = [{
+const ACCENTS = [{
   id: 'lime',
   name: 'Лайм',
   c: '#B8FF00'
@@ -288,15 +246,6 @@ const MONO_ACCENTS = [{
   name: 'Фиалка',
   c: '#A98BFF'
 }];
-const UI_STYLES = [{
-  id: 'cyber',
-  name: 'Cyberpunk',
-  sub: 'Неон, рамки, глитч'
-}, {
-  id: 'mono',
-  name: 'Моно',
-  sub: 'Чёрный, скругления, стикеры'
-}];
 const DEFAULT_SETTINGS = {
   winStart: '21:00',
   winEnd: '23:59',
@@ -307,23 +256,16 @@ const DEFAULT_SETTINGS = {
     l: 3.5,
     y: 2.5
   },
-  ui: 'cyber',
   monoAccent: 'lime',
-  theme: 'classic',
-  scanlines: true,
-  crt: true,
-  glitch: true,
   sound: true,
   haptics: true,
   avatar: 'preset:m',
-  avatarHolo: false,
   backupDays: 7,
   timerOrder: 'near'
 };
 const SFX = {
   on: true,
   vib: true,
-  soft: false,
   ctx: null
 };
 const VIBES = {
@@ -367,79 +309,40 @@ function sfx(kind = 'click') {
       o.start(t + delay);
       o.stop(t + delay + dur + 0.03);
     };
-    if (SFX.soft) {
-      switch (kind) {
-        case 'check':
-          tone(660, 990, 0.07, 'sine', 0.06);
-          tone(990, 1320, 0.08, 'sine', 0.05, 0.06);
-          break;
-        case 'uncheck':
-          tone(700, 440, 0.08, 'sine', 0.05);
-          break;
-        case 'open':
-          tone(440, 660, 0.09, 'sine', 0.045);
-          break;
-        case 'close':
-          tone(660, 440, 0.08, 'sine', 0.04);
-          break;
-        case 'save':
-          tone(523, 523, 0.08, 'sine', 0.06);
-          tone(659, 659, 0.08, 'sine', 0.06, 0.08);
-          tone(784, 784, 0.13, 'sine', 0.06, 0.16);
-          break;
-        case 'error':
-          tone(320, 200, 0.18, 'triangle', 0.06);
-          break;
-        case 'tab':
-          tone(880, 880, 0.035, 'sine', 0.045);
-          break;
-        case 'score':
-          tone(740, 1000, 0.06, 'sine', 0.06);
-          break;
-        case 'ping':
-          tone(880, 880, 0.12, 'sine', 0.07);
-          tone(1175, 1175, 0.16, 'sine', 0.07, 0.14);
-          break;
-        default:
-          tone(1180, 1180, 0.03, 'sine', 0.045);
-      }
-      return;
-    }
     switch (kind) {
       case 'check':
-        tone(900, 1800, 0.05, 'square', 0.035);
-        tone(1500, 2800, 0.07, 'triangle', 0.04, 0.045);
+        tone(660, 990, 0.07, 'sine', 0.06);
+        tone(990, 1320, 0.08, 'sine', 0.05, 0.06);
         break;
       case 'uncheck':
-        tone(1700, 600, 0.08, 'square', 0.03);
+        tone(700, 440, 0.08, 'sine', 0.05);
         break;
       case 'open':
-        tone(260, 1300, 0.12, 'sawtooth', 0.022);
+        tone(440, 660, 0.09, 'sine', 0.045);
         break;
       case 'close':
-        tone(1300, 260, 0.1, 'sawtooth', 0.018);
+        tone(660, 440, 0.08, 'sine', 0.04);
         break;
       case 'save':
-        tone(600, 900, 0.06, 'triangle', 0.05);
-        tone(900, 1350, 0.06, 'triangle', 0.05, 0.07);
-        tone(1350, 2100, 0.1, 'triangle', 0.05, 0.14);
+        tone(523, 523, 0.08, 'sine', 0.06);
+        tone(659, 659, 0.08, 'sine', 0.06, 0.08);
+        tone(784, 784, 0.13, 'sine', 0.06, 0.16);
         break;
       case 'error':
-        tone(240, 90, 0.22, 'sawtooth', 0.05);
+        tone(320, 200, 0.18, 'triangle', 0.06);
         break;
       case 'tab':
-        tone(2300, 1200, 0.035, 'square', 0.028);
+        tone(880, 880, 0.035, 'sine', 0.045);
         break;
       case 'score':
-        tone(1100, 1650, 0.05, 'triangle', 0.05);
+        tone(740, 1000, 0.06, 'sine', 0.06);
         break;
       case 'ping':
-        tone(1400, 1400, 0.09, 'square', 0.04);
-        tone(1400, 1400, 0.09, 'square', 0.04, 0.16);
-        tone(2100, 2100, 0.12, 'triangle', 0.05, 0.32);
+        tone(880, 880, 0.12, 'sine', 0.07);
+        tone(1175, 1175, 0.16, 'sine', 0.07, 0.14);
         break;
       default:
-        tone(2500, 1400, 0.03, 'square', 0.026);
+        tone(1180, 1180, 0.03, 'sine', 0.045);
     }
   } catch (e) {}
 }
@@ -456,33 +359,31 @@ const imgNotify = () => {
   IMG.gen++;
   IMG.subs.forEach(f => f());
 };
-function idbOpen() {
-  if (!IMG.p) {
-    IMG.p = new Promise((res, rej) => {
-      if (!window.indexedDB) {
-        rej(new Error('no-idb'));
-        return;
-      }
-      const r = indexedDB.open(IDB_NAME, 1);
-      r.onupgradeneeded = () => r.result.createObjectStore('img');
-      r.onsuccess = () => res(r.result);
-      r.onerror = () => rej(r.error);
-    }).catch(e => {
-      IMG.p = null;
-      throw e;
-    });
+const dbOpen = (name, store) => new Promise((res, rej) => {
+  if (!window.indexedDB) {
+    rej(new Error('no-idb'));
+    return;
   }
+  const r = indexedDB.open(name, 1);
+  r.onupgradeneeded = () => r.result.createObjectStore(store);
+  r.onsuccess = () => res(r.result);
+  r.onerror = () => rej(r.error);
+});
+function idbOpen() {
+  if (!IMG.p) IMG.p = dbOpen(IDB_NAME, 'img').catch(e => {
+    IMG.p = null;
+    throw e;
+  });
   return IMG.p;
 }
-function idbTx(mode, fn) {
-  return idbOpen().then(db => new Promise((res, rej) => {
-    const tx = db.transaction('img', mode),
-      out = {};
-    fn(tx.objectStore('img'), out);
-    tx.oncomplete = () => res(out.v);
-    tx.onerror = tx.onabort = () => rej(tx.error);
-  }));
-}
+const dbTx = (db, store, mode, fn) => new Promise((res, rej) => {
+  const tx = db.transaction(store, mode),
+    out = {};
+  fn(tx.objectStore(store), out);
+  tx.oncomplete = () => res(out.v);
+  tx.onerror = tx.onabort = () => rej(tx.error);
+});
+const idbTx = (mode, fn) => idbOpen().then(db => dbTx(db, 'img', mode, fn));
 const imgPut = entries => idbTx('readwrite', st => {
   const at = Date.now();
   entries.forEach(([id, blob]) => blob && st.put({
@@ -672,6 +573,13 @@ function mapImages(d, fn) {
       ...d.focus,
       bg: m(d.focus.bg)
     } : d.focus,
+    persona: {
+      ...d.persona,
+      traits: d.persona.traits.map(x => x.img ? {
+        ...x,
+        img: m(x.img)
+      } : x)
+    },
     settings: avatar && !String(avatar).startsWith('preset:') ? {
       ...d.settings,
       avatar: m(avatar)
@@ -699,21 +607,81 @@ async function collectImages(d) {
   }
   return out;
 }
-function demoMapImage() {
-  const R = rng(2077);
-  let s = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200"><rect width="320" height="200" fill="#1c0306"/>';
-  s += '<g transform="rotate(-24 160 100)">';
-  for (let i = 0; i < 9; i++) s += `<rect x="-60" y="${i * 34 - 40}" width="440" height="${2 + R() * 3}" fill="#2f6bd6" opacity="${0.5 + R() * 0.4}"/>`;
-  for (let i = 0; i < 12; i++) s += `<rect x="${i * 38 - 40}" y="-60" width="${2 + R() * 2}" height="320" fill="#2f6bd6" opacity="${0.35 + R() * 0.4}"/>`;
-  for (let i = 0; i < 90; i++) {
-    const x = R() * 400 - 40,
-      y = R() * 300 - 50,
-      w = 6 + R() * 26,
-      h = 6 + R() * 22;
-    s += `<rect x="${x.toFixed(0)}" y="${y.toFixed(0)}" width="${w.toFixed(0)}" height="${h.toFixed(0)}" fill="${R() > 0.3 ? '#c4121f' : '#ff4655'}" opacity="${(0.55 + R() * 0.45).toFixed(2)}"/>`;
+const SNAP_DB = 'cyberjournal2077-snap';
+const SNAP_KEEP = {
+  day: 7,
+  before: 3,
+  broken: 3
+};
+const SNAP = {
+  p: null,
+  day: ''
+};
+function snapTx(mode, fn) {
+  if (!SNAP.p) SNAP.p = dbOpen(SNAP_DB, 'snap').catch(e => {
+    SNAP.p = null;
+    throw e;
+  });
+  return SNAP.p.then(db => dbTx(db, 'snap', mode, fn));
+}
+const snapList = () => snapTx('readonly', (st, out) => {
+  const r = st.getAll();
+  r.onsuccess = () => {
+    out.v = r.result;
+  };
+});
+const snapRows = async () => (await snapList()).filter(r => r.app === LS_KEY).sort((a, b) => b.at - a.at);
+const snapStats = raw => {
+  try {
+    const d = JSON.parse(raw);
+    return {
+      missions: (d.missions || []).length,
+      shards: (d.shards || []).length,
+      days: Object.keys(d.ratings || {}).length
+    };
+  } catch (e) {
+    return null;
   }
-  s += '</g><circle cx="196" cy="92" r="7" fill="none" stroke="#00f0ff" stroke-width="2"/><circle cx="196" cy="92" r="2.5" fill="#00f0ff"/></svg>';
-  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s);
+};
+const snapInfo = r => r.label || (r.stats ? `Миссий ${r.stats.missions} · записей ${r.stats.shards} · дней ${r.stats.days}` : 'Копия данных');
+async function snapPut(kind, raw, label = '') {
+  const at = Date.now(),
+    id = `${LS_KEY}|${kind}|${kind === 'day' ? dKey(new Date(at)) : at}`;
+  const rec = {
+    app: LS_KEY,
+    kind,
+    at,
+    label,
+    stats: snapStats(raw),
+    imgs: [...new Set(raw.match(/idb:[\w.-]+/g) || [])],
+    body: new Blob([raw], {
+      type: 'application/json'
+    })
+  };
+  const old = (await snapRows()).filter(r => r.kind === kind && r.id !== id).slice(SNAP_KEEP[kind] - 1);
+  await snapTx('readwrite', st => {
+    st.put({
+      ...rec,
+      id
+    }, id);
+    old.forEach(r => st.delete(r.id));
+  });
+}
+async function snapBefore(label, raw) {
+  try {
+    await snapPut('before', raw, label);
+  } catch (e) {}
+}
+async function snapDaily() {
+  const day = dKey(new Date());
+  if (SNAP.day === day) return;
+  SNAP.day = day;
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw && !(await snapRows()).some(r => r.id === `${LS_KEY}|day|${day}`)) await snapPut('day', raw);
+  } catch (e) {
+    SNAP.day = '';
+  }
 }
 const DEFAULT_SECTIONS = () => [{
   id: 'sec_main',
@@ -772,25 +740,7 @@ const emptyPersona = () => ({
   traits: []
 });
 const TRAIT_COLORS = ['#FF4655', '#00F0FF', '#FCEE0A', '#59FF00', '#FF7A00', '#B98CF0', '#FF2E8C', '#FFFFFF'];
-const MCCLANE = () => ({
-  name: 'Джон Макклейн',
-  traits: [{
-    id: uid('tr'),
-    name: 'Упорство',
-    color: '#FF4655',
-    maxim: 'Не жду идеальных условий. Делаю следующий шаг, даже когда больно и не хочется.'
-  }, {
-    id: uid('tr'),
-    name: 'Чувство юмора',
-    color: '#FCEE0A',
-    maxim: 'Когда всё идёт наперекосяк — улыбнись. Шутка снимает напряжение и возвращает ясную голову.'
-  }, {
-    id: uid('tr'),
-    name: 'Преданность семье',
-    color: '#59FF00',
-    maxim: 'Всё это ради них. Сначала позвоню близким, потом разберусь с остальным.'
-  }]
-});
+const traitHero = (t, pr) => (typeof t.hero === 'string' ? t.hero : pr.name) || '';
 const emptyState = () => ({
   v: 1,
   sections: DEFAULT_SECTIONS(),
@@ -856,7 +806,6 @@ function normalize(d) {
       ...(d && d.settings && d.settings.thr || {})
     }
   };
-  if (typeof (d && d.settings && d.settings.crt) !== 'boolean') out.settings.crt = out.settings.scanlines !== false;
   out.meta = {
     ...base.meta,
     ...(d && d.meta || {})
@@ -886,13 +835,12 @@ const blankMission = sectionId => ({
   alert: false,
   badge: {
     shape: 'diamond',
-    text: 'NC',
+    text: 'М',
     color: '#F5B83D'
   },
   steps: [step('')],
   image: '',
   imageCaption: '',
-  holo: true,
   description: '',
   deadline: '',
   countdown: false,
@@ -956,68 +904,65 @@ function makeDemo() {
   };
   const st = emptyState();
   st.sections = [...DEFAULT_SECTIONS(), {
-    id: 'sec_psycho',
-    name: 'CYBERPSYCHO SIGHTING',
+    id: 'sec_ideas',
+    name: 'ИДЕИ',
     collapsed: true
   }];
   const corpoDeadline = toLocalInput(at(5, 9));
   st.missions = [{
     ...blankMission('sec_main'),
     id: 'm_space',
-    title: 'THE SPACE IN BETWEEN',
+    title: 'ПОДГОТОВИТЬСЯ К ЭКЗАМЕНУ',
     status: 'DANGER: MODERATE',
     alert: true,
     badge: {
       shape: 'diamond',
-      text: 'WB',
+      text: 'EDU',
       color: '#F5B83D'
     },
-    steps: [step('Встретиться с Мисти у «Эзотерики»', false, true), step('Поговорить с Виктором о биочипе'), step('Осмотреть квартиру Джеки', true)],
-    description: 'После провала в «Компеки Плаза» в голове тикает таймер. Нужно найти тех, кто разбирается в биочипах, и понять, сколько времени осталось.\n\nМисти знает, где искать Вика — начни с неё. Не торопись с выводами: в Найт-Сити каждый ответ стоит эдди, а каждая ошибка — дороже.',
+    steps: [step('Составить список тем', false, true), step('Решить пробный вариант'), step('Разобрать ошибки', true)],
+    description: 'До экзамена осталось немного. Сначала понять, какие темы проседают, потом закрывать их по одной.\n\nНе пытаться выучить всё сразу: лучше час каждый день, чем ночь перед экзаменом.',
     createdAt: at(-6, 10).toISOString()
   }, {
     ...blankMission('sec_main'),
     id: 'm_down',
-    title: 'DOWN ON THE STREET',
+    title: 'НАЙТИ НОВУЮ КВАРТИРУ',
     status: 'DANGER: HIGH',
     statusColor: '#FF8A3D',
     badge: {
       shape: 'diamond',
-      text: 'WB',
+      text: 'ДОМ',
       color: '#F5B83D'
     },
-    steps: [step('Дождаться звонка Такэмуры'), step('Прийти на встречу в Джапантаун'), step('Не привлекать внимания', true)],
-    description: 'Такэмура хочет выйти на связь. Встреча на рынке в Джапантауне — людно, шумно, удобно для тех, кто не любит лишних глаз. Держи оружие под рукой и не задавай лишних вопросов.',
+    steps: [step('Определиться с бюджетом и районом'), step('Посмотреть три варианта'), step('Проверить договор', true)],
+    description: 'Договор аренды заканчивается через два месяца. Смотреть заранее, чтобы не соглашаться на первый попавшийся вариант.',
     createdAt: at(-5, 12).toISOString()
   }, {
     ...blankMission('sec_main'),
     id: 'm_ghost',
-    title: 'GHOST TOWN',
+    title: 'СПЛАНИРОВАТЬ ОТПУСК',
     status: 'DANGER: MODERATE',
     badge: {
       shape: 'square',
-      text: 'WATSON',
+      text: 'ТУР',
       color: '#E0262E'
     },
-    steps: [step('Встретиться с Панам в пустошах'), step('Проверить машину и заправиться'), step('Захватить пару гранат', true)],
-    description: 'Панам ждёт за городом. Дорога долгая, а договор с кочевниками держится на честном слове. Подготовься заранее — в пустошах заправок нет.',
+    steps: [step('Выбрать даты'), step('Купить билеты'), step('Забронировать жильё', true)],
+    description: 'Хочется уехать хотя бы на неделю. Чем раньше купить билеты, тем дешевле.',
     createdAt: at(-4, 9).toISOString()
   }, {
     ...blankMission('sec_main'),
     id: 'm_corpo',
-    title: 'THE CORPO-RAT',
+    title: 'СДАТЬ ГОДОВОЙ ОТЧЁТ',
     status: 'DANGER: MODERATE',
     alert: true,
     badge: {
       shape: 'triangle',
-      text: 'N',
+      text: 'W',
       color: '#FFFFFF'
     },
-    steps: [step('Прочитать отчёт на личном терминале', true), step('Сесть в AV Дженкинса')],
-    image: demoMapImage(),
-    imageCaption: 'AV',
-    holo: true,
-    description: 'Утро начинается с отчёта на личном терминале — сводка по объекту ждёт с ночи. Дженкинс дал понять: работа грязная, но если сделать её чисто, повышение у тебя в кармане.\n\nAV уже на крыше, взлёт через пятнадцать минут. Корпорации не прощают опозданий, а Арасака не прощает ничего.\n\nПомни: в этой башне каждый играет за свою команду. Доверяй только данным, которые проверил сам. Записывай всё, что видишь, — однажды это может спасти тебе жизнь. Или карьеру. В Найт-Сити разница невелика.',
+    steps: [step('Собрать цифры за год', true), step('Отправить черновик руководителю')],
+    description: 'Отчёт ждут к концу недели. Цифры почти собраны, осталось свести их в один документ и проверить выводы.\n\nГлавное: начать с черновика, а не с оформления.',
     deadline: corpoDeadline,
     countdown: true,
     createdAt: at(-1, 8).toISOString()
@@ -1039,29 +984,29 @@ function makeDemo() {
     ...blankMission('sec_gigs'),
     id: 'm_laptop',
     title: 'ПРОДАТЬ СТАРЫЙ НОУТБУК',
-    status: 'REWARD: 15 000 €$',
+    status: 'REWARD: 15 000 ₽',
     statusColor: '#59FF00',
     badge: {
       shape: 'circle',
-      text: '€$',
+      text: '₽',
       color: '#59FF00'
     },
     steps: [step('Сбросить систему и сделать фото'), step('Выставить объявление'), step('Встретиться с покупателем')],
-    description: 'Минимальная цена — 15 000 €$. Торг уместен, обмен на импланты не предлагать.',
+    description: 'Минимальная цена — 15 000 ₽. Торг уместен.',
     createdAt: at(-2, 14).toISOString()
   }, {
     ...blankMission('sec_main'),
     id: 'm_pickup',
-    title: 'THE PICKUP',
+    title: 'ОБНОВИТЬ РЕЗЮМЕ',
     status: 'DANGER: HIGH',
     statusColor: '#FF8A3D',
     badge: {
       shape: 'diamond',
-      text: 'WB',
+      text: 'CV',
       color: '#F5B83D'
     },
-    steps: [step('Встретиться с Декстером', false, true), step('Забрать бота у Мальстрёма', false, true), step('Воспользоваться чипом Militech', true, true)],
-    description: 'Контракт закрыт: робот у нас, Мальстрём остался без товара. Декстер доволен, а значит, следующий заказ не заставит себя ждать.',
+    steps: [step('Добавить последние проекты', false, true), step('Попросить друга вычитать', false, true), step('Сделать версию на английском', true, true)],
+    description: 'Резюме готово и лежит в профиле. Теперь обновлять его раз в полгода.',
     done: true,
     completedAt: at(-3, 21, 40).toISOString(),
     createdAt: at(-8, 11).toISOString()
@@ -1087,7 +1032,7 @@ function makeDemo() {
     id: 'sh_1',
     title: 'Первая запись в журнале',
     tags: ['tg_diary'],
-    body: 'Запускаю новый протокол: каждый день — миссии, вечером — честная оценка по карточкам.\n\nСмысл не в идеальных пятёрках, а в том, чтобы видеть картину целиком. Календарь не врёт: если кольца желтеют, значит, пора что-то менять.',
+    body: 'Запускаю новый режим: каждый день — миссии, вечером — честная оценка по карточкам.\n\nСмысл не в идеальных пятёрках, а в том, чтобы видеть картину целиком. Календарь не врёт: если кольца желтеют, значит, пора что-то менять.',
     createdAt: at(-12, 22, 14).toISOString(),
     updatedAt: at(-12, 22, 14).toISOString()
   }, {
@@ -1103,7 +1048,7 @@ function makeDemo() {
     id: 'sh_3',
     title: `Цели на ${MONTHS[now.getMonth()].toLowerCase()}`,
     tags: ['tg_goals', 'tg_diary'],
-    body: '1. Средний балл за месяц — не ниже 4.0.\n2. Ни одного дня с кольцом красного цвета.\n3. Закрыть миссию THE CORPO-RAT до дедлайна.\n4. Читать по 20 страниц в день.\n5. Спать не меньше восьми часов хотя бы пять дней в неделю.',
+    body: '1. Средний балл за месяц — не ниже 4.0.\n2. Ни одного дня с кольцом красного цвета.\n3. Сдать годовой отчёт до дедлайна.\n4. Читать по 20 страниц в день.\n5. Спать не меньше восьми часов хотя бы пять дней в неделю.',
     createdAt: at(-14, 10, 30).toISOString(),
     updatedAt: at(-3, 9, 12).toISOString()
   }];
@@ -1205,7 +1150,7 @@ function makeDemo() {
     id: 't_release',
     layout: 'poster',
     title: 'РЕЛИЗ АЛЬБОМА',
-    sub: 'NEON TEARS // ITUNES · SPOTIFY',
+    sub: 'ЛЮБИМАЯ ГРУППА',
     mode: 'to',
     start: toLocalInput(at(-12, 12)),
     target: toLocalInput(release),
@@ -1216,7 +1161,7 @@ function makeDemo() {
   }, {
     id: 't_corpo',
     layout: 'units',
-    title: 'THE CORPO-RAT',
+    title: 'ГОДОВОЙ ОТЧЁТ',
     sub: 'ДЕДЛАЙН МИССИИ',
     mode: 'to',
     start: toLocalInput(at(-1, 8)),
@@ -1242,7 +1187,7 @@ function makeDemo() {
     id: 't_ny',
     layout: 'flip',
     title: `НОВЫЙ ${now.getFullYear() + 1} ГОД`,
-    sub: 'NIGHT CITY // NEW YEAR',
+    sub: 'ПРАЗДНИК',
     mode: 'to',
     start: toLocalInput(new Date(now.getFullYear(), 0, 1)),
     target: toLocalInput(ny),
@@ -1271,16 +1216,16 @@ function makeDemo() {
     ...emptyFocus(),
     sessions: [fs(-6, 10, 'm_eng', 'ПРОКАЧАТЬ АНГЛИЙСКИЙ', 'Разобрать 20 новых слов', 15, 15, 2, {
       mind: 1
-    }, 0, 4), fs(-5, 19, 'm_corpo', 'THE CORPO-RAT', 'Черновик отчёта', 15, 15, 5, {
+    }, 0, 4), fs(-5, 19, 'm_corpo', 'СДАТЬ ГОДОВОЙ ОТЧЁТ', 'Черновик отчёта', 15, 15, 5, {
       phone: 3,
       noise: 1
     }, 2, 2), fs(-4, 11, 'm_eng', 'ПРОКАЧАТЬ АНГЛИЙСКИЙ', 'Подкаст + конспект', 15, 15, 1, {
       mind: 1
-    }, 0, 5), fs(-3, 18, 'm_corpo', 'THE CORPO-RAT', 'Собрать цифры для отчёта', 20, 20, 3, {
+    }, 0, 5), fs(-3, 18, 'm_corpo', 'СДАТЬ ГОДОВОЙ ОТЧЁТ', 'Собрать цифры для отчёта', 20, 20, 3, {
       phone: 2
     }, 0, 4), fs(-2, 10, '', '', 'Прочитать главу книги', 20, 20, 2, {
       mind: 2
-    }, 0, 4), fs(-1, 20, 'm_corpo', 'THE CORPO-RAT', 'Финальная правка отчёта', 20, 20, 4, {
+    }, 0, 4), fs(-1, 20, 'm_corpo', 'СДАТЬ ГОДОВОЙ ОТЧЁТ', 'Финальная правка отчёта', 20, 20, 4, {
       tired: 2,
       phone: 1
     }, 1, 3)],
@@ -1297,23 +1242,32 @@ function makeDemo() {
   };
   return st;
 }
-function loadState() {
+function readBoot() {
+  let raw = null;
   try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (raw) return normalize(JSON.parse(raw));
-    if (BETA) {
-      const main = localStorage.getItem(MAIN_KEY);
-      const d = main ? normalize(JSON.parse(main)) : makeDemo();
+    raw = localStorage.getItem(LS_KEY);
+    if (raw) {
+      const j = JSON.parse(raw);
+      if (!j || typeof j !== 'object' || Array.isArray(j)) throw new Error('данные не являются объектом');
       return {
-        ...d,
-        settings: {
-          ...d.settings,
-          ui: 'mono'
-        }
+        data: normalize(j)
       };
     }
-  } catch (e) {}
-  return makeDemo();
+    if (BETA) {
+      const main = localStorage.getItem(MAIN_KEY);
+      return {
+        data: main ? normalize(JSON.parse(main)) : makeDemo()
+      };
+    }
+  } catch (e) {
+    if (raw) return {
+      broken: raw,
+      err: e
+    };
+  }
+  return {
+    data: makeDemo()
+  };
 }
 const AT_KEY = `${LS_KEY}.at`;
 const getLocalAt = () => {
@@ -1408,7 +1362,6 @@ async function sendBackup(data, ask) {
   let res = await share();
   if (res === 'again') res = (await ask({
     title: 'Бэкап готов',
-    code: 'SYS // BACKUP.SHARE',
     text: 'Файл собран. Нажми «Отправить» и выбери, куда сохранить: Telegram, Google Диск и т. п.',
     ok: 'Отправить'
   })) === true ? await share() : 'declined';
@@ -1465,6 +1418,8 @@ const SYNC_FIELDS = {
   meta: ['retroIgnored', 'since', 'lastBackupAt']
 };
 const SYNC_CHECK = 'cj2077-ok';
+const SYNC_HOLD_MIN = 20,
+  SYNC_HOLD_SHARE = 0.3;
 function hash53(str, seed = 0) {
   let h1 = 0xdeadbeef ^ seed,
     h2 = 0x41c6ce57 ^ seed;
@@ -1779,6 +1734,12 @@ async function syncPush() {
   if (!keys.length) return;
   const key = await syncKey(st.key),
     recs = syncRecords(SYNC.app.get());
+  const del = keys.filter(k => !recs.has(k)).length;
+  if (!SYNC.okDel && del >= SYNC_HOLD_MIN && del / (recs.size + del) >= SYNC_HOLD_SHARE) {
+    const e = new Error('hold');
+    e.hold = del;
+    throw e;
+  }
   for (let i = 0; i < keys.length; i += 50) {
     const sent = keys.slice(i, i + 50).map(k => ({
       k,
@@ -1817,6 +1778,7 @@ async function syncPush() {
     } of sent) if (st.dirty[k] === t) delete st.dirty[k];
     syncSave();
   }
+  SYNC.okDel = false;
 }
 async function syncFiles() {
   if (SYNC.filesBusy || !syncOn()) return;
@@ -1923,6 +1885,10 @@ async function syncRun() {
       syncSave();
       syncStop();
       syncEmit('auth', 'Вход истёк — войди заново');
+    } else if (e && e.hold) {
+      SYNC.hold = e.hold;
+      syncEmit('hold', `Отправка остановлена: устройство удаляет ${e.hold} ${plural(e.hold, 'запись', 'записи', 'записей')} сразу`);
+      SYNC.app.hold();
     } else {
       SYNC.fail++;
       syncEmit('error', navigator.onLine === false ? 'Нет сети' : 'Сервер недоступен');
@@ -2071,6 +2037,7 @@ async function syncStart(st, mode) {
     st.cursor = 0;
   }
   const got = mode === 'replace' ? await syncFetch(st, 0) : null;
+  if (got) await snapBefore('Перед загрузкой с сервера', JSON.stringify(SYNC.app.get()));
   syncStop();
   SYNC.st = st;
   if (mode === 'push') syncTrack(SYNC.app.get());
@@ -2083,6 +2050,18 @@ async function syncStart(st, mode) {
   syncEmit('idle', '');
   syncLive();
   syncRun();
+}
+function syncRebase(d) {
+  const st = SYNC.st;
+  if (!st) return;
+  st.local = {};
+  st.dirty = {};
+  st.cursor = 0;
+  for (const [k, v] of syncRecords(d)) {
+    st.local[k] = hstr(v);
+    st.dirty[k] = 1;
+  }
+  syncSave();
 }
 function syncLogout() {
   syncStop();
@@ -2098,24 +2077,17 @@ const CSS = `
 .cj-root button{font-family:inherit;cursor:pointer;}
 .cj-root input,.cj-root textarea,.cj-root select{font-family:'Exo 2','Rajdhani',sans-serif;}
 .f-mono{font-family:'Share Tech Mono','JetBrains Mono',ui-monospace,monospace;}
-.f-disp{font-family:'Oswald','Bebas Neue',sans-serif;}
+
 .f-orb{font-family:'Orbitron','Russo One',sans-serif;}
-.f-unb{font-family:'Unbounded','Russo One',sans-serif;}
-.f-inter{font-family:'Inter',system-ui,sans-serif;}
 .f-read{font-family:'Exo 2','Inter',sans-serif;}
 .noscb::-webkit-scrollbar{display:none}.noscb{scrollbar-width:none}
 .cut{--c:var(--cut,12px);clip-path:polygon(0 0,calc(100% - var(--c)) 0,100% var(--c),100% 100%,var(--c) 100%,0 calc(100% - var(--c)));}
-.cut-tr{--c:var(--cut,12px);clip-path:polygon(0 0,calc(100% - var(--c)) 0,100% var(--c),100% 100%,0 100%);}
-.cut-br{--c:var(--cut,12px);clip-path:polygon(0 0,100% 0,100% calc(100% - var(--c)),calc(100% - var(--c)) 100%,0 100%);}
 .frame{padding:1px;background:var(--fc,rgba(var(--main-rgb),.5));}
 .frame-in{background:var(--fb,linear-gradient(180deg,rgba(24,13,26,.95),rgba(12,9,18,.95)));height:100%;}
 .micro{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:rgba(var(--main-rgb),.6);}
 .lbl{display:block;font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:rgba(var(--alt-rgb),.8);margin-bottom:6px;}
 .h1{font-weight:700;font-size:27px;line-height:1.05;letter-spacing:.06em;text-transform:uppercase;color:var(--main);text-shadow:0 0 12px rgba(var(--main-rgb),.55);}
-.hdr-line{position:relative;height:1px;margin-top:10px;background:rgba(var(--main-rgb),.55);box-shadow:0 0 8px rgba(var(--main-rgb),.6);}
-.hdr-line::before{content:'';position:absolute;left:0;top:-1px;height:3px;width:30%;background:var(--alt);box-shadow:0 0 10px var(--alt);}
-.hdr-line::after{content:'';position:absolute;right:0;top:-4px;width:7px;height:7px;border:1px solid var(--main);transform:rotate(45deg);background:var(--bg2);}
-.txt-main{color:var(--main)}.txt-alt{color:var(--alt)}.txt-warn{color:var(--warn)}
+.txt-main{color:var(--main)}.txt-alt{color:var(--alt)}
 .glow-main{text-shadow:0 0 8px rgba(var(--main-rgb),.6);}
 .glow-alt{text-shadow:0 0 8px rgba(var(--alt-rgb),.55);}
 .inp{width:100%;display:block;background:rgba(0,0,0,.45);border:1px solid rgba(var(--main-rgb),.35);color:#F3EEF1;padding:10px 12px;font-size:16px;outline:none;border-radius:0;transition:border-color .15s,box-shadow .15s;}
@@ -2145,8 +2117,6 @@ textarea.inp{resize:vertical;line-height:1.5;}
 .modal-foot{display:flex;gap:8px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));border-top:1px solid rgba(var(--main-rgb),.25);background:rgba(0,0,0,.35);}
 @keyframes fadein{from{opacity:0}to{opacity:1}}
 @keyframes sheetin{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
-@keyframes dlgin{0%{transform:scale(.94);opacity:0;filter:hue-rotate(90deg)}60%{filter:none}100%{transform:none;opacity:1}}
-.dlg-in{animation:dlgin .22s ease-out;}
 .sheet-item{display:flex;align-items:center;gap:12px;width:100%;padding:14px 12px;font-size:16px;font-weight:600;letter-spacing:.04em;color:#EDE7EA;text-align:left;border-bottom:1px solid rgba(255,255,255,.06);}
 .sheet-item:last-child{border-bottom:0}
 .sheet-item:active{background:rgba(var(--main-rgb),.15);}
@@ -2157,21 +2127,6 @@ textarea.inp{resize:vertical;line-height:1.5;}
 .toast-msg{min-width:0;overflow:hidden;text-overflow:ellipsis;}
 .toast-btn{flex-shrink:0;display:inline-flex;align-items:center;gap:5px;--cut:6px;padding:7px 10px;background:var(--warn);color:#0a0a0f;font:inherit;font-size:12px;letter-spacing:.08em;text-transform:uppercase;}
 @keyframes toastin{0%{opacity:0;transform:translate(-50%,10px)}30%{opacity:1;transform:translate(calc(-50% + 3px),0)}45%{transform:translate(calc(-50% - 3px),0)}60%{transform:translate(-50%,0)}}
-/* сканлайны / ЭЛТ */
-.scan,.crt{position:fixed;inset:0;pointer-events:none;z-index:250;}
-.scan{background:repeating-linear-gradient(0deg,rgba(0,0,0,.2) 0,rgba(0,0,0,.2) 1px,transparent 1px,transparent 3px);}
-.crt,.crt-on .scan{animation:flick 7s infinite steps(1);}
-.crt::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 58%,rgba(0,0,0,.5) 100%);}
-@keyframes flick{0%,100%{opacity:1}43%{opacity:.82}44%{opacity:1}88%{opacity:.9}89%{opacity:1}}
-/* глитч */
-.glitch{position:relative;display:inline-block;}
-.fx-glitch .glitch::before,.fx-glitch .glitch::after{content:attr(data-text);position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;text-shadow:none;white-space:nowrap;}
-.fx-glitch .glitch::before{color:var(--alt);animation:gl1 4.5s infinite steps(1);clip-path:inset(0 0 100% 0);}
-.fx-glitch .glitch::after{color:var(--warn);animation:gl2 4.5s infinite steps(1);clip-path:inset(100% 0 0 0);}
-@keyframes gl1{0%,89%,100%{clip-path:inset(0 0 100% 0);transform:none}90%{clip-path:inset(8% 0 62% 0);transform:translate(-3px,0)}92%{clip-path:inset(54% 0 18% 0);transform:translate(2px,0)}94%{clip-path:inset(30% 0 44% 0);transform:translate(-2px,0)}96%{clip-path:inset(0 0 100% 0)}}
-@keyframes gl2{0%,89%,100%{clip-path:inset(100% 0 0 0);transform:none}91%{clip-path:inset(66% 0 8% 0);transform:translate(3px,0)}93%{clip-path:inset(18% 0 64% 0);transform:translate(-3px,0)}95%{clip-path:inset(78% 0 4% 0);transform:translate(2px,0)}97%{clip-path:inset(100% 0 0 0)}}
-.fx-glitch .gbox{animation:gbox 7s infinite steps(1);}
-@keyframes gbox{0%,93%,100%{transform:none;filter:none}94%{transform:translate(2px,-1px) skewX(-3deg);filter:hue-rotate(40deg)}95%{transform:translate(-2px,1px)}96%{transform:none;filter:none}}
 /* миссии */
 .sec-title{font-size:20px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--main);text-shadow:0 0 10px rgba(var(--main-rgb),.55);line-height:1;}
 .m-title{font-size:19px;font-weight:600;letter-spacing:.03em;text-transform:uppercase;color:var(--alt);line-height:1.08;text-shadow:0 0 8px rgba(var(--alt-rgb),.45);}
@@ -2187,10 +2142,6 @@ textarea.inp{resize:vertical;line-height:1.5;}
 .desc{color:rgba(var(--main-rgb),1);filter:brightness(1.15);font-size:16px;line-height:1.6;white-space:pre-wrap;font-family:'Exo 2','Rajdhani',sans-serif;}
 .neon-track{position:absolute;right:2px;top:0;bottom:0;width:3px;background:rgba(var(--main-rgb),.18);}
 .neon-thumb{position:absolute;left:-1px;width:5px;background:var(--main);box-shadow:0 0 8px var(--main),0 0 16px rgba(var(--main-rgb),.6);transition:top .05s;}
-.holo{position:relative;overflow:hidden;}
-.holo img{filter:grayscale(1) sepia(1) hue-rotate(-45deg) saturate(5) contrast(1.1) brightness(.85);}
-.holo::after{content:'';position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(var(--main-rgb),.22) 0,rgba(var(--main-rgb),.22) 1px,transparent 1px,transparent 3px),linear-gradient(180deg,rgba(var(--main-rgb),.15),transparent 60%,rgba(var(--main-rgb),.2));mix-blend-mode:screen;animation:holo 3s infinite steps(1);}
-@keyframes holo{0%,100%{opacity:1}50%{opacity:.7}51%{opacity:1}}
 .tag{display:inline-flex;align-items:center;gap:3px;font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:.05em;padding:3px 8px;color:var(--tc);box-shadow:inset 0 0 0 1px var(--tc);background:rgba(0,0,0,.35);white-space:nowrap;}
 .tag.on{background:var(--tc);color:#0a0a0f;}
 .plus-btn{--cut:10px;width:46px;height:46px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--main);color:#0a0a0f;}
@@ -2200,7 +2151,7 @@ textarea.inp{resize:vertical;line-height:1.5;}
 .nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));background:linear-gradient(180deg,rgba(10,8,14,.94),rgba(5,4,8,.99));border-top:1px solid rgba(var(--main-rgb),.45);box-shadow:0 -6px 24px rgba(var(--main-rgb),.14);position:relative;z-index:20;}
 .nav-b{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:9px 2px 8px;color:rgba(255,255,255,.42);}
 .nav-b .nl{font-size:11px;font-weight:700;letter-spacing:.03em;line-height:1;white-space:nowrap;}
-.nav-b .ns{font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:.08em;opacity:.75;line-height:1;white-space:nowrap;}
+
 .nav-b.on{color:var(--main);text-shadow:0 0 8px rgba(var(--main-rgb),.7);}
 .nav-b.on::before{content:'';position:absolute;top:-1px;left:22%;right:22%;height:3px;background:var(--main);box-shadow:0 0 12px var(--main);}
 .nav-b.on svg{filter:drop-shadow(0 0 5px var(--main));}
@@ -2215,7 +2166,7 @@ textarea.inp{resize:vertical;line-height:1.5;}
 }
 .nav-b.on::before{animation:navon .3s ease-out backwards;}
 @keyframes navon{from{opacity:0;transform:scaleX(.2)}to{opacity:1;transform:none}}
-@media (prefers-reduced-motion:reduce){.cj-rise,.nav-b.on::before{animation:none;}}
+@media (prefers-reduced-motion:reduce){.cj-rise,.nav-b.on::before,.tc-t,.pg-in{animation:none;}.ptb-w{transition:none;}}
 /* перетаскивание миссий (useMissionDrag): копия строки за пальцем, линия или рамка места вставки */
 .drag-src{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
 .drag-ghost{position:fixed;left:0;top:0;z-index:85;pointer-events:none;opacity:.94;filter:drop-shadow(0 12px 22px rgba(0,0,0,.65));will-change:transform;}
@@ -2230,7 +2181,7 @@ body.cj-dragging,body.cj-dragging *{cursor:grabbing !important;}
 .side-logo b{display:block;font-family:'Orbitron',sans-serif;font-weight:900;font-size:16px;letter-spacing:.08em;color:var(--main);text-shadow:0 0 10px rgba(var(--main-rgb),.6);}
 .side-b{position:relative;display:flex;align-items:center;gap:12px;width:100%;padding:12px 20px;color:rgba(255,255,255,.5);text-align:left;transition:color .15s,background .15s;}
 .side-b .nl{display:block;font-size:15px;font-weight:700;letter-spacing:.06em;line-height:1.1;}
-.side-b .ns{display:block;font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:.12em;opacity:.7;margin-top:3px;}
+
 .side-b:hover{color:rgba(255,255,255,.88);background:rgba(var(--main-rgb),.06);}
 .side-b.on{color:var(--main);background:linear-gradient(90deg,rgba(var(--main-rgb),.16),transparent);text-shadow:0 0 8px rgba(var(--main-rgb),.7);}
 .side-b.on::before{content:'';position:absolute;left:0;top:8px;bottom:8px;width:3px;background:var(--main);box-shadow:0 0 12px var(--main);}
@@ -2242,23 +2193,124 @@ body.cj-dragging,body.cj-dragging *{cursor:grabbing !important;}
 @media (max-width:1279px){.cj-wide .desk-cols>*{max-width:720px;margin-left:auto;margin-right:auto;}}
 .set-cols{columns:2 400px;column-gap:20px;}
 .set-cols>*{break-inside:avoid;}
-.cj-wide .modal-panel.wide{border:1px solid rgba(var(--main-rgb),.55);box-shadow:0 0 50px rgba(var(--main-rgb),.22);animation:dlgin .2s ease-out;}
+.cj-wide .modal-panel.wide{border:1px solid rgba(var(--main-rgb),.55);box-shadow:0 0 50px rgba(var(--main-rgb),.22);}
 .cj-wide .toast{bottom:28px;left:calc(50% + 116px);}
 .cj-wide main::-webkit-scrollbar{width:10px;}
 .cj-wide main::-webkit-scrollbar-thumb{background:rgba(var(--main-rgb),.28);border:3px solid transparent;background-clip:padding-box;}
 .cj-wide main{scrollbar-color:rgba(var(--main-rgb),.35) transparent;}
 /* статистика */
 .st-score{font-family:'Orbitron','Russo One',sans-serif;font-weight:900;line-height:1;letter-spacing:.02em;font-variant-numeric:tabular-nums;}
-.seg-bar{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;}
-.seg-bar i{display:block;height:7px;background:rgba(255,255,255,.08);transform:skewX(-24deg);}
 .day-cell{position:relative;display:flex;align-items:center;justify-content:center;width:44px;height:44px;margin:0 auto;}
 .day-sel{position:absolute;inset:0;--cut:9px;background:rgba(var(--main-rgb),.14);box-shadow:inset 0 0 0 1.5px var(--main);}
 .day-today{position:absolute;bottom:-1px;left:50%;margin-left:-5px;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:6px solid var(--warn);filter:drop-shadow(0 0 3px var(--warn));}
-.crit-row{display:grid;grid-template-columns:60px 1fr;align-items:center;gap:6px;border-bottom:1px solid rgba(var(--main-rgb),.18);padding:9px 0;}
+
 .wd-chip{min-width:40px;padding:8px 0;text-align:center;font-weight:700;font-size:13px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);color:rgba(255,255,255,.5);--cut:6px;}
 .wd-chip.on{background:var(--alt);color:#06080a;box-shadow:none;}
 .thumb{--cut:7px;width:40px;height:54px;display:flex;align-items:flex-start;justify-content:center;padding-top:7px;opacity:.5;transition:opacity .15s,transform .15s;box-shadow:inset 0 0 0 1px rgba(var(--main-rgb),.35);flex-shrink:0;}
 .thumb.on{opacity:1;transform:translateY(-3px);box-shadow:inset 0 0 0 1.5px var(--alt);}
+/* лента персоны: вид «Отсчёта». Размеры внутри .pf в cqw, поэтому лицо карточки масштабируется целиком */
+.pf{position:relative;width:100%;height:100%;overflow:hidden;container-type:size;background:#08070C;text-align:left;color:#fff;}
+.pf-prev{width:168px;height:auto;aspect-ratio:9/16;--cut:12px;}
+.pf-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 22%;pointer-events:none;}
+.pg{position:relative;height:100%;overflow:hidden;background:#000;touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab;}
+.pg.drag{cursor:grabbing;}
+.pg-s{position:absolute;inset:0;overflow:hidden;transform-origin:50% 100%;will-change:transform;box-shadow:0 18px 60px rgba(0,0,0,.65);}
+.pg-dim{position:absolute;inset:0;background:#000;opacity:0;pointer-events:none;}
+.pg-dots{position:absolute;left:50%;top:66px;z-index:15;display:flex;gap:5px;transform:translateX(-50%);pointer-events:none;}
+.pg-dots i{display:block;height:3px;transition:width .2s;}
+.pg-dots span{font-family:'Share Tech Mono',monospace;font-size:12px;letter-spacing:.1em;color:#fff;text-shadow:0 1px 4px #000;}
+.pg-in{animation:pgin .3s cubic-bezier(.2,.8,.25,1) backwards;}
+@keyframes pgin{from{opacity:.25;transform:scale(.3);}}
+/* стол персоны: фон не прокручивается, карточек может быть от одной до сотен */
+.ptb{position:absolute;inset:0;display:flex;flex-direction:column;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;padding:70px 16px 20px;background:radial-gradient(ellipse 90% 60% at 50% 0,rgba(var(--main-rgb),.2),transparent 70%),linear-gradient(rgba(var(--alt-rgb),.05) 1px,transparent 1px) 0 0/100% 34px,linear-gradient(90deg,rgba(var(--alt-rgb),.05) 1px,transparent 1px) 0 0/34px 100%,#08070C;}
+.ptb.cam{overflow:hidden;}
+.ptb-w{position:relative;flex:1 0 auto;display:flex;flex-direction:column;transform-origin:0 0;transition:transform .42s cubic-bezier(.22,.8,.3,1);}
+/* камера на телефоне: всё, кроме карточки в руках, уходит в темноту, по краям экрана виньетка */
+.ptb-w>*{transition:opacity .35s;}
+.ptb.cam .ptb-w>:not(.ptb-g){opacity:.16;}
+.ptb.cam .tc-t:not(.lit){opacity:.22;}
+.ptb-vig{position:absolute;inset:0;z-index:5;pointer-events:none;opacity:0;transition:opacity .35s;background:radial-gradient(ellipse 68% 52% at 50% 54%,transparent 76%,rgba(0,0,0,.55) 90%,rgba(0,0,0,.92) 100%);}
+.cj-root[data-cam] .ptb-vig{opacity:1;}
+.cj-root[data-cam] .pf-tabs{opacity:.2;}
+.cj-root[data-cam] .nav{opacity:.25;}
+.pf-tabs,.nav{transition:opacity .35s;}
+.ptb-g{display:grid;grid-template-columns:repeat(auto-fill,var(--w));justify-content:center;align-content:center;gap:clamp(12px,calc(var(--w) * .1),24px);flex:1 0 auto;padding:16px 0 8px;}
+.tc-t{position:relative;transform:translateY(var(--y)) rotate(var(--a));transition:transform .24s cubic-bezier(.2,.8,.3,1),opacity .35s;filter:drop-shadow(0 8px 14px rgba(0,0,0,.65));animation:deal .34s cubic-bezier(.2,.8,.3,1) backwards;animation-delay:calc(var(--n) * 26ms);}
+.tc-t{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;}
+.tc-t.lit{z-index:5;transform:translateY(-6px) scale(1.05);}
+.tc-t.lift{z-index:9;transition:none;transform:translateY(calc(var(--lift,0px) - 6px)) scale(1.05);}
+@media (hover:hover){.tc-t:hover{z-index:5;transform:translateY(-6px) scale(1.05);}.tc-t:active{transform:scale(.97);}}
+@keyframes deal{from{opacity:0;transform:translateY(-26px) rotate(calc(var(--a) * -2)) scale(1.14);}}
+.many .tc-t{filter:none;content-visibility:auto;contain-intrinsic-size:auto var(--w) calc(var(--w) * 1.4);}
+.many .tc-t.lit{content-visibility:visible;}
+.many .tc-t:not(.lit):not(:hover) .tc-glare::after{display:none;}
+/* коллекционная карточка на столе: тёмная, фото почти без цвета, тонкая голографическая рамка. Размеры внутри в cqw */
+/* --cz — увеличение камеры. Браузер не учитывает масштаб родителя у слоя с перспективой и растягивал бы карточку в пиксели,
+   поэтому под камерой она рисуется сразу в полном размере и уменьшается на месте. Без камеры --cz нет, это обычный размер */
+.tc-t{aspect-ratio:5/7;}
+.tc{position:absolute;left:50%;top:50%;display:block;width:calc(100% * var(--cz,1));aspect-ratio:5/7;padding:0;container-type:inline-size;background:none;text-align:left;color:#fff;transform:translate(-50%,-50%);transition:transform .24s ease-out;}
+.tc-t.lit .tc{transition:none;transform:translate(-50%,-50%) scale(calc(1 / var(--cz,1))) perspective(calc(620px * var(--cz,1))) rotateY(calc(var(--tx,0) * var(--rot,9deg))) rotateX(calc(var(--ty,0) * -1 * var(--rot,9deg)));}
+@media (hover:hover){.tc-t:hover .tc{transition:none;transform:translate(-50%,-50%) perspective(620px) rotateY(calc(var(--tx,0) * 9deg)) rotateX(calc(var(--ty,0) * -9deg));}}
+@media (hover:none){.tc{transition:none;}.tc-t{--rot:11deg;}}
+.tc-in{position:absolute;inset:0;display:block;overflow:hidden;border-radius:5cqw;background:#0C0C0E;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);font-family:'Prosto One','Inter',sans-serif;font-weight:400;}
+.tc-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 22%;filter:grayscale(1) contrast(1.08) brightness(.9);transition:filter .3s;pointer-events:none;}
+.tc-ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:52cqw;line-height:1;color:rgba(255,255,255,.045);background:radial-gradient(ellipse 90% 70% at 50% 36%,#2E2F34,#0C0C0E 76%);}
+.tc-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.74) 0,rgba(0,0,0,.28) 30%,transparent 46%,transparent 62%,rgba(0,0,0,.84) 100%);}
+.tc-sheen{position:absolute;inset:0;pointer-events:none;background:linear-gradient(115deg,transparent 36%,rgba(255,255,255,.1) 46%,rgba(170,200,255,.12) 52%,transparent 63%) 100% 0/260% 100% no-repeat;transition:background-position .7s ease;}
+.tc-glare{position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at calc(50% + var(--tx,0) * 60%) calc(42% + var(--ty,0) * 60%),rgba(255,255,255,.17),rgba(190,210,255,.06) 36%,transparent 64%);opacity:0;transition:opacity .3s;}
+.tc-glare::after{content:'';position:absolute;inset:0;opacity:.09;background:linear-gradient(115deg,#6FC8FF,#B18CFF,#FF9AD5,#FFE98A,#7DFFC6,#6FC8FF,#B18CFF,#FF9AD5) calc(50% + var(--tx,0) * 45%) 0/320% 100%;}
+.tc-foil{position:absolute;inset:3.2cqw;border-radius:3.2cqw;padding:max(calc(1px * var(--cz,1)),.45cqw);background:linear-gradient(135deg,#A6DCFF,#C9A8FF 22%,#FFBDE3 42%,#FFF3B5 60%,#A8FFDA 78%,#A6DCFF);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:.8;}
+.tc-top{position:absolute;left:8cqw;right:8cqw;top:8.5cqw;display:block;text-align:center;}
+.tc-hero{display:block;font-size:max(4.6cqw,calc(7.5px * var(--cz,1)));letter-spacing:.08em;line-height:1.2;text-transform:uppercase;color:rgba(255,255,255,.74);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tc-name{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;margin-top:1.6cqw;line-height:1.18;color:transparent;background:linear-gradient(180deg,#FFF 18%,#C4C7CF 62%,#F1F2F5 100%);-webkit-background-clip:text;background-clip:text;filter:drop-shadow(0 1px 3px rgba(0,0,0,.6));}
+.tc-bot{position:absolute;left:8cqw;right:8cqw;bottom:7.5cqw;display:block;}
+.tc-line{display:grid;grid-template-columns:repeat(7,1fr);gap:1.4cqw;}
+.tc-line i{display:block;height:max(1.5cqw,calc(2px * var(--cz,1)));border-radius:99px;background:rgba(255,255,255,.2);}
+.tc-line i.on{background:var(--tcl);}
+.tc-line i.wait{background:none;box-shadow:inset 0 0 0 1px var(--tcl);}
+.tc-line i.none{background:rgba(255,255,255,.08);}
+.tc-meta{display:flex;justify-content:space-between;margin-top:2.6cqw;font-size:max(4.2cqw,calc(7.5px * var(--cz,1)));line-height:1;letter-spacing:.02em;color:rgba(255,255,255,.6);}
+.tc-meta b{font-weight:400;color:#fff;}
+.tc-t.lit .tc-sheen{background-position:0 0;}
+.tc-t.lit .tc-img{filter:grayscale(.2) brightness(.98);}
+.tc-t.lit .tc-glare{opacity:1;}
+.tc-t.lit .tc-foil{background:linear-gradient(135deg,#A6DCFF,#C9A8FF,#FFBDE3,#FFF3B5,#A8FFDA,#A6DCFF,#C9A8FF,#FFBDE3,#FFF3B5,#A8FFDA) calc(50% + var(--tx,0) * 50%) calc(50% + var(--ty,0) * 50%)/320% 320%;}
+@media (hover:hover){.tc-t:hover .tc-sheen{background-position:0 0;}.tc-t:hover .tc-img{filter:grayscale(.2) brightness(.98);}.tc-t:hover .tc-glare{opacity:1;}.tc-t:hover .tc-foil{background:linear-gradient(135deg,#A6DCFF,#C9A8FF,#FFBDE3,#FFF3B5,#A8FFDA,#A6DCFF,#C9A8FF,#FFBDE3,#FFF3B5,#A8FFDA) calc(50% + var(--tx,0) * 50%) calc(50% + var(--ty,0) * 50%)/320% 320%;}}
+/* под камерой карточка крупная и движется постоянно, поэтому радуга слабее, чтобы выглядеть как на ПК */
+@media (hover:none){.tc-glare::after{opacity:.03;}.tc-t.lit .tc-foil{opacity:.6;}}
+/* на телефоне полоса блика как отражение: положение зависит только от поворота карточки, по центру — когда карта лежит прямо */
+@media (hover:none){.tc-sheen{transition:none;}.tc-t.lit .tc-sheen{background-position:calc(62% + var(--tx,0) * 40% + var(--ty,0) * 22%) 0;}}
+.crop-stage{position:relative;flex:1;min-height:0;overflow:hidden;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none;}
+.crop-stage:active{cursor:grabbing;}
+.crop-img{position:absolute;left:50%;top:50%;max-width:none;pointer-events:none;}
+.crop-frame{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;box-shadow:0 0 0 9999px rgba(0,0,0,.62),0 0 0 2px #fff;background-image:linear-gradient(rgba(255,255,255,.28),rgba(255,255,255,.28)),linear-gradient(rgba(255,255,255,.28),rgba(255,255,255,.28)),linear-gradient(rgba(255,255,255,.28),rgba(255,255,255,.28)),linear-gradient(rgba(255,255,255,.28),rgba(255,255,255,.28));background-size:1px 100%,1px 100%,100% 1px,100% 1px;background-position:33.33% 0,66.66% 0,0 33.33%,0 66.66%;background-repeat:no-repeat;}
+.crop-zoom{display:block;width:100%;margin-top:12px;accent-color:var(--alt);}
+.pf-vig{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 85% 70% at 50% 40%,transparent 45%,rgba(0,0,0,.6) 100%),linear-gradient(180deg,rgba(0,0,0,.5) 0%,transparent 24%,transparent 44%,rgba(0,0,0,.72) 76%,rgba(0,0,0,.92) 100%);}
+.pf-body{position:absolute;left:min(5.5cqw,32px);right:min(5.5cqw,32px);bottom:min(5.5cqw,28px);max-width:760px;}
+.pf-hero{font-family:'Share Tech Mono',monospace;font-size:calc(min(4.9cqw,26px) * var(--k,1));letter-spacing:.14em;line-height:1.2;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pf-name{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;margin-top:min(1.6cqw,8px);font-family:'Oswald',sans-serif;font-weight:700;line-height:1.14;letter-spacing:.005em;text-transform:uppercase;text-shadow:0 4px 30px rgba(0,0,0,.6);}
+.pf-maxim{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;margin-top:min(2.6cqw,12px);font-size:calc(min(4cqw,16px) * var(--k,1));line-height:1.32;color:rgba(255,255,255,.82);text-shadow:0 1px 8px rgba(0,0,0,.7);}
+.pf-links{display:flex;flex-wrap:wrap;gap:6px;margin-top:min(2.6cqw,12px);}
+.pf-meta{display:flex;align-items:flex-end;justify-content:space-between;margin-top:min(4.5cqw,20px);font-family:'Share Tech Mono',monospace;font-size:min(2.8cqw,11px);letter-spacing:.14em;color:rgba(255,255,255,.75);}
+.pf-count{font-size:min(4.6cqw,18px);line-height:1;letter-spacing:.06em;}
+.pf-line{display:grid;grid-template-columns:repeat(7,1fr);gap:min(1.2cqw,6px);margin-top:min(1.8cqw,8px);}
+.pf-line i{display:block;height:min(2.2cqw,9px);background:rgba(255,255,255,.16);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);transform:skewX(-24deg);}
+.pf-line i.on{background:var(--pc);box-shadow:0 0 12px var(--pc),0 0 26px var(--pc);}
+.pf-line i.wait{background:transparent;box-shadow:inset 0 0 0 1px var(--pc);}
+.pf-line i.none{background:rgba(255,255,255,.06);box-shadow:none;}
+
+.pf-rail{position:absolute;right:12px;top:82px;z-index:10;}
+.pf-tabs{position:absolute;left:12px;right:12px;top:10px;z-index:20;max-width:560px;}
+.pf-tabs .seg{background:rgba(0,0,0,.4);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);}
+.cj-wide .pf-tabs{left:50%;right:auto;width:min(560px,calc(100% - 24px));transform:translateX(-50%);}
+.pf-mini{height:auto;aspect-ratio:5/7;--cut:7px;}
+.pf-mini .pf-body{left:6cqw;right:6cqw;bottom:6cqw;}
+.pf-mini .pf-hero{font-size:8.5cqw;letter-spacing:.04em;}
+.pf-mini .pf-name{margin-top:1cqw;line-height:1.05;}
+.tc-pick{position:relative;flex:0 0 92px;opacity:.55;transition:opacity .15s,transform .15s;}
+.tc-pick.on{opacity:1;transform:translateY(-2px);}
+.tc-pick-mark{position:absolute;top:5px;right:5px;z-index:1;display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--alt);color:#05080A;}
+.tc-none{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;width:100%;aspect-ratio:5/7;padding:6px;text-align:center;font-size:12px;line-height:1.15;color:rgba(255,255,255,.6);box-shadow:inset 0 0 0 1px rgba(255,255,255,.22);}
 /* лента отсчёта */
 .feed{height:100%;overflow-y:auto;scroll-snap-type:y mandatory;overscroll-behavior-y:contain;}
 .tk{position:relative;height:100%;scroll-snap-align:start;scroll-snap-stop:always;overflow:hidden;}
@@ -2267,7 +2319,7 @@ body.cj-dragging,body.cj-dragging *{cursor:grabbing !important;}
 .tk-title{margin-top:20px;font-size:21px;letter-spacing:.12em;color:#fff;text-transform:uppercase;text-shadow:0 0 14px rgba(0,0,0,.6);}
 .tk-sub{margin-top:5px;font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:.18em;color:rgba(255,255,255,.6);text-transform:uppercase;}
 .tk-hms{margin-top:14px;font-family:'Share Tech Mono',monospace;font-size:24px;letter-spacing:.14em;padding:4px 12px;background:rgba(0,0,0,.35);box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);}
-.rail-b{display:flex;flex-direction:column;align-items:center;gap:6px;color:#fff;opacity:.9;filter:drop-shadow(0 2px 6px rgba(0,0,0,.6));}
+
 .tk-face{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 56px;text-align:center;color:#fff;}
 .tk-face .tk-title{margin-top:0;}
 .flip-t{position:relative;display:inline-flex;align-items:center;justify-content:center;width:min(9.5vw,58px);height:min(13vw,80px);font-size:min(10vw,64px);line-height:1;color:#fff;background:linear-gradient(180deg,#2a2631 0%,#1b1921 50%,#121016 50%,#0b0a0f 100%);box-shadow:0 8px 24px rgba(0,0,0,.55),inset 0 0 0 1px rgba(255,255,255,.08);border-radius:6px;overflow:hidden;perspective:300px;}
@@ -2300,28 +2352,7 @@ body.cj-dragging,body.cj-dragging *{cursor:grabbing !important;}
 .poster-hms{margin-top:14px;display:flex;align-items:center;gap:10px;font-family:'Share Tech Mono',monospace;font-size:18px;letter-spacing:.14em;}
 .poster-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;animation:pdot 1s steps(1) infinite;}
 @keyframes pdot{50%{opacity:.2}}
-.aur{position:absolute;width:130%;height:42%;left:-15%;border-radius:50%;filter:blur(30px);mix-blend-mode:screen;will-change:transform;}
-.aur.a1{top:8%;opacity:1;background:linear-gradient(90deg,transparent,#19f5a6 30%,#0fd1c7 60%,transparent);animation:aur1 14s ease-in-out infinite alternate;}
-.aur.a2{top:24%;opacity:.85;background:linear-gradient(90deg,transparent,#7c3aed 35%,#22d3ee 70%,transparent);animation:aur2 18s ease-in-out infinite alternate;}
-.aur.a3{top:-4%;height:30%;opacity:.6;background:linear-gradient(90deg,transparent,#a3ff5c 50%,transparent);animation:aur1 22s ease-in-out infinite alternate-reverse;}
-@keyframes aur1{from{transform:translateX(-8%) skewY(-6deg) scaleY(.8)}to{transform:translateX(8%) skewY(5deg) scaleY(1.2)}}
-@keyframes aur2{from{transform:translateX(10%) skewY(4deg)}to{transform:translateX(-10%) skewY(-7deg) scaleY(1.3)}}
-.twk{animation:twk 3s ease-in-out infinite;}
-@keyframes twk{50%{opacity:.12}}
-.space-drift{animation:sdrift 60s linear infinite alternate;transform-origin:center;}
-@keyframes sdrift{to{transform:scale(1.12) rotate(2deg)}}
-.planet{position:absolute;left:-32%;bottom:-14%;width:min(85vw,560px);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 65% 30%,#ff7ab6 0%,#7a2fbf 38%,#1a0b3a 70%);box-shadow:0 0 90px rgba(255,90,180,.32),inset -40px -50px 90px rgba(0,0,0,.65);opacity:.85;}
-.rail-b span{writing-mode:vertical-rl;font-size:13px;letter-spacing:.14em;font-weight:600;}
-.rail-b:active{opacity:.6;}
-.smoke-drift{animation:drift 28s ease-in-out infinite;will-change:transform;transform-origin:center;}
 @keyframes drift{0%,100%{transform:scale(1.15) translate(0,0)}50%{transform:scale(1.35) translate(-5%,4%) rotate(3deg)}}
-.grid-floor{position:absolute;left:-60%;right:-60%;bottom:-6%;height:52%;background-image:linear-gradient(rgba(0,240,255,.75) 2px,transparent 2px),linear-gradient(90deg,rgba(255,46,140,.7) 2px,transparent 2px);background-size:46px 46px;transform:perspective(260px) rotateX(64deg);transform-origin:top center;animation:gridmove 1.6s linear infinite;-webkit-mask-image:linear-gradient(180deg,transparent,#000 30%);mask-image:linear-gradient(180deg,transparent,#000 30%);}
-@keyframes gridmove{from{background-position:0 0}to{background-position:0 46px}}
-.grid-sun{position:absolute;left:50%;top:22%;width:min(62vw,280px);aspect-ratio:1;transform:translateX(-50%);border-radius:50%;background:linear-gradient(180deg,#FCEE0A 0%,#FF7A00 40%,#FF2E8C 75%);-webkit-mask-image:linear-gradient(180deg,#000 55%,transparent 55%,transparent 59%,#000 59%,#000 68%,transparent 68%,transparent 73%,#000 73%,#000 81%,transparent 81%,transparent 87%,#000 87%);mask-image:linear-gradient(180deg,#000 55%,transparent 55%,transparent 59%,#000 59%,#000 68%,transparent 68%,transparent 73%,#000 73%,#000 81%,transparent 81%,transparent 87%,#000 87%);box-shadow:0 0 80px rgba(255,46,140,.6);}
-.rain{position:absolute;inset:-20%;background:repeating-linear-gradient(105deg,transparent 0,transparent 13px,rgba(180,220,255,.08) 13px,rgba(180,220,255,.08) 14px);animation:rain .5s linear infinite;}
-@keyframes rain{from{transform:translate(0,0)}to{transform:translate(-6px,28px)}}
-.mx-col{position:absolute;top:0;writing-mode:vertical-rl;text-orientation:upright;color:#39FF6A;font-size:17px;letter-spacing:3px;text-shadow:0 0 8px #39FF6A;opacity:.5;animation:mxfall linear infinite;-webkit-mask-image:linear-gradient(180deg,transparent,#000 75%);mask-image:linear-gradient(180deg,transparent,#000 75%);}
-@keyframes mxfall{from{transform:translateY(-100%)}to{transform:translateY(115vh)}}
 /* настройки */
 .set-head{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid rgba(var(--main-rgb),.3);background:linear-gradient(90deg,rgba(var(--main-rgb),.14),transparent);}
 .set-n{font-family:'Share Tech Mono',monospace;font-size:11px;color:#0a0a0f;background:var(--main);padding:2px 5px;letter-spacing:.06em;}
@@ -2332,7 +2363,7 @@ body.cj-dragging,body.cj-dragging *{cursor:grabbing !important;}
 .focus-bg{background:radial-gradient(120% 60% at 50% 38%,var(--bg1) 0%,var(--bg2) 75%);}
 .f-ring{filter:drop-shadow(0 0 7px rgba(var(--alt-rgb),.75));}
 .f-time{font-family:'Orbitron','Russo One',sans-serif;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.02em;line-height:1;color:#fff;text-shadow:0 0 18px rgba(var(--alt-rgb),.55);}
-.f-alert{--cut:10px;background:rgba(255,42,42,.14);box-shadow:inset 0 0 0 1px #FF2A2A,0 0 24px rgba(255,42,42,.35);color:#FF5A5A;animation:dlgin .25s ease-out;}
+.f-alert{--cut:10px;background:rgba(255,42,42,.14);box-shadow:inset 0 0 0 1px #FF2A2A,0 0 24px rgba(255,42,42,.35);color:#FF5A5A;}
 .f-chip{--cut:7px;padding:8px 12px;font-weight:700;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--alt);box-shadow:inset 0 0 0 1px rgba(var(--alt-rgb),.55);background:rgba(var(--alt-rgb),.06);}
 .f-chip:active{filter:brightness(1.4);}
 /* значок проверки внимания: кольцо убывает за время на ответ */
@@ -2353,13 +2384,13 @@ body.cj-dragging,body.cj-dragging *{cursor:grabbing !important;}
 const MONO_CSS = `
 .cj-root.ui-mono{font-family:'Inter',system-ui,sans-serif;color:#F2F2F7;background:#000;}
 .ui-mono input,.ui-mono textarea,.ui-mono select{font-family:'Inter',system-ui,sans-serif;}
-.ui-mono .f-mono,.ui-mono .f-read,.ui-mono .f-disp{font-family:'Inter',system-ui,sans-serif;font-variant-numeric:tabular-nums;}
-.ui-mono .mx-col{font-family:'Share Tech Mono',monospace;}
+.ui-mono .f-mono,.ui-mono .f-read{font-family:'Inter',system-ui,sans-serif;font-variant-numeric:tabular-nums;}
+
 .ui-mono .f-orb,.ui-mono .st-score{font-family:'Unbounded','Inter',sans-serif;font-weight:700;letter-spacing:-.01em;}
 .ui-mono .uppercase{text-transform:none;}
 .ui-mono [class*="tracking-"]{letter-spacing:0;}
-.ui-mono .deco{display:none!important;}
-.ui-mono .cut,.ui-mono .cut-tr,.ui-mono .cut-br{clip-path:none;border-radius:12px;}
+
+.ui-mono .cut{clip-path:none;border-radius:12px;}
 .ui-mono div[style*="inset 0 0 0 1px"]{border-radius:14px;}
 .ui-mono .frame{background:var(--fc,rgba(255,255,255,.07));border-radius:var(--r,20px);}
 .ui-mono .frame-in{background:var(--fb,#111113);border-radius:calc(var(--r,20px) - 1px);}
@@ -2411,8 +2442,6 @@ const MONO_CSS = `
 .ui-mono .step-box.done{background:var(--alt);border-color:var(--alt);color:#000;}
 .ui-mono .neon-track{background:transparent;}
 .ui-mono .neon-thumb{background:#48484A;box-shadow:none;border-radius:3px;}
-.ui-mono .holo img{filter:none;}
-.ui-mono .holo::after{display:none;}
 .ui-mono .tag{border-radius:999px;box-shadow:none;background:rgba(255,255,255,.08);font-family:'Inter',sans-serif;font-weight:600;letter-spacing:0;padding:5px 10px;}
 .ui-mono .tag.on{background:var(--tc);color:#000;}
 .ui-mono .plus-btn{border-radius:50%;background:var(--alt);color:#000;}
@@ -2434,7 +2463,7 @@ const MONO_CSS = `
 .ui-mono.cj-wide .modal-panel.wide{border:1px solid #1C1C1E;border-radius:24px;box-shadow:0 20px 60px rgba(0,0,0,.7);animation:mdlg .2s ease-out;}
 .ui-mono.cj-wide main::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);border:3px solid transparent;background-clip:padding-box;}
 .ui-mono.cj-wide main{scrollbar-color:rgba(255,255,255,.2) transparent;}
-.ui-mono .seg-bar i{transform:none;border-radius:3px;height:6px;background:#2C2C2E;}
+
 .ui-mono .day-sel{border-radius:50%;background:rgba(255,255,255,.1);box-shadow:none;inset:2px;}
 .ui-mono .day-today{border:0;width:5px;height:5px;border-radius:50%;background:var(--alt);margin-left:-2.5px;bottom:-4px;filter:none;}
 .ui-mono .day-n{font-family:'Unbounded','Inter',sans-serif;font-size:12px;font-weight:500;}
@@ -2442,6 +2471,19 @@ const MONO_CSS = `
 .ui-mono .wd-chip.on{background:var(--alt);color:#000;}
 .ui-mono .thumb{border-radius:12px;box-shadow:none;opacity:.45;}
 .ui-mono .thumb.on{box-shadow:0 0 0 2px var(--alt);opacity:1;}
+.ui-mono .pf-hero{font-family:'Inter',sans-serif;font-weight:600;letter-spacing:.02em;text-transform:none;}
+.ui-mono .pf-meta,.ui-mono .pf-count{font-family:'Inter',sans-serif;font-weight:600;letter-spacing:.02em;font-variant-numeric:tabular-nums;}
+.ui-mono .pf-line i{transform:none;border-radius:99px;box-shadow:none;}
+.ui-mono .pf-line i.on{box-shadow:none;}
+.ui-mono .pf-line i.wait{box-shadow:inset 0 0 0 1.5px var(--pc);}
+.ui-mono .pf-prev{border-radius:18px;}
+.ui-mono .pf-mini{border-radius:14px;}
+.ui-mono .pf-tabs .seg{background:rgba(0,0,0,.4);}
+.ui-mono .pf-tabs .seg-b{color:#D1D1D6;}
+.ui-mono .pf-tabs .seg-b.on{background:rgba(255,255,255,.2);color:#fff;}
+.ui-mono .tc-none{border-radius:14px;box-shadow:none;background:#1C1C1E;}
+.ui-mono .ptb{background:radial-gradient(ellipse 100% 70% at 50% 30%,#1E1E22,#060607 80%);}
+.ui-mono .pg-dots span{font-family:'Inter',sans-serif;font-weight:600;}
 .ui-mono .sw{border-radius:50%;}
 .ui-mono .tk-hms{border-radius:999px;box-shadow:none;background:rgba(0,0,0,.3);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);font-family:'Inter',sans-serif;font-weight:600;letter-spacing:.04em;font-size:22px;padding:6px 18px;font-variant-numeric:tabular-nums;}
 .ui-mono .tk-sub{font-family:'Inter',sans-serif;font-weight:600;letter-spacing:.08em;}
@@ -2497,25 +2539,19 @@ function Frame({
   bg,
   cut = 12,
   style,
-  onClick,
-  mc,
-  mb
+  onClick
 }) {
-  const fc = UI.mono ? mc : color,
-    fb = UI.mono ? mb : bg;
   return React.createElement("div", {
     onClick: onClick,
     className: `frame cut ${className}`,
     style: {
       '--cut': `${cut}px`,
-      ...(UI.mono ? {
-        '--r': `${Math.round(cut * 1.45)}px`
+      '--r': `${Math.round(cut * 1.45)}px`,
+      ...(color ? {
+        '--fc': color
       } : {}),
-      ...(fc ? {
-        '--fc': fc
-      } : {}),
-      ...(fb ? {
-        '--fb': fb
+      ...(bg ? {
+        '--fb': bg
       } : {}),
       ...style
     }
@@ -2523,43 +2559,6 @@ function Frame({
     className: `frame-in cut ${inner}`
   }, children));
 }
-const BTN_V = {
-  main: {
-    bg: 'var(--main)',
-    fg: '#0a0a0f',
-    bd: 'transparent'
-  },
-  alt: {
-    bg: 'var(--alt)',
-    fg: '#05080a',
-    bd: 'transparent'
-  },
-  ghost: {
-    bg: 'rgba(var(--alt-rgb),.06)',
-    fg: 'var(--alt)',
-    bd: 'rgba(var(--alt-rgb),.55)'
-  },
-  ghostMain: {
-    bg: 'rgba(var(--main-rgb),.07)',
-    fg: 'var(--main)',
-    bd: 'rgba(var(--main-rgb),.6)'
-  },
-  danger: {
-    bg: '#E8112D',
-    fg: '#fff',
-    bd: 'transparent'
-  },
-  dangerGhost: {
-    bg: 'rgba(255,42,42,.07)',
-    fg: '#FF5A5A',
-    bd: 'rgba(255,42,42,.55)'
-  },
-  dark: {
-    bg: 'rgba(255,255,255,.06)',
-    fg: '#E6E0E3',
-    bd: 'rgba(255,255,255,.2)'
-  }
-};
 const BTN_M = {
   main: {
     bg: 'var(--alt)',
@@ -2608,8 +2607,7 @@ function Btn({
   snd = 'click',
   style
 }) {
-  const set = UI.mono ? BTN_M : BTN_V;
-  const v = set[variant] || set.main;
+  const v = BTN_M[variant] || BTN_M.main;
   return React.createElement("button", {
     type: "button",
     disabled: disabled,
@@ -2715,7 +2713,6 @@ function Segmented({
 function Modal({
   onClose,
   title,
-  code,
   children,
   footer,
   full
@@ -2757,8 +2754,6 @@ function Modal({
   }, React.createElement("div", {
     className: "min-w-0"
   }, React.createElement("div", {
-    className: "micro deco"
-  }, code || 'SYS.DIALOG // EDIT'), React.createElement("div", {
     className: "modal-title mt-1"
   }, title)), onClose && React.createElement(IconBtn, {
     icon: X,
@@ -2789,18 +2784,12 @@ function Dialog({
     className: "fixed inset-0 z-[90] flex items-center justify-center p-5 modal-bg"
   }, React.createElement(Frame, {
     className: "w-full max-w-[400px] dlg-in",
-    color: d.danger ? '#FF2A2A' : 'var(--main)',
     cut: 16,
-    bg: "linear-gradient(180deg,rgba(26,12,20,.98),rgba(8,7,12,.98))",
-    mc: d.danger ? 'rgba(255,69,58,.45)' : 'transparent',
-    mb: "#1C1C1E"
+    color: d.danger ? 'rgba(255,69,58,.45)' : 'transparent',
+    bg: "#1C1C1E"
   }, React.createElement("div", {
     className: "p-5"
   }, React.createElement("div", {
-    className: "micro deco flex items-center gap-2"
-  }, React.createElement(AlertTriangle, {
-    size: 11
-  }), " ", d.code || 'SYSTEM MESSAGE'), React.createElement("div", {
     className: "text-[21px] font-bold mt-1 uppercase tracking-wide leading-tight",
     style: {
       color: d.danger ? '#FF4D4D' : 'var(--main)'
@@ -2862,13 +2851,12 @@ function Sheet({
     className: `w-full p-3 ${UI.wide ? 'max-w-[440px]' : 'max-w-[480px]'}`,
     style: {
       paddingBottom: 'calc(12px + env(safe-area-inset-bottom))',
-      animation: UI.wide ? 'dlgin .2s ease-out' : 'sheetin .2s ease-out'
+      animation: UI.wide ? 'mdlg .2s ease-out' : 'sheetin .2s ease-out'
     }
   }, React.createElement(Frame, {
     cut: 14,
-    bg: "linear-gradient(180deg,rgba(26,12,20,.98),rgba(8,7,12,.98))",
-    mc: "transparent",
-    mb: "#1C1C1E"
+    color: "transparent",
+    bg: "#1C1C1E"
   }, React.createElement("div", {
     className: "p-2"
   }, React.createElement("div", {
@@ -2896,7 +2884,6 @@ function Sheet({
 }
 function ReorderModal({
   title,
-  code,
   list,
   setList,
   row,
@@ -2915,7 +2902,6 @@ function ReorderModal({
   };
   return React.createElement(Modal, {
     title: title,
-    code: code,
     onClose: onClose,
     footer: React.createElement(React.Fragment, null, React.createElement(Btn, {
       variant: "ghost",
@@ -3003,11 +2989,13 @@ function ImageInput({
   onChange,
   maxDim = 1080,
   quality = 0.8,
-  noPreview
+  noPreview,
+  aspect
 }) {
   const fileRef = useRef(null);
   const {
-    toast
+    toast,
+    crop
   } = useApp();
   const [url, setUrl] = useState(value && !isInline(value) && !isIdb(value) ? value : '');
   const [busy, setBusy] = useState(false);
@@ -3058,16 +3046,240 @@ function ImageInput({
     onChange: async e => {
       const f = e.target.files && e.target.files[0];
       if (!f) return;
+      e.target.value = '';
+      const cut = await crop(f, aspect);
+      if (!cut) return;
       setBusy(true);
       try {
-        onChange(await storeImageFile(f, maxDim, quality));
+        onChange(await storeImageFile(cut, maxDim, quality));
       } catch (err) {
         toast('Не удалось прочитать файл');
       }
       setBusy(false);
-      e.target.value = '';
     }
   }));
+}
+const CROP_RATIOS = [['Оригинал', 0], ['1:1', 1], ['4:5', 4 / 5], ['9:16', 9 / 16], ['16:9', 16 / 9]];
+const CROP_MAX = 5;
+function CropDialog({
+  req,
+  close
+}) {
+  const {
+    file,
+    res
+  } = req;
+  const [url] = useState(() => URL.createObjectURL(file));
+  const [size, setSize] = useState(null);
+  const [stage, setStage] = useState(null);
+  const [ratio, setRatio] = useState(() => req.aspect === 'full' ? UI.wide ? 16 / 9 : 9 / 16 : req.aspect || 0);
+  const [v, setV] = useState({
+    k: 1,
+    x: 0,
+    y: 0
+  });
+  const box = useRef(null),
+    imgEl = useRef(null),
+    pts = useRef(new Map()),
+    pinch = useRef(0);
+  const fin = out => {
+    close();
+    res(out);
+  };
+  useEffect(() => () => URL.revokeObjectURL(url), [url]);
+  useEffect(() => {
+    const f = e => {
+      if (e.key === 'Escape') {
+        sfx('close');
+        fin(null);
+      }
+    };
+    window.addEventListener('keydown', f);
+    return () => window.removeEventListener('keydown', f);
+  }, []);
+  useLayoutEffect(() => {
+    const el = box.current,
+      ro = new ResizeObserver(() => setStage({
+        w: el.clientWidth,
+        h: el.clientHeight
+      }));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const r = ratio || (size ? size.w / size.h : 1);
+  const fw = stage ? Math.min(stage.w - 32, (stage.h - 32) * r) : 0,
+    fh = fw / r;
+  const cover = size && fw ? Math.max(fw / size.w, fh / size.h) : 1,
+    s = cover * v.k;
+  const fit = n => {
+    const q = cover * n.k,
+      mx = Math.max(0, (size.w * q - fw) / 2),
+      my = Math.max(0, (size.h * q - fh) / 2);
+    return {
+      k: n.k,
+      x: clamp(n.x, -mx, mx),
+      y: clamp(n.y, -my, my)
+    };
+  };
+  const zoom = f => setV(o => {
+    const k = clamp(f(o.k), 1, CROP_MAX),
+      q = k / o.k;
+    return fit({
+      k,
+      x: o.x * q,
+      y: o.y * q
+    });
+  });
+  const pick = x => {
+    sfx();
+    setRatio(x);
+    setV({
+      k: 1,
+      x: 0,
+      y: 0
+    });
+  };
+  const down = e => {
+    pts.current.set(e.pointerId, {
+      x: e.clientX,
+      y: e.clientY
+    });
+    pinch.current = 0;
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch (err) {}
+  };
+  const move = e => {
+    const p = pts.current.get(e.pointerId);
+    if (!p || !size) return;
+    const dx = e.clientX - p.x,
+      dy = e.clientY - p.y;
+    p.x = e.clientX;
+    p.y = e.clientY;
+    const all = [...pts.current.values()];
+    if (all.length === 1) {
+      setV(o => fit({
+        ...o,
+        x: o.x + dx,
+        y: o.y + dy
+      }));
+      return;
+    }
+    const dist = Math.hypot(all[0].x - all[1].x, all[0].y - all[1].y),
+      was = pinch.current;
+    if (was) zoom(k => k * (dist / was));
+    pinch.current = dist;
+  };
+  const up = e => {
+    pts.current.delete(e.pointerId);
+    pinch.current = 0;
+  };
+  const done = async () => {
+    if (!ratio && v.k === 1) {
+      fin(file);
+      return;
+    }
+    const sw = fw / s,
+      sh = fh / s,
+      n = Math.min(1, 4096 / Math.max(sw, sh));
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(sw * n));
+    c.height = Math.max(1, Math.round(sh * n));
+    c.getContext('2d').drawImage(imgEl.current, size.w / 2 - (fw / 2 + v.x) / s, size.h / 2 - (fh / 2 + v.y) / s, sw, sh, 0, 0, c.width, c.height);
+    const enc = type => new Promise(ok => c.toBlob(ok, type, 0.98));
+    const b = await enc('image/webp');
+    fin(b && b.type === 'image/webp' ? b : await enc('image/jpeg'));
+  };
+  return React.createElement("div", {
+    className: "fixed inset-0 z-[95] flex flex-col modal-bg",
+    style: {
+      background: '#000'
+    }
+  }, React.createElement("div", {
+    className: "modal-head"
+  }, React.createElement("div", {
+    className: "min-w-0"
+  }, React.createElement("div", {
+    className: "modal-title mt-1"
+  }, "\u041A\u0430\u0434\u0440\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u0435")), React.createElement(IconBtn, {
+    icon: X,
+    title: "\u041E\u0442\u043C\u0435\u043D\u0430",
+    onClick: () => {
+      sfx('close');
+      fin(null);
+    }
+  })), React.createElement("div", {
+    ref: box,
+    className: "crop-stage",
+    onPointerDown: down,
+    onPointerMove: move,
+    onPointerUp: up,
+    onPointerCancel: up,
+    onWheel: e => zoom(k => k * Math.exp(-e.deltaY * 0.0015))
+  }, React.createElement("img", {
+    ref: imgEl,
+    src: url,
+    alt: "",
+    draggable: false,
+    className: "crop-img",
+    onLoad: e => {
+      if (e.target.naturalWidth) setSize({
+        w: e.target.naturalWidth,
+        h: e.target.naturalHeight
+      });else fin(file);
+    },
+    onError: () => fin(file),
+    style: size ? {
+      width: size.w * s,
+      height: size.h * s,
+      transform: `translate(-50%,-50%) translate(${v.x}px,${v.y}px)`
+    } : {
+      visibility: 'hidden'
+    }
+  }), size && React.createElement("div", {
+    className: "crop-frame",
+    style: {
+      width: fw,
+      height: fh
+    }
+  })), React.createElement("div", {
+    className: "w-full max-w-[600px] mx-auto px-4 pt-3"
+  }, React.createElement("div", {
+    className: "flex flex-wrap justify-center gap-1.5"
+  }, CROP_RATIOS.map(([l, x]) => React.createElement(Btn, {
+    key: l,
+    small: true,
+    snd: "none",
+    variant: ratio === x ? 'main' : 'dark',
+    onClick: () => pick(x)
+  }, l))), React.createElement("input", {
+    type: "range",
+    className: "crop-zoom",
+    "aria-label": "\u041C\u0430\u0441\u0448\u0442\u0430\u0431",
+    min: 1,
+    max: CROP_MAX,
+    step: 0.01,
+    value: v.k,
+    onChange: e => {
+      const k = Number(e.target.value);
+      zoom(() => k);
+    }
+  })), React.createElement("div", {
+    className: "modal-foot w-full max-w-[600px] mx-auto"
+  }, React.createElement(Btn, {
+    variant: "ghost",
+    className: "flex-1",
+    onClick: () => fin(null)
+  }, "\u041E\u0442\u043C\u0435\u043D\u0430"), React.createElement(Btn, {
+    className: "flex-[2]",
+    icon: Check,
+    snd: "none",
+    disabled: !size,
+    onClick: () => {
+      sfx('save');
+      done();
+    }
+  }, "\u0413\u043E\u0442\u043E\u0432\u043E")));
 }
 function ColorRow({
   value,
@@ -3126,12 +3338,11 @@ function Empty({
   }, children));
 }
 function ScreenHeader({
-  code,
   title,
   sub,
   right
 }) {
-  if (UI.mono) return React.createElement("div", {
+  return React.createElement("div", {
     className: "px-4 pt-6 pb-1"
   }, React.createElement("div", {
     className: "flex items-end justify-between gap-3"
@@ -3142,22 +3353,6 @@ function ScreenHeader({
   }, title), sub && React.createElement("div", {
     className: "text-[13px] text-white/45 mt-1"
   }, sub)), right));
-  return React.createElement("div", {
-    className: "px-4 pt-4 pb-1"
-  }, React.createElement("div", {
-    className: "flex items-end justify-between gap-3"
-  }, React.createElement("div", {
-    className: "min-w-0"
-  }, React.createElement("div", {
-    className: "micro mb-1"
-  }, code), React.createElement("h1", {
-    className: "h1 glitch",
-    "data-text": title
-  }, title), sub && React.createElement("div", {
-    className: "text-[12px] text-white/45 mt-1 f-read"
-  }, sub)), right), React.createElement("div", {
-    className: "hdr-line"
-  }));
 }
 function TagChip({
   tag,
@@ -3181,293 +3376,48 @@ function TagChip({
     }
   }, "#", tag.name);
 }
-const burstPts = (cx, cy, ro, ri, n) => {
-  const p = [];
-  for (let i = 0; i < n * 2; i++) {
-    const r = i % 2 ? ri : ro,
-      a = Math.PI * i / n - Math.PI / 2;
-    p.push(`${(cx + r * Math.cos(a)).toFixed(1)},${(cy + r * Math.sin(a)).toFixed(1)}`);
-  }
-  return p.join(' ');
+const STICKER_NAMES = {
+  donut: 'Питание',
+  apple: 'Фрукты',
+  water: 'Вода',
+  coffee: 'Кофе',
+  sleep: 'Сон',
+  sun: 'Ранний подъём',
+  dumbbell: 'Силовая',
+  run: 'Бег',
+  steps: 'Шаги',
+  bolt: 'Энергия',
+  heart: 'Здоровье',
+  pill: 'Витамины',
+  lotus: 'Медитация',
+  brain: 'Мозг',
+  book: 'Чтение',
+  pen: 'Дневник',
+  globe: 'Языки',
+  code: 'Код',
+  target: 'Фокус',
+  clock: 'Время',
+  coin: 'Финансы',
+  broom: 'Уборка',
+  plant: 'Рост',
+  music: 'Музыка',
+  eye: 'Экранное время',
+  chip: 'Гаджеты',
+  nophone: 'Без телефона',
+  nosmoke: 'Без курения',
+  noalco: 'Без алкоголя',
+  game: 'Игры',
+  skull: 'Вредные привычки',
+  mountain: 'Походы',
+  bike: 'Велосипед',
+  phone: 'Звонок близким',
+  fire: 'Стрик',
+  star: 'Цель'
 };
-const ICONS = {
-  donut: ['Питание', React.createElement(React.Fragment, null, React.createElement("circle", {
-    cx: "16",
-    cy: "16",
-    r: "12"
-  }), React.createElement("circle", {
-    cx: "16",
-    cy: "16",
-    r: "4.5"
-  }), React.createElement("path", {
-    d: "M5 13 q2.5 -3 5 0 t5 0 t5 0 t5 0 t3 -1"
-  }), React.createElement("path", {
-    d: "M10 9 l2 1 M20 8 l1 2 M23 19 l2 -1 M9 21 l1.5 1.5"
-  }))],
-  apple: ['Фрукты', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M16 9 c-4 -3 -11 -1 -11 7 c0 7 5 12 8 12 c1 0 2 -1 3 -1 s2 1 3 1 c3 0 8 -5 8 -12 c0 -8 -7 -10 -11 -7 z"
-  }), React.createElement("path", {
-    d: "M16 9 c0 -3 1 -5 4 -6"
-  }), React.createElement("path", {
-    d: "M10 15 c0 -2 1 -3 2 -3"
-  }))],
-  water: ['Вода', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M16 3 C16 3 6 14 6 20 a10 10 0 0 0 20 0 C26 14 16 3 16 3 Z"
-  }), React.createElement("path", {
-    d: "M11 20 a5 5 0 0 0 4 5"
-  }))],
-  coffee: ['Кофе', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M5 12 h17 v7 a7 7 0 0 1 -7 7 h-3 a7 7 0 0 1 -7 -7 z"
-  }), React.createElement("path", {
-    d: "M22 14 h2.5 a3 3 0 0 1 0 6 h-2.5"
-  }), React.createElement("path", {
-    d: "M10 3 c-1.5 2 1.5 3 0 6 M15 3 c-1.5 2 1.5 3 0 6"
-  }))],
-  sleep: ['Сон', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M19 5 A12 12 0 1 0 28 21 A9.5 9.5 0 1 1 19 5 Z"
-  }), React.createElement("path", {
-    d: "M21 4 h5 l-5 5 h5"
-  }), React.createElement("path", {
-    d: "M26 11 h3 l-3 3 h3"
-  }))],
-  sun: ['Ранний подъём', React.createElement(React.Fragment, null, React.createElement("circle", {
-    cx: "16",
-    cy: "16",
-    r: "6"
-  }), React.createElement("path", {
-    d: "M16 2 v4 M16 26 v4 M2 16 h4 M26 16 h4 M6 6 l3 3 M23 23 l3 3 M26 6 l-3 3 M9 23 l-3 3"
-  }))],
-  dumbbell: ['Силовая', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M4 16 h24"
-  }), React.createElement("path", {
-    d: "M7 10 v12 M11 7 v18 M21 7 v18 M25 10 v12"
-  }))],
-  run: ['Бег', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M3 22 h21 c3 0 5 -1.5 5 -3.5 c0 -2 -2 -3 -5 -3.5 l-5 -1 l-4 -6 l-4 2 l1 4 l-4 1 l-5 -3 z"
-  }), React.createElement("path", {
-    d: "M3 22 v3 h26 v-3"
-  }), React.createElement("path", {
-    d: "M12 16 l2 -1 M15 18 l2 -1"
-  }))],
-  steps: ['Шаги', React.createElement(React.Fragment, null, React.createElement("ellipse", {
-    cx: "10",
-    cy: "11",
-    rx: "4",
-    ry: "6"
-  }), React.createElement("circle", {
-    cx: "10",
-    cy: "22.5",
-    r: "2.5"
-  }), React.createElement("ellipse", {
-    cx: "22",
-    cy: "14",
-    rx: "4",
-    ry: "6"
-  }), React.createElement("circle", {
-    cx: "22",
-    cy: "25.5",
-    r: "2.5"
-  }))],
-  bolt: ['Энергия', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M18 3 L7 18 h8 l-2 11 L25 13 h-8 Z"
-  }))],
-  heart: ['Здоровье', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M16 27 C6 20 3 15 3 10.5 C3 6.5 6 4 9.5 4 C12.5 4 14.5 6 16 8 C17.5 6 19.5 4 22.5 4 C26 4 29 6.5 29 10.5 C29 15 26 20 16 27 Z"
-  }), React.createElement("path", {
-    d: "M7 14 h5 l2 -4 l3 8 l2 -4 h6"
-  }))],
-  pill: ['Витамины', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M7 22 l13 -13 a5 5 0 0 1 7 7 l-13 13 a5 5 0 0 1 -7 -7 z"
-  }), React.createElement("path", {
-    d: "M13.5 15.5 l7 7"
-  }))],
-  lotus: ['Медитация', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M16 26 c-6 0 -11 -4 -12 -9 c5 0 9 2 12 6 c3 -4 7 -6 12 -6 c-1 5 -6 9 -12 9 z"
-  }), React.createElement("path", {
-    d: "M16 23 c-3 -4 -3 -10 0 -16 c3 6 3 12 0 16 z"
-  }))],
-  brain: ['Мозг', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M16 6 c-3 -3 -9 -2 -9 3 c-4 1 -4 7 -1 8 c-2 3 0 8 4 8 c1 3 5 3 6 0 z"
-  }), React.createElement("path", {
-    d: "M16 6 c3 -3 9 -2 9 3 c4 1 4 7 1 8 c2 3 0 8 -4 8 c-1 3 -5 3 -6 0 z"
-  }), React.createElement("path", {
-    d: "M16 6 v19 M10 13 h3 M19 17 h3"
-  }))],
-  book: ['Чтение', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M16 8 C12 5 7 5 3 6 v19 c4 -1 9 -1 13 2 c4 -3 9 -3 13 -2 v-19 c-4 -1 -9 -1 -13 2 z"
-  }), React.createElement("path", {
-    d: "M16 8 v19"
-  }))],
-  pen: ['Дневник', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M22 4 l6 6 l-16 16 l-8 2 l2 -8 z"
-  }), React.createElement("path", {
-    d: "M19 7 l6 6"
-  }))],
-  globe: ['Языки', React.createElement(React.Fragment, null, React.createElement("circle", {
-    cx: "16",
-    cy: "16",
-    r: "12"
-  }), React.createElement("path", {
-    d: "M16 4 c-5 4 -5 20 0 24 c5 -4 5 -20 0 -24"
-  }), React.createElement("path", {
-    d: "M4 16 h24 M6 10 h20 M6 22 h20"
-  }))],
-  code: ['Код', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M11 9 L4 16 L11 23 M21 9 L28 16 L21 23 M18 6 L14 26"
-  }))],
-  target: ['Фокус', React.createElement(React.Fragment, null, React.createElement("circle", {
-    cx: "16",
-    cy: "16",
-    r: "12"
-  }), React.createElement("circle", {
-    cx: "16",
-    cy: "16",
-    r: "6.5"
-  }), React.createElement("circle", {
-    cx: "16",
-    cy: "16",
-    r: "1.5"
-  }), React.createElement("path", {
-    d: "M16 1 v6 M16 25 v6 M1 16 h6 M25 16 h6"
-  }))],
-  clock: ['Время', React.createElement(React.Fragment, null, React.createElement("circle", {
-    cx: "16",
-    cy: "16",
-    r: "12"
-  }), React.createElement("path", {
-    d: "M16 8 v8 l5 4"
-  }))],
-  coin: ['Финансы', React.createElement(React.Fragment, null, React.createElement("circle", {
-    cx: "16",
-    cy: "16",
-    r: "13"
-  }), React.createElement("path", {
-    d: "M20 11 c-1 -2 -3 -2 -4 -2 c-3 0 -5 1 -5 3.5 c0 5 9 2.5 9 7.5 c0 2.5 -2 3.5 -5 3.5 c-2 0 -4 -1 -5 -2 M15.5 6 v20"
-  }))],
-  broom: ['Уборка', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M25 3 L15 14"
-  }), React.createElement("path", {
-    d: "M10 14 h9 l3 4 l-4 10 h-11 l-1 -10 z"
-  }), React.createElement("path", {
-    d: "M11 21 l-1 7 M15 21 v7 M19 21 l1 6"
-  }))],
-  plant: ['Рост', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M16 28 V13"
-  }), React.createElement("path", {
-    d: "M16 18 c-6 0 -10 -4 -10 -10 c6 0 10 4 10 10 z"
-  }), React.createElement("path", {
-    d: "M16 14 c0 -6 4 -10 10 -10 c0 6 -4 10 -10 10 z"
-  }), React.createElement("path", {
-    d: "M10 28 h12"
-  }))],
-  music: ['Музыка', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M12 24 V7 L26 4 V21"
-  }), React.createElement("path", {
-    d: "M12 24 a4 3.5 0 1 1 -8 0 a4 3.5 0 1 1 8 0 M26 21 a4 3.5 0 1 1 -8 0 a4 3.5 0 1 1 8 0"
-  }), React.createElement("path", {
-    d: "M12 11 L26 8"
-  }))],
-  eye: ['Экранное время', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M2 16 Q16 3 30 16 Q16 29 2 16 Z"
-  }), React.createElement("circle", {
-    cx: "16",
-    cy: "16",
-    r: "5"
-  }), React.createElement("path", {
-    d: "M1 16 h4 M27 16 h4"
-  }))],
-  chip: ['Импланты', React.createElement(React.Fragment, null, React.createElement("rect", {
-    x: "8",
-    y: "8",
-    width: "16",
-    height: "16"
-  }), React.createElement("rect", {
-    x: "12.5",
-    y: "12.5",
-    width: "7",
-    height: "7"
-  }), React.createElement("path", {
-    d: "M12 3 v5 M16 3 v5 M20 3 v5 M12 24 v5 M16 24 v5 M20 24 v5 M3 12 h5 M3 16 h5 M3 20 h5 M24 12 h5 M24 16 h5 M24 20 h5"
-  }))],
-  nophone: ['Без телефона', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M10 3 h12 a2 2 0 0 1 2 2 v22 a2 2 0 0 1 -2 2 h-12 a2 2 0 0 1 -2 -2 v-22 a2 2 0 0 1 2 -2 z"
-  }), React.createElement("path", {
-    d: "M14 25 h4"
-  }), React.createElement("path", {
-    d: "M3 4 L29 28"
-  }))],
-  nosmoke: ['Без курения', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M3 18 h19 v5 h-19 z M25 18 v5 M28 18 v5"
-  }), React.createElement("path", {
-    d: "M24 15 c0 -3 3 -3 3 -6 c0 -2 -1 -3 -2 -4"
-  }), React.createElement("path", {
-    d: "M4 4 L28 28"
-  }))],
-  noalco: ['Без алкоголя', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M10 4 h12 c0 7 -2 11 -6 11 c-4 0 -6 -4 -6 -11 z"
-  }), React.createElement("path", {
-    d: "M16 15 v11 M11 27 h10"
-  }), React.createElement("path", {
-    d: "M5 4 L27 28"
-  }))],
-  game: ['Игры', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M9 10 h14 a6 6 0 0 1 6 6 v3 a4 4 0 0 1 -7 3 l-2 -2 h-8 l-2 2 a4 4 0 0 1 -7 -3 v-3 a6 6 0 0 1 6 -6 z"
-  }), React.createElement("path", {
-    d: "M10 14 v5 M7.5 16.5 h5 M21 15 h.1 M24 18 h.1"
-  }))],
-  skull: ['Вредные привычки', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M16 3 c-7 0 -12 5 -12 11 c0 4 2 6 4 7 v5 h16 v-5 c2 -1 4 -3 4 -7 c0 -6 -5 -11 -12 -11 z"
-  }), React.createElement("circle", {
-    cx: "11",
-    cy: "15",
-    r: "2.6"
-  }), React.createElement("circle", {
-    cx: "21",
-    cy: "15",
-    r: "2.6"
-  }), React.createElement("path", {
-    d: "M13 26 v-3 M16 26 v-3 M19 26 v-3"
-  }))],
-  mountain: ['Походы', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M2 27 L12 10 L18 19 L22 14 L30 27 Z"
-  }), React.createElement("path", {
-    d: "M9 15 l3 2 l2 -3"
-  }))],
-  bike: ['Велосипед', React.createElement(React.Fragment, null, React.createElement("circle", {
-    cx: "8",
-    cy: "22",
-    r: "5"
-  }), React.createElement("circle", {
-    cx: "24",
-    cy: "22",
-    r: "5"
-  }), React.createElement("path", {
-    d: "M8 22 L13 12 H21 L24 22 M13 12 L17 22 H8 M19 8 h4 M11 10 h4"
-  }))],
-  phone: ['Звонок близким', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M8 4 h4 l2 6 l-3 2 c2 4 4 6 8 8 l2 -3 l6 2 v4 c0 2 -2 3 -4 3 C13 26 6 19 5 8 c0 -2 1 -4 3 -4 z"
-  }))],
-  fire: ['Стрик', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M16 29 c-6 0 -10 -4 -10 -9 c0 -6 6 -9 6 -15 c4 3 6 6 6 10 c1 -1 2 -3 2 -5 c3 3 6 6 6 11 c0 5 -4 8 -10 8 z"
-  }), React.createElement("path", {
-    d: "M16 29 c-3 0 -4 -2 -4 -4 c0 -3 4 -5 4 -8 c2 2 4 4 4 8 c0 2 -1 4 -4 4 z"
-  }))],
-  star: ['Цель', React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M16 3 l3.8 8.2 l9 1 l-6.7 6 l1.9 8.8 l-8 -4.6 l-8 4.6 l1.9 -8.8 l-6.7 -6 l9 -1 z"
-  }))]
-};
-const STICKERS = Object.keys(ICONS).map(k => `st:${k}`);
+const STICKERS = Object.keys(STICKER_NAMES).map(k => `st:${k}`);
 const STICKER_FRAMES = [['oct', 'Окта'], ['hex', 'Гекс'], ['shield', 'Щит'], ['diamond', 'Ромб'], ['cut', 'Срез'], ['circle', 'Круг']];
-const FRAME_PTS = {
-  oct: [[20, 3], [44, 3], [61, 20], [61, 44], [44, 61], [20, 61], [3, 44], [3, 20]],
-  hex: [[32, 2], [59, 17], [59, 47], [32, 62], [5, 47], [5, 17]],
-  shield: [[6, 5], [58, 5], [58, 36], [32, 62], [6, 36]],
-  diamond: [[32, 1], [63, 32], [32, 63], [1, 32]],
-  cut: [[3, 3], [49, 3], [61, 15], [61, 61], [15, 61], [3, 49]]
-};
-const ptsStr = (pts, k = 1) => pts.map(([x, y]) => `${(32 + (x - 32) * k).toFixed(1)},${(32 + (y - 32) * k).toFixed(1)}`).join(' ');
 const stickerLabel = icon => {
-  if (icon.startsWith('st:')) return (ICONS[icon.slice(3)] || ['Стикер'])[0];
+  if (icon.startsWith('st:')) return STICKER_NAMES[icon.slice(3)] || 'Стикер';
   return icon.startsWith('url:') ? 'Своя картинка' : 'Эмодзи';
 };
 const OL = '#121212';
@@ -4669,11 +4619,11 @@ const TOON = {
     d: spark(9, 53, 3.6)
   })))
 };
-function ToonSticker({
-  icon,
-  color,
-  size,
-  frame
+function Sticker({
+  icon = 'st:star',
+  color = '#FCEE0A',
+  size = 96,
+  frame = 'oct'
 }) {
   const id = useMemo(() => uid('tn'), []);
   const mini = size < 40;
@@ -4727,204 +4677,23 @@ function ToonSticker({
     fontSize: "30"
   }, icon.slice(3)));
 }
-function Sticker({
-  icon = 'st:star',
-  color = '#FCEE0A',
-  size = 96,
-  frame = 'oct',
-  toon = UI.mono
-}) {
-  if (toon) return React.createElement(ToonSticker, {
-    icon: icon,
-    color: color,
-    size: size,
-    frame: frame
-  });
-  return React.createElement(NeonSticker, {
-    icon: icon,
-    color: color,
-    size: size,
-    frame: frame
-  });
-}
-function NeonSticker({
-  icon,
-  color,
-  size,
-  frame
-}) {
-  const id = useMemo(() => uid('stk'), []);
-  const mini = size < 40;
-  const shape = FRAME_PTS[frame] ? frame : frame === 'circle' ? 'circle' : 'oct';
-  const outline = (props, k = 1) => shape === 'circle' ? React.createElement("circle", _extends({
-    cx: "32",
-    cy: "32",
-    r: 30 * k
-  }, props)) : React.createElement("polygon", _extends({
-    points: ptsStr(FRAME_PTS[shape], k),
-    strokeLinejoin: "round"
-  }, props));
-  const key = icon.startsWith('st:') ? icon.slice(3) : null;
-  const glyph = key && ICONS[key] ? ICONS[key][1] : null;
-  const k = shape === 'diamond' ? 0.95 : shape === 'shield' ? 1.08 : 1.2;
-  const pic = useImgSrc(icon.startsWith('url:') ? icon.slice(4) : '', mini);
-  return React.createElement("svg", {
-    viewBox: "0 0 64 64",
-    width: size,
-    height: size,
-    style: {
-      display: 'block',
-      overflow: 'visible'
-    },
-    "aria-label": stickerLabel(icon)
-  }, React.createElement("defs", null, React.createElement("radialGradient", {
-    id: `${id}g`,
-    cx: "50%",
-    cy: "42%",
-    r: "60%"
-  }, React.createElement("stop", {
-    offset: "0",
-    stopColor: color,
-    stopOpacity: ".38"
-  }), React.createElement("stop", {
-    offset: "1",
-    stopColor: color,
-    stopOpacity: "0"
-  })), React.createElement("clipPath", {
-    id: `${id}c`
-  }, outline({})), React.createElement("pattern", {
-    id: `${id}p`,
-    width: "4",
-    height: "3",
-    patternUnits: "userSpaceOnUse"
-  }, React.createElement("rect", {
-    width: "4",
-    height: "1",
-    fill: color,
-    opacity: ".22"
-  }))), outline({
-    fill: '#0a0810',
-    stroke: color,
-    strokeWidth: mini ? 3 : 2,
-    style: {
-      filter: `drop-shadow(0 0 ${mini ? 2 : 4}px ${color})`
-    }
-  }), React.createElement("g", {
-    clipPath: `url(#${id}c)`
-  }, React.createElement("rect", {
-    width: "64",
-    height: "64",
-    fill: `url(#${id}g)`
-  }), pic && React.createElement("image", {
-    href: pic,
-    x: "0",
-    y: "0",
-    width: "64",
-    height: "64",
-    preserveAspectRatio: "xMidYMid slice"
-  }), !mini && React.createElement("rect", {
-    width: "64",
-    height: "64",
-    fill: `url(#${id}p)`
-  })), !mini && outline({
-    fill: 'none',
-    stroke: color,
-    strokeOpacity: 0.35,
-    strokeWidth: 0.8
-  }, 0.84), glyph && React.createElement("g", {
-    transform: `translate(${32 - 16 * k} ${(shape === 'shield' ? 29 : 32) - 16 * k}) scale(${k})`,
-    fill: "none",
-    stroke: color,
-    strokeWidth: mini ? 3 : 2.1,
-    strokeLinecap: "round",
-    strokeLinejoin: "round",
-    style: {
-      filter: `drop-shadow(0 0 ${mini ? 1.5 : 3}px ${color})`
-    }
-  }, glyph), icon.startsWith('em:') && React.createElement("text", {
-    x: "32",
-    y: "34",
-    textAnchor: "middle",
-    dominantBaseline: "central",
-    fontSize: "28"
-  }, icon.slice(3)), !mini && React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M2 10 V2 H10",
-    fill: "none",
-    stroke: "#fff",
-    strokeOpacity: ".7",
-    strokeWidth: "1.2"
-  }), React.createElement("path", {
-    d: "M62 54 V62 H54",
-    fill: "none",
-    stroke: "#fff",
-    strokeOpacity: ".7",
-    strokeWidth: "1.2"
-  }), React.createElement("rect", {
-    x: "52",
-    y: "4",
-    width: "6",
-    height: "2",
-    fill: color,
-    opacity: ".9"
-  })));
-}
 function ChipIcon({
   active,
   dim,
   kind
 }) {
-  if (UI.mono) {
-    const I = kind === 'shard' ? FileText : Flag;
-    return React.createElement("span", {
-      className: "mono-dot",
-      style: {
-        background: active ? 'var(--alt)' : '#1C1C1F',
-        color: active ? '#000' : '#8E8E93',
-        opacity: dim ? 0.5 : 1
-      }
-    }, React.createElement(I, {
-      size: 14,
-      strokeWidth: 2.3
-    }));
-  }
-  return React.createElement("svg", {
-    width: "30",
-    height: "44",
-    viewBox: "0 0 30 44",
+  const I = kind === 'shard' ? FileText : Flag;
+  return React.createElement("span", {
+    className: "mono-dot",
     style: {
-      opacity: dim ? 0.4 : 1,
-      filter: active ? 'drop-shadow(0 0 5px var(--main))' : 'none'
+      background: active ? 'var(--alt)' : '#1C1C1F',
+      color: active ? '#000' : '#8E8E93',
+      opacity: dim ? 0.5 : 1
     }
-  }, React.createElement("g", {
-    transform: "rotate(-9 15 22)"
-  }, React.createElement("path", {
-    d: "M6 3 h14 l6 6 v29 a3 3 0 0 1 -3 3 h-17 a3 3 0 0 1 -3 -3 v-32 a3 3 0 0 1 3 -3z",
-    style: {
-      fill: active ? 'rgba(var(--main-rgb),.38)' : 'rgba(var(--main-rgb),.16)',
-      stroke: 'var(--main)'
-    },
-    strokeWidth: "1.6"
-  }), React.createElement("path", {
-    d: "M10 8 h9 M10 12 h5",
-    style: {
-      stroke: 'var(--main)'
-    },
-    strokeWidth: "1.4"
-  }), React.createElement("path", {
-    d: "M19 20 a6.5 6.5 0 1 0 1 6",
-    style: {
-      stroke: 'var(--main)'
-    },
-    strokeWidth: "2.2",
-    fill: "none"
-  }), React.createElement("circle", {
-    cx: "14.5",
-    cy: "26.5",
-    r: "2.3",
-    style: {
-      fill: 'var(--main)'
-    }
-  })));
+  }, React.createElement(I, {
+    size: 14,
+    strokeWidth: 2.3
+  }));
 }
 function MissionBadge({
   badge,
@@ -4934,161 +4703,45 @@ function MissionBadge({
   if (!b.shape || b.shape === 'none') return null;
   const c = b.color || '#F5B83D',
     t = String(b.text || '').slice(0, 7);
-  const fs = t.length > 4 ? 6.5 : t.length > 2 ? 9 : 12;
-  if (UI.mono) {
-    const [r, g, bl] = hexRgb(c).split(',').map(Number);
-    const ink = r * 0.299 + g * 0.587 + bl * 0.114 > 150 ? '#111' : '#fff';
-    const mfs = t.length > 4 ? 7 : t.length > 2 ? 9.5 : 13;
-    return React.createElement("div", {
-      className: "shrink-0 flex items-center justify-center",
-      style: {
-        width: size + 8
-      }
-    }, React.createElement("svg", {
-      width: size,
-      height: size,
-      viewBox: "0 0 50 50"
-    }, b.shape === 'diamond' && React.createElement("path", {
-      d: "M22.2 4.8 Q25 2 27.8 4.8 L45.2 22.2 Q48 25 45.2 27.8 L27.8 45.2 Q25 48 22.2 45.2 L4.8 27.8 Q2 25 4.8 22.2 Z",
-      fill: c
-    }), b.shape === 'square' && React.createElement("rect", {
-      x: "5",
-      y: "5",
-      width: "40",
-      height: "40",
-      rx: "12",
-      fill: c
-    }), b.shape === 'triangle' && React.createElement("path", {
-      d: "M22.3 7 Q25 2.5 27.7 7 L46 39.5 Q48 44 43 44 H7 Q2 44 4 39.5 Z",
-      fill: c
-    }), b.shape === 'circle' && React.createElement("circle", {
-      cx: "25",
-      cy: "25",
-      r: "21",
-      fill: c
-    }), React.createElement("text", {
-      x: "25",
-      y: b.shape === 'triangle' ? 36 : 25 + mfs * 0.36,
-      textAnchor: "middle",
-      fontSize: mfs,
-      fontWeight: "700",
-      fill: ink,
-      fontFamily: "Unbounded, Inter, sans-serif"
-    }, t)));
-  }
+  const [r, g, bl] = hexRgb(c).split(',').map(Number);
+  const ink = r * 0.299 + g * 0.587 + bl * 0.114 > 150 ? '#111' : '#fff';
+  const mfs = t.length > 4 ? 7 : t.length > 2 ? 9.5 : 13;
   return React.createElement("div", {
-    className: "shrink-0 flex flex-col items-center",
+    className: "shrink-0 flex items-center justify-center",
     style: {
       width: size + 8
     }
   }, React.createElement("svg", {
     width: size,
     height: size,
-    viewBox: "0 0 50 50",
-    style: {
-      filter: 'drop-shadow(0 0 3px rgba(0,0,0,.6))'
-    }
-  }, b.shape === 'diamond' && React.createElement(React.Fragment, null, React.createElement("polygon", {
-    points: "25,2 48,25 25,48 2,25",
-    fill: "#0d0d10",
-    stroke: "#fff",
-    strokeWidth: "1.6"
-  }), React.createElement("polygon", {
-    points: "25,4.5 45.5,25 4.5,25",
+    viewBox: "0 0 50 50"
+  }, b.shape === 'diamond' && React.createElement("path", {
+    d: "M22.2 4.8 Q25 2 27.8 4.8 L45.2 22.2 Q48 25 45.2 27.8 L27.8 45.2 Q25 48 22.2 45.2 L4.8 27.8 Q2 25 4.8 22.2 Z",
     fill: c
-  }), [[17, 15, 3, 10], [21, 11, 3, 14], [25, 9, 3, 16], [29, 12, 3, 13], [33, 16, 3, 9]].map(([x, y, w, h], i) => React.createElement("rect", {
-    key: i,
-    x: x - 1.5,
-    y: y,
-    width: w,
-    height: h,
-    fill: "#fff",
-    opacity: ".9"
-  })), React.createElement("text", {
-    x: "25",
-    y: "37",
-    textAnchor: "middle",
-    fontSize: fs,
-    fontWeight: "800",
-    fill: "#fff",
-    fontFamily: "Rajdhani, sans-serif"
-  }, t)), b.shape === 'square' && React.createElement(React.Fragment, null, React.createElement("rect", {
-    x: "3",
-    y: "3",
-    width: "44",
-    height: "44",
-    fill: "#0d0d10",
-    stroke: "#fff",
-    strokeWidth: "1.6"
-  }), React.createElement("rect", {
+  }), b.shape === 'square' && React.createElement("rect", {
     x: "5",
     y: "5",
     width: "40",
-    height: "11",
+    height: "40",
+    rx: "12",
     fill: c
-  }), React.createElement("text", {
-    x: "25",
-    y: "13.6",
-    textAnchor: "middle",
-    fontSize: fs,
-    fontWeight: "800",
-    fill: "#fff",
-    fontFamily: "Rajdhani, sans-serif"
-  }, t), [[9, 20, 8, 6], [19, 20, 12, 6], [33, 20, 8, 6], [9, 29, 14, 7], [25, 29, 16, 7], [9, 39, 32, 4]].map(([x, y, w, h], i) => React.createElement("rect", {
-    key: i,
-    x: x,
-    y: y,
-    width: w,
-    height: h,
-    fill: "#fff",
-    opacity: i % 2 ? 0.85 : 0.55
-  }))), b.shape === 'triangle' && React.createElement(React.Fragment, null, React.createElement("polygon", {
-    points: "25,4 47,44 3,44",
-    fill: c,
-    stroke: "#111",
-    strokeWidth: "2"
-  }), React.createElement("polygon", {
-    points: "25,13 39,39 11,39",
-    fill: "#0d0d10"
-  }), React.createElement("text", {
-    x: "25",
-    y: "35",
-    textAnchor: "middle",
-    fontSize: fs,
-    fontWeight: "800",
-    fill: "#fff",
-    fontFamily: "Rajdhani, sans-serif"
-  }, t)), b.shape === 'circle' && React.createElement(React.Fragment, null, React.createElement("circle", {
+  }), b.shape === 'triangle' && React.createElement("path", {
+    d: "M22.3 7 Q25 2.5 27.7 7 L46 39.5 Q48 44 43 44 H7 Q2 44 4 39.5 Z",
+    fill: c
+  }), b.shape === 'circle' && React.createElement("circle", {
     cx: "25",
     cy: "25",
     r: "21",
-    fill: "#0d0d10",
-    stroke: c,
-    strokeWidth: "3"
-  }), React.createElement("circle", {
-    cx: "25",
-    cy: "25",
-    r: "16",
-    fill: "none",
-    stroke: c,
-    strokeWidth: "1",
-    strokeDasharray: "3 2"
+    fill: c
   }), React.createElement("text", {
     x: "25",
-    y: 25 + fs * 0.36,
+    y: b.shape === 'triangle' ? 36 : 25 + mfs * 0.36,
     textAnchor: "middle",
-    fontSize: fs,
-    fontWeight: "800",
-    fill: c,
-    fontFamily: "Rajdhani, sans-serif"
-  }, t))), React.createElement("div", {
-    className: "f-mono text-center leading-[1.05] mt-0.5",
-    style: {
-      fontSize: 4.6,
-      letterSpacing: '.04em',
-      color: 'rgba(255,255,255,.55)'
-    }
-  }, "CERTIFIED TO ACCESS", React.createElement("br", null), "OR DISABLE THIS ITEM"));
+    fontSize: mfs,
+    fontWeight: "700",
+    fill: ink,
+    fontFamily: "Unbounded, Inter, sans-serif"
+  }, t)));
 }
 function Ring({
   avg,
@@ -5110,8 +4763,8 @@ function Ring({
     cy: size / 2,
     r: r,
     fill: "none",
-    stroke: UI.mono ? '#2C2C2E' : 'rgba(255,255,255,.13)',
-    strokeWidth: UI.mono ? stroke : stroke - 0.6,
+    stroke: "#2C2C2E",
+    strokeWidth: stroke,
     strokeDasharray: dashed ? '3 3' : undefined
   }), avg != null && React.createElement("circle", {
     cx: size / 2,
@@ -5122,10 +4775,7 @@ function Ring({
     strokeWidth: stroke,
     strokeDasharray: `${C * pct} ${C}`,
     strokeLinecap: "round",
-    transform: `rotate(-90 ${size / 2} ${size / 2})`,
-    style: UI.mono ? undefined : {
-      filter: `drop-shadow(0 0 3px ${color})`
-    }
+    transform: `rotate(-90 ${size / 2} ${size / 2})`
   }));
 }
 const AVATAR_PRESETS = ['preset:m', 'preset:optics', 'preset:chip', 'preset:eye'];
@@ -5133,153 +4783,67 @@ const isPresetAvatar = v => !v || String(v).startsWith('preset:');
 function AvatarGlyph({
   id = 'preset:m'
 }) {
-  if (UI.mono) {
-    const K = {
-        fill: '#000'
-      },
-      L = {
-        stroke: '#000',
-        fill: 'none'
-      };
-    return React.createElement("svg", {
-      viewBox: "0 0 64 64",
-      className: "w-full h-full block"
-    }, React.createElement("circle", {
-      cx: "32",
-      cy: "32",
-      r: "32",
-      style: {
-        fill: 'var(--alt)'
-      }
-    }), React.createElement("g", {
-      transform: "translate(32 32) scale(.66) translate(-32 -32)"
-    }, id === 'preset:optics' ? React.createElement(React.Fragment, null, React.createElement("path", {
-      d: "M14 22 L32 14 L50 22 L48 40 L32 52 L16 40 Z",
-      style: L,
-      strokeWidth: "5",
-      strokeLinejoin: "round"
-    }), React.createElement("path", {
-      d: "M18 29 H29 L31 34 H20 Z M46 29 H35 L33 34 H44 Z",
-      style: K
-    })) : id === 'preset:chip' ? React.createElement(React.Fragment, null, React.createElement("rect", {
-      x: "17",
-      y: "17",
-      width: "30",
-      height: "30",
-      rx: "5",
-      style: L,
-      strokeWidth: "5"
-    }), React.createElement("rect", {
-      x: "26",
-      y: "26",
-      width: "12",
-      height: "12",
-      rx: "2",
-      style: K
-    }), [24, 32, 40].map(p => React.createElement("path", {
-      key: p,
-      d: `M${p} 6 V15 M${p} 49 V58 M6 ${p} H15 M49 ${p} H58`,
-      style: L,
-      strokeWidth: "4",
-      strokeLinecap: "round"
-    }))) : id === 'preset:eye' ? React.createElement(React.Fragment, null, React.createElement("path", {
-      d: "M6 32 Q32 8 58 32 Q32 56 6 32 Z",
-      style: L,
-      strokeWidth: "5",
-      strokeLinejoin: "round"
-    }), React.createElement("circle", {
-      cx: "32",
-      cy: "32",
-      r: "9",
-      style: K
-    })) : React.createElement("path", {
-      d: "M10 52 V12 L32 30 L54 12 V52 H44 V33 L32 43 L20 33 V52 Z",
-      style: K
-    })));
-  }
-  const M = {
-      fill: 'var(--main)'
+  const K = {
+      fill: '#000'
     },
-    A = {
-      stroke: 'var(--alt)'
-    },
-    S = {
-      stroke: 'var(--main)'
+    L = {
+      stroke: '#000',
+      fill: 'none'
     };
   return React.createElement("svg", {
     viewBox: "0 0 64 64",
-    className: "w-full h-full block",
+    className: "w-full h-full block"
+  }, React.createElement("circle", {
+    cx: "32",
+    cy: "32",
+    r: "32",
     style: {
-      filter: 'drop-shadow(0 0 6px rgba(var(--main-rgb),.55))'
+      fill: 'var(--alt)'
     }
+  }), React.createElement("g", {
+    transform: "translate(32 32) scale(.66) translate(-32 -32)"
   }, id === 'preset:optics' ? React.createElement(React.Fragment, null, React.createElement("path", {
     d: "M14 22 L32 14 L50 22 L48 40 L32 52 L16 40 Z",
-    fill: "none",
-    style: S,
-    strokeWidth: "2.5",
+    style: L,
+    strokeWidth: "5",
     strokeLinejoin: "round"
   }), React.createElement("path", {
-    d: "M18 29 H29 L31 33 H20 Z M46 29 H35 L33 33 H44 Z",
-    style: M
-  }), React.createElement("path", {
-    d: "M32 40 V47 M26 44 H38",
-    fill: "none",
-    style: A,
-    strokeWidth: "2"
-  }), React.createElement("path", {
-    d: "M8 30 H13 M51 30 H56",
-    fill: "none",
-    style: A,
-    strokeWidth: "2"
+    d: "M18 29 H29 L31 34 H20 Z M46 29 H35 L33 34 H44 Z",
+    style: K
   })) : id === 'preset:chip' ? React.createElement(React.Fragment, null, React.createElement("rect", {
-    x: "18",
-    y: "18",
-    width: "28",
-    height: "28",
-    fill: "none",
-    style: S,
-    strokeWidth: "2.5"
+    x: "17",
+    y: "17",
+    width: "30",
+    height: "30",
+    rx: "5",
+    style: L,
+    strokeWidth: "5"
   }), React.createElement("rect", {
-    x: "25",
-    y: "25",
-    width: "14",
-    height: "14",
-    style: M
-  }), [22, 28, 34, 40].map(p => React.createElement("path", {
+    x: "26",
+    y: "26",
+    width: "12",
+    height: "12",
+    rx: "2",
+    style: K
+  }), [24, 32, 40].map(p => React.createElement("path", {
     key: p,
-    d: `M${p} 10 V18 M${p} 46 V54 M10 ${p} H18 M46 ${p} H54`,
-    fill: "none",
-    style: A,
-    strokeWidth: "2"
+    d: `M${p} 6 V15 M${p} 49 V58 M6 ${p} H15 M49 ${p} H58`,
+    style: L,
+    strokeWidth: "4",
+    strokeLinecap: "round"
   }))) : id === 'preset:eye' ? React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M8 32 Q32 10 56 32 Q32 54 8 32 Z",
-    fill: "none",
-    style: S,
-    strokeWidth: "2.5"
+    d: "M6 32 Q32 8 58 32 Q32 56 6 32 Z",
+    style: L,
+    strokeWidth: "5",
+    strokeLinejoin: "round"
   }), React.createElement("circle", {
     cx: "32",
     cy: "32",
     r: "9",
-    style: M
-  }), React.createElement("circle", {
-    cx: "32",
-    cy: "32",
-    r: "3.5",
-    fill: "#07080A"
-  }), React.createElement("path", {
-    d: "M6 32 H58",
-    fill: "none",
-    style: A,
-    strokeWidth: "1.2",
-    strokeDasharray: "3 3"
-  })) : React.createElement(React.Fragment, null, React.createElement("path", {
-    d: "M14 48 V16 L32 31 L50 16 V48 H42 V33 L32 41 L22 33 V48 Z",
-    style: M
-  }), React.createElement("path", {
-    d: "M10 10 H18 M10 10 V18 M54 54 H46 M54 54 V46",
-    fill: "none",
-    style: A,
-    strokeWidth: "2"
+    style: K
+  })) : React.createElement("path", {
+    d: "M10 52 V12 L32 30 L54 12 V52 H44 V33 L32 43 L20 33 V52 Z",
+    style: K
   })));
 }
 function AvatarSlot({
@@ -5290,11 +4854,10 @@ function AvatarSlot({
     data
   } = useApp();
   const {
-    avatar,
-    avatarHolo
+    avatar
   } = data.settings;
   const img = !isPresetAvatar(avatar);
-  if (UI.mono) return React.createElement("div", {
+  return React.createElement("div", {
     className: "relative shrink-0",
     style: {
       width: size,
@@ -5329,54 +4892,6 @@ function AvatarSlot({
     size: 12,
     strokeWidth: 2.6
   })));
-  return React.createElement("div", {
-    className: "relative shrink-0",
-    style: {
-      width: size,
-      height: size
-    }
-  }, React.createElement("button", {
-    type: "button",
-    onClick: onClick ? () => {
-      sfx('open');
-      onClick();
-    } : undefined,
-    "aria-label": "\u0421\u043C\u0435\u043D\u0438\u0442\u044C \u0430\u0432\u0430\u0442\u0430\u0440",
-    className: "cut block w-full h-full",
-    style: {
-      '--cut': `${Math.round(size / 6)}px`,
-      padding: 2,
-      background: 'linear-gradient(135deg,var(--main),rgba(var(--main-rgb),.25) 45%,var(--alt))',
-      cursor: onClick ? 'pointer' : 'default'
-    }
-  }, React.createElement("div", {
-    className: `cut w-full h-full relative overflow-hidden ${img && avatarHolo ? 'holo' : ''}`,
-    style: {
-      '--cut': `${Math.round(size / 6) - 2}px`,
-      background: 'radial-gradient(circle at 50% 35%,rgba(var(--main-rgb),.22),#08070c 70%)'
-    }
-  }, img ? React.createElement(Img, {
-    src: avatar,
-    thumb: size <= 120,
-    className: "w-full h-full object-cover block"
-  }) : React.createElement("div", {
-    className: "w-full h-full",
-    style: {
-      padding: size * 0.14
-    }
-  }, React.createElement(AvatarGlyph, {
-    id: avatar
-  })))), onClick && React.createElement("span", {
-    className: "absolute -bottom-1 -right-1 w-6 h-6 flex items-center justify-center cut pointer-events-none",
-    style: {
-      '--cut': '5px',
-      background: 'var(--alt)',
-      color: '#06080a'
-    }
-  }, React.createElement(Pencil, {
-    size: 12,
-    strokeWidth: 2.6
-  })));
 }
 function AvatarEditor({
   onClose
@@ -5392,7 +4907,6 @@ function AvatarEditor({
   }));
   return React.createElement(Modal, {
     title: "\u0410\u0432\u0430\u0442\u0430\u0440",
-    code: "BIOMONITOR // AVATAR.SET",
     onClose: onClose,
     footer: React.createElement(Btn, {
       className: "flex-1",
@@ -5429,23 +4943,12 @@ function AvatarEditor({
     label: "\u0421\u0432\u043E\u0451 \u0444\u043E\u0442\u043E (\u0444\u0430\u0439\u043B \u0438\u043B\u0438 \u0441\u0441\u044B\u043B\u043A\u0430)"
   }, React.createElement(ImageInput, {
     noPreview: true,
+    aspect: 1,
     maxDim: 480,
     value: isPresetAvatar(s.avatar) ? '' : s.avatar,
     onChange: v => set({
       avatar: v || 'preset:m'
     })
-  })), !isPresetAvatar(s.avatar) && React.createElement("div", {
-    className: "px-3 py-1",
-    style: {
-      boxShadow: 'inset 0 0 0 1px rgba(255,255,255,.1)'
-    }
-  }, React.createElement(Toggle, {
-    on: s.avatarHolo,
-    onChange: v => set({
-      avatarHolo: v
-    }),
-    label: "\u0413\u043E\u043B\u043E\u0433\u0440\u0430\u0444\u0438\u0447\u0435\u0441\u043A\u0438\u0439 \u0444\u0438\u043B\u044C\u0442\u0440",
-    hint: "\u041E\u043A\u0440\u0430\u0448\u0438\u0432\u0430\u0435\u0442 \u0444\u043E\u0442\u043E \u0432 \u0446\u0432\u0435\u0442 \u0438\u043D\u0442\u0435\u0440\u0444\u0435\u0439\u0441\u0430 \u0441\u043E \u0441\u043A\u0430\u043D\u043B\u0430\u0439\u043D\u0430\u043C\u0438"
   })));
 }
 const TAG_COLORS = ['#FF4655', '#00F0FF', '#FCEE0A', '#59FF00', '#FF7A00', '#B98CF0', '#FF2E8C', '#FFFFFF'];
@@ -5454,13 +4957,11 @@ function useDirOps() {
     data,
     up,
     ask,
-    toast,
     undoable
   } = useApp();
   const addSection = async () => {
     const name = await ask({
       title: 'Новый раздел',
-      code: 'DIR.SECTIONS // ADD',
       input: true,
       placeholder: 'Например: САМОРАЗВИТИЕ',
       ok: 'Создать'
@@ -5479,9 +4980,8 @@ function useDirOps() {
     if (!s) return;
     const name = await ask({
       title: 'Переименовать раздел',
-      code: 'DIR.SECTIONS // RENAME',
       input: true,
-      value: s.name,
+      value: nice(s.name),
       ok: 'Сохранить'
     });
     if (name && name.trim()) up('sections', ss => ss.map(x => x.id === id ? {
@@ -5505,7 +5005,6 @@ function useDirOps() {
     const text = !ids.length ? `Раздел «${s.name}» пуст и будет удалён.` : other ? `В разделе «${s.name}» ${ids.length} ${plural(ids.length, 'миссия', 'миссии', 'миссий')}. Они будут перенесены в «${other.name}».` : `Вместе с разделом будут удалены ${ids.length} ${plural(ids.length, 'миссия', 'миссии', 'миссий')}.`;
     const ok = await ask({
       title: 'Удалить раздел?',
-      code: 'DIR.SECTIONS // DELETE',
       text,
       ok: 'Удалить',
       danger: true
@@ -5525,7 +5024,6 @@ function useDirOps() {
   const addTag = async () => {
     const name = await ask({
       title: 'Новый тег',
-      code: 'DIR.TAGS // ADD',
       input: true,
       placeholder: 'например: работа',
       ok: 'Создать'
@@ -5545,7 +5043,6 @@ function useDirOps() {
     if (!t) return;
     const name = await ask({
       title: 'Переименовать тег',
-      code: 'DIR.TAGS // RENAME',
       input: true,
       value: t.name,
       ok: 'Сохранить'
@@ -5564,7 +5061,6 @@ function useDirOps() {
     if (!t) return;
     const ok = await ask({
       title: 'Удалить тег?',
-      code: 'DIR.TAGS // DELETE',
       text: `Тег #${t.name} будет снят со всех записей дневника.`,
       ok: 'Удалить',
       danger: true
@@ -5589,28 +5085,6 @@ function useDirOps() {
     deleteTag
   };
 }
-function TriangleIcon({
-  collapsed
-}) {
-  return React.createElement("svg", {
-    width: "22",
-    height: "18",
-    viewBox: "0 0 22 18",
-    style: {
-      transform: collapsed ? 'rotate(-90deg)' : 'none',
-      transition: 'transform .2s',
-      filter: 'drop-shadow(0 0 4px var(--main))'
-    }
-  }, React.createElement("polygon", {
-    points: "2,2 20,2 11,16",
-    fill: "none",
-    style: {
-      stroke: 'var(--main)'
-    },
-    strokeWidth: "1.8",
-    strokeLinejoin: "round"
-  }));
-}
 function SectionHeader({
   name,
   count,
@@ -5618,7 +5092,7 @@ function SectionHeader({
   onToggle,
   onMenu
 }) {
-  if (UI.mono) return React.createElement("div", {
+  return React.createElement("div", {
     className: "flex items-center gap-1 pt-1"
   }, React.createElement("button", {
     type: "button",
@@ -5650,54 +5124,13 @@ function SectionHeader({
       transition: 'transform .2s'
     }
   })));
-  return React.createElement("div", {
-    className: "flex items-stretch"
-  }, React.createElement("div", {
-    className: "w-[4px] mr-1.5 shrink-0",
-    style: {
-      background: 'rgba(var(--main-rgb),.6)',
-      boxShadow: '0 0 8px rgba(var(--main-rgb),.5)'
-    }
-  }), React.createElement(Frame, {
-    cut: 16,
-    className: "flex-1 min-w-0",
-    color: "rgba(var(--main-rgb),.6)",
-    bg: "linear-gradient(90deg,rgba(42,20,46,.94),rgba(22,14,34,.94))"
-  }, React.createElement("div", {
-    className: "flex items-center"
-  }, React.createElement("button", {
-    type: "button",
-    onClick: onToggle,
-    className: "flex-1 flex items-center gap-2.5 pl-4 pr-2 py-3.5 text-left min-w-0"
-  }, React.createElement("span", {
-    className: "sec-title truncate"
-  }, name), React.createElement("span", {
-    className: "f-mono text-[11px] text-white/40 shrink-0"
-  }, "[", count, "]")), onMenu && React.createElement("button", {
-    type: "button",
-    "aria-label": "\u041C\u0435\u043D\u044E \u0440\u0430\u0437\u0434\u0435\u043B\u0430",
-    onClick: () => {
-      sfx();
-      onMenu();
-    },
-    className: "px-2 py-3 text-white/45"
-  }, React.createElement(MoreVertical, {
-    size: 18
-  })), onToggle && React.createElement("button", {
-    type: "button",
-    "aria-label": "\u0421\u0432\u0435\u0440\u043D\u0443\u0442\u044C",
-    onClick: onToggle,
-    className: "pr-4 pl-1 py-3"
-  }, React.createElement(TriangleIcon, {
-    collapsed: collapsed
-  })))));
 }
 function ArchiveHeader({
   count,
   open,
   onToggle
 }) {
-  if (UI.mono) return React.createElement("button", {
+  return React.createElement("button", {
     type: "button",
     onClick: onToggle,
     className: "mono-row w-full flex items-center gap-3 px-4 py-3.5 text-left"
@@ -5716,64 +5149,6 @@ function ArchiveHeader({
       transition: 'transform .2s'
     }
   }));
-  return React.createElement("div", {
-    className: "flex items-stretch"
-  }, React.createElement("div", {
-    className: "w-[4px] mr-1.5 shrink-0",
-    style: {
-      background: 'rgba(var(--alt-rgb),.55)',
-      boxShadow: '0 0 8px rgba(var(--alt-rgb),.45)'
-    }
-  }), React.createElement(Frame, {
-    cut: 16,
-    className: "flex-1 min-w-0",
-    color: "rgba(var(--alt-rgb),.55)",
-    bg: "repeating-linear-gradient(135deg,rgba(10,18,24,.95) 0 10px,rgba(14,24,32,.95) 10px 20px)"
-  }, React.createElement("button", {
-    type: "button",
-    onClick: onToggle,
-    className: "w-full flex items-center gap-3 pl-4 pr-4 py-3 text-left"
-  }, React.createElement(Database, {
-    size: 18,
-    className: "txt-alt shrink-0",
-    style: {
-      filter: 'drop-shadow(0 0 4px var(--alt))'
-    }
-  }), React.createElement("span", {
-    className: "min-w-0 flex-1"
-  }, React.createElement("span", {
-    className: "block text-[17px] font-bold tracking-[.06em] uppercase txt-alt glow-alt leading-tight"
-  }, "\u0410\u0440\u0445\u0438\u0432: \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u043D\u044B\u0435 \u043A\u043E\u043D\u0442\u0440\u0430\u043A\u0442\u044B"), React.createElement("span", {
-    className: "block micro mt-1",
-    style: {
-      color: 'rgba(var(--alt-rgb),.6)'
-    }
-  }, "ARCHIVE // CLOSED.CONTRACTS")), React.createElement("span", {
-    className: "cut shrink-0 f-orb font-black text-[14px] px-2 py-1",
-    style: {
-      '--cut': '5px',
-      color: '#06080a',
-      background: 'var(--alt)'
-    }
-  }, count), React.createElement("svg", {
-    width: "20",
-    height: "16",
-    viewBox: "0 0 22 18",
-    className: "shrink-0",
-    style: {
-      transform: open ? 'none' : 'rotate(-90deg)',
-      transition: 'transform .2s',
-      filter: 'drop-shadow(0 0 4px var(--alt))'
-    }
-  }, React.createElement("polygon", {
-    points: "2,2 20,2 11,16",
-    fill: "none",
-    style: {
-      stroke: 'var(--alt)'
-    },
-    strokeWidth: "1.8",
-    strokeLinejoin: "round"
-  })))));
 }
 function useMissionDrag(onDrop, onStart) {
   const [drag, setDrag] = useState(null);
@@ -6032,10 +5407,8 @@ function MissionRow({
     className: "block w-full text-left"
   }, React.createElement(Frame, {
     cut: 14,
-    color: open ? 'var(--sel2)' : m.done ? 'rgba(var(--alt-rgb),.3)' : 'rgba(var(--main-rgb),.42)',
-    bg: open ? 'linear-gradient(90deg,var(--sel1),var(--sel2))' : m.done ? 'repeating-linear-gradient(135deg,rgba(14,12,20,.96) 0 8px,rgba(20,17,28,.96) 8px 16px)' : undefined,
-    mc: open ? 'rgba(var(--alt-rgb),.55)' : undefined,
-    mb: open ? '#1C1C1E' : undefined
+    color: open ? 'rgba(var(--alt-rgb),.55)' : undefined,
+    bg: open ? '#1C1C1E' : undefined
   }, React.createElement("div", {
     className: "flex items-center gap-2 pl-2.5 pr-3 py-3"
   }, React.createElement(MissionBadge, {
@@ -6063,7 +5436,7 @@ function MissionRow({
   }, "NEW") : React.createElement("span", null), m.steps.length > 0 && React.createElement("span", {
     className: "f-mono text-[11px]",
     style: {
-      color: open && !UI.mono ? 'rgba(0,0,0,.6)' : 'rgba(255,255,255,.5)'
+      color: 'rgba(255,255,255,.5)'
     }
   }, done, "/", m.steps.length)))))));
 }
@@ -6090,14 +5463,10 @@ function MissionDetail({
   return React.createElement("div", {
     className: "ml-[38px] mt-1.5 mb-1"
   }, React.createElement(Frame, {
-    cut: 14,
-    color: "rgba(var(--main-rgb),.35)",
-    bg: "linear-gradient(180deg,rgba(16,8,14,.97),rgba(8,6,12,.97))"
+    cut: 14
   }, React.createElement("div", {
     className: "p-4"
   }, React.createElement("div", {
-    className: "micro deco mb-1"
-  }, archived ? 'ARCHIVE.RECORD' : 'MISSION.DATA', " // ", m.id.slice(-6).toUpperCase()), React.createElement("div", {
     className: "text-[22px] font-semibold tracking-wider uppercase txt-main glow-main leading-tight"
   }, nice(m.title)), archived && React.createElement("div", {
     className: "mt-2 flex flex-wrap items-center gap-2"
@@ -6125,7 +5494,7 @@ function MissionDetail({
   }, " [OPTIONAL]"))))), m.image && React.createElement("div", {
     className: "mt-4"
   }, React.createElement("div", {
-    className: `cut ${m.holo ? 'holo' : ''}`,
+    className: "cut",
     style: {
       '--cut': '14px',
       background: 'rgba(var(--main-rgb),.5)',
@@ -6171,7 +5540,7 @@ function MissionDetail({
     icon: RotateCcw,
     snd: "none",
     onClick: onResume
-  }, "\u0412\u043E\u0437\u043E\u0431\u043D\u043E\u0432\u0438\u0442\u044C \u043A\u043E\u043D\u0442\u0440\u0430\u043A\u0442"), React.createElement(Btn, {
+  }, "\u0412\u0435\u0440\u043D\u0443\u0442\u044C \u0432 \u0440\u0430\u0431\u043E\u0442\u0443"), React.createElement(Btn, {
     small: true,
     variant: "dangerGhost",
     icon: Trash2,
@@ -6233,7 +5602,7 @@ function DangerIcon({
     const h = 6 + i * 5,
       x = 2 + i * 8;
     const on = i < level;
-    if (UI.mono) return React.createElement("rect", {
+    return React.createElement("rect", {
       key: i,
       x: x + 0.5,
       y: 24 - h + 0.5,
@@ -6245,17 +5614,6 @@ function DangerIcon({
       style: {
         fill: on ? color : 'none',
         stroke: color
-      }
-    });
-    return React.createElement("polygon", {
-      key: i,
-      points: `${x + 3},${24 - h} ${x + 7},${24 - h} ${x + 4},24 ${x},24`,
-      strokeOpacity: on ? 1 : 0.35,
-      strokeWidth: "1",
-      style: {
-        fill: on ? color : 'none',
-        stroke: color,
-        filter: on ? `drop-shadow(0 0 3px ${color})` : 'none'
       }
     });
   }));
@@ -6310,7 +5668,6 @@ function MissionEditor({
   return React.createElement(Modal, {
     full: true,
     title: isNew ? 'Новая миссия' : 'Редактор миссии',
-    code: "JOURNAL // MISSION.EDIT",
     onClose: onClose,
     footer: React.createElement(React.Fragment, null, React.createElement(Btn, {
       variant: "ghost",
@@ -6336,7 +5693,7 @@ function MissionEditor({
   }, React.createElement("input", {
     className: "inp uppercase",
     value: m.title,
-    placeholder: "THE HEIST",
+    placeholder: "\u041D\u0430\u043F\u0440\u0438\u043C\u0435\u0440: \u0421\u0434\u0430\u0442\u044C \u043E\u0442\u0447\u0451\u0442",
     onChange: e => set({
       title: e.target.value
     })
@@ -6351,15 +5708,15 @@ function MissionEditor({
   }, data.sections.map(s => React.createElement("option", {
     key: s.id,
     value: s.id
-  }, s.name)))), React.createElement(Field, {
+  }, nice(s.name))))), React.createElement(Field, {
     label: "\u041F\u043E\u0434\u043F\u0438\u0441\u044C \u0441\u0442\u0430\u0442\u0443\u0441\u0430 / \u0432\u0430\u0436\u043D\u043E\u0441\u0442\u0438"
   }, React.createElement("input", {
-    className: "inp uppercase",
-    value: m.status,
+    className: "inp",
+    value: nice(m.status),
     onChange: e => set({
       status: e.target.value
     }),
-    placeholder: "DANGER: MODERATE"
+    placeholder: "\u0421\u043B\u043E\u0436\u043D\u043E\u0441\u0442\u044C: \u0441\u0440\u0435\u0434\u043D\u044F\u044F"
   }), React.createElement("div", {
     className: "flex gap-2 mt-2"
   }, DANGER_LEVELS.map((d, i) => {
@@ -6368,8 +5725,8 @@ function MissionEditor({
     return React.createElement("button", {
       key: d.status,
       type: "button",
-      title: d.status,
-      "aria-label": d.status,
+      title: nice(d.status),
+      "aria-label": nice(d.status),
       "aria-pressed": active,
       className: "cut flex-1 flex items-center justify-center py-2",
       style: {
@@ -6524,18 +5881,7 @@ function MissionEditor({
     onChange: e => set({
       imageCaption: e.target.value
     }),
-    placeholder: "AV"
-  })), React.createElement("div", {
-    className: "mb-4 px-3 py-1",
-    style: {
-      boxShadow: 'inset 0 0 0 1px rgba(255,255,255,.1)'
-    }
-  }, React.createElement(Toggle, {
-    on: m.holo,
-    onChange: v => set({
-      holo: v
-    }),
-    label: "\u0413\u043E\u043B\u043E\u0433\u0440\u0430\u0444\u0438\u0447\u0435\u0441\u043A\u0438\u0439 \u043A\u0440\u0430\u0441\u043D\u044B\u0439 \u0444\u0438\u043B\u044C\u0442\u0440"
+    placeholder: "\u041D\u0430\u043F\u0440\u0438\u043C\u0435\u0440: \u0421\u0445\u0435\u043C\u0430"
   }))), React.createElement(Field, {
     label: "\u041E\u043F\u0438\u0441\u0430\u043D\u0438\u0435"
   }, React.createElement("textarea", {
@@ -6595,8 +5941,7 @@ function ShardItem({
     kind: "shard"
   })), React.createElement(Frame, {
     cut: 14,
-    className: "flex-1 min-w-0",
-    color: "rgba(var(--main-rgb),.4)"
+    className: "flex-1 min-w-0"
   }, React.createElement("div", {
     className: "p-3 flex gap-3"
   }, s.image && React.createElement(Img, {
@@ -6643,7 +5988,6 @@ function ShardReader({
   return React.createElement(Modal, {
     full: true,
     title: s.title || 'Без названия',
-    code: "DATA SHARD // READ MODE",
     onClose: onClose,
     footer: React.createElement(React.Fragment, null, React.createElement(Btn, {
       variant: "dangerGhost",
@@ -6676,7 +6020,7 @@ function ShardReader({
     className: "text-white/35"
   }, "\u041F\u0443\u0441\u0442\u0430\u044F \u0437\u0430\u043F\u0438\u0441\u044C")), React.createElement("div", {
     className: "micro mt-8"
-  }, UI.mono ? '' : '// END OF SHARD · ', words, " ", plural(words, 'слово', 'слова', 'слов')));
+  }, words, " ", plural(words, 'слово', 'слова', 'слов')));
 }
 function ShardEditor({
   initial,
@@ -6713,7 +6057,6 @@ function ShardEditor({
   return React.createElement(Modal, {
     full: true,
     title: isNew ? 'Новая запись' : 'Редактор записи',
-    code: "DATA SHARD // WRITE",
     onClose: onClose,
     footer: React.createElement(React.Fragment, null, React.createElement(Btn, {
       variant: "ghost",
@@ -6812,6 +6155,7 @@ function MissionsScreen() {
     } catch (e) {}
   };
   const [q, setQ] = useState('');
+  useReveal(mode);
   const [openId, setOpenId] = useState(null);
   const [editM, setEditM] = useState(null);
   const [editS, setEditS] = useState(null);
@@ -6865,7 +6209,6 @@ function MissionsScreen() {
   const deleteMission = async m => {
     const ok = await ask({
       title: 'Удалить миссию?',
-      code: 'JOURNAL // DELETE',
       text: `«${m.title}» будет удалена вместе с привязанным таймером.`,
       ok: 'Удалить',
       danger: true
@@ -6898,7 +6241,7 @@ function MissionsScreen() {
       completedAt: new Date().toISOString()
     } : x));
     setOpenId(null);
-    toast('MISSION COMPLETE · контракт в архиве');
+    toast('Миссия завершена и перенесена в архив');
   };
   const resumeMission = m => {
     sfx('open');
@@ -6915,13 +6258,12 @@ function MissionsScreen() {
     } : x));
     setOpenId(m.id);
     const sec = data.sections.find(s => s.id === secId);
-    toast(`Контракт возобновлён${sec ? ` · ${sec.name}` : ''}`);
+    toast(`Миссия возвращена в работу${sec ? ` · ${nice(sec.name)}` : ''}`);
   };
   const purgeMission = async m => {
     const ok = await ask({
       title: 'Удалить навсегда?',
-      code: 'ARCHIVE // PURGE',
-      text: `Запись о контракте «${m.title}» будет стёрта из архива.`,
+      text: `Запись о миссии «${nice(m.title)}» будет стёрта из архива.`,
       ok: 'Удалить навсегда',
       danger: true
     });
@@ -6974,7 +6316,6 @@ function MissionsScreen() {
   const deleteShard = async s => {
     const ok = await ask({
       title: 'Удалить запись?',
-      code: 'DATA SHARD // ERASE',
       text: `«${s.title || 'Без названия'}» будет удалена.`,
       ok: 'Удалить',
       danger: true
@@ -7197,16 +6538,14 @@ function MissionsScreen() {
   return React.createElement("div", {
     className: "pb-8"
   }, wide ? React.createElement(React.Fragment, null, React.createElement(ScreenHeader, {
-    code: "PROTOCOL 4520-A48 // JOURNAL.EXE",
     title: "\u041C\u0438\u0441\u0441\u0438\u0438 \u0438 \u0436\u0443\u0440\u043D\u0430\u043B"
   }), React.createElement("div", {
     className: "desk-cols"
-  }, React.createElement("div", null, colHead(UI.mono ? Flag : Crosshair, 'Миссии', `${activeN} активных · ${doneN} завершено`), React.createElement("div", {
+  }, React.createElement("div", null, colHead(Flag, 'Миссии', `${activeN} активных · ${doneN} завершено`), React.createElement("div", {
     className: "px-4"
-  }, searchRow(true)), missionsBlock), React.createElement("div", null, colHead(UI.mono ? FileText : Cpu, 'Журнал', shardsSub), React.createElement("div", {
+  }, searchRow(true)), missionsBlock), React.createElement("div", null, colHead(FileText, 'Журнал', shardsSub), React.createElement("div", {
     className: "px-4"
   }, searchRow(false)), shardsBlock))) : React.createElement(React.Fragment, null, React.createElement(ScreenHeader, {
-    code: "PROTOCOL 4520-A48 // JOURNAL.EXE",
     title: mode === 'missions' ? 'Журнал миссий' : 'Журнал',
     sub: mode === 'missions' ? `${activeN} активных · ${doneN} завершено` : shardsSub
   }), React.createElement("div", {
@@ -7220,11 +6559,11 @@ function MissionsScreen() {
     options: [{
       v: 'missions',
       l: 'Миссии',
-      i: UI.mono ? Flag : Crosshair
+      i: Flag
     }, {
       v: 'shards',
       l: 'Журнал',
-      i: UI.mono ? FileText : Cpu
+      i: FileText
     }]
   }), searchRow(mode === 'missions')), mode === 'missions' ? missionsBlock : shardsBlock), sheetSection && React.createElement(Sheet, {
     title: `РАЗДЕЛ // ${sheetSection.name}`,
@@ -7323,7 +6662,7 @@ function ScoreBox({
 }) {
   const has = typeof score === 'number';
   const c = has ? SCORE_COLOR[score] : '#6a6a72';
-  if (UI.mono) return React.createElement("span", {
+  return React.createElement("span", {
     className: "shrink-0 flex items-center justify-center st-score",
     style: {
       width: size,
@@ -7334,36 +6673,6 @@ function ScoreBox({
       background: has ? alpha(c, 0.14) : 'rgba(255,255,255,.06)'
     }
   }, has ? score : '—');
-  return React.createElement("span", {
-    className: "cut shrink-0 flex items-center justify-center f-orb font-black",
-    style: {
-      '--cut': `${Math.round(size / 5)}px`,
-      width: size,
-      height: size,
-      fontSize: Math.round(size * 0.46),
-      color: c,
-      background: has ? alpha(c, 0.12) : 'rgba(255,255,255,.04)',
-      boxShadow: `inset 0 0 0 1.5px ${has ? c : 'rgba(255,255,255,.2)'}`,
-      textShadow: has ? `0 0 10px ${alpha(c, 0.6)}` : 'none'
-    }
-  }, has ? score : '—');
-}
-function SegBar({
-  avg,
-  color
-}) {
-  const on = avg == null ? 0 : Math.round(avg * 2);
-  return React.createElement("div", {
-    className: "seg-bar"
-  }, Array.from({
-    length: 10
-  }, (_, i) => React.createElement("i", {
-    key: i,
-    style: i < on ? {
-      background: color,
-      boxShadow: UI.mono ? 'none' : `0 0 6px ${color}`
-    } : undefined
-  })));
 }
 function CalendarView({
   sel,
@@ -7412,7 +6721,7 @@ function CalendarView({
   const todayRated = !!data.ratings[todayK];
   const col = avg != null ? ringColor(avg, s.thr) : '#6a6a72';
   const scored = rec ? Object.values(rec.scores).filter(v => typeof v.score === 'number').length : 0;
-  return React.createElement("div", null, UI.mono ? React.createElement("div", {
+  return React.createElement("div", null, React.createElement("div", {
     className: "px-4 mt-6 flex flex-col items-center text-center"
   }, React.createElement(AvatarSlot, {
     size: 84,
@@ -7438,51 +6747,14 @@ function CalendarView({
     }
   }, cap(dayStatus(avg, s.thr))), React.createElement("div", {
     className: "text-[12.5px] text-white/45 mt-0.5"
-  }, sel === todayK ? 'Сегодня · ' : '', fmtDay(sel), " \xB7 ", rec ? `${scored} ${plural(scored, 'оценка', 'оценки', 'оценок')}` : 'не оценён')) : React.createElement("div", {
-    className: "px-4 mt-4"
-  }, React.createElement(Frame, {
-    cut: 18,
-    color: "rgba(var(--main-rgb),.55)"
-  }, React.createElement("div", {
-    className: "p-4 flex items-center gap-4"
-  }, React.createElement(AvatarSlot, {
-    size: 88,
-    onClick: () => setAvEdit(true)
-  }), React.createElement("div", {
-    className: "min-w-0 flex-1"
-  }, React.createElement("div", {
-    className: "sec-title text-[18px]"
-  }, "\u0418\u0442\u043E\u0433\u0438 \u0434\u043D\u044F"), React.createElement("div", {
-    className: "flex items-baseline gap-1.5 mt-2"
-  }, React.createElement("span", {
-    className: "st-score text-[42px]",
-    style: {
-      color: col,
-      textShadow: avg != null ? `0 0 18px ${alpha(col, 0.55)}` : 'none'
-    }
-  }, avg != null ? avg.toFixed(1) : '—'), React.createElement("span", {
-    className: "st-score text-[17px] text-white/35"
-  }, "/ 5")), React.createElement("div", {
-    className: "f-mono text-[11px] tracking-[.14em] mt-1.5",
-    style: {
-      color: col
-    }
-  }, "\u0421\u0422\u0410\u0422\u0423\u0421: ", dayStatus(avg, s.thr)))), React.createElement("div", {
-    className: "px-4 pb-4"
-  }, React.createElement(SegBar, {
-    avg: avg,
-    color: col
-  }), React.createElement("div", {
-    className: "flex justify-between gap-2 mt-2 f-mono text-[10px] tracking-wider text-white/50"
-  }, React.createElement("span", null, sel === todayK ? 'СЕГОДНЯ · ' : '', fmtShort(sel)), React.createElement("span", null, rec ? `${scored} ${plural(scored, 'ОЦЕНКА', 'ОЦЕНКИ', 'ОЦЕНОК')}` : 'НЕ ОЦЕНЁН'))))), React.createElement("div", {
+  }, sel === todayK ? 'Сегодня · ' : '', fmtDay(sel), " \xB7 ", rec ? `${scored} ${plural(scored, 'оценка', 'оценки', 'оценок')}` : 'не оценён')), React.createElement("div", {
     className: "px-4 mt-4"
   }, React.createElement(Frame, {
     cut: 16,
-    color: "rgba(var(--main-rgb),.4)",
-    mc: "transparent",
-    mb: "transparent"
+    color: "transparent",
+    bg: "transparent"
   }, React.createElement("div", {
-    className: UI.mono ? 'py-3' : 'p-3'
+    className: "py-3"
   }, React.createElement("div", {
     className: "flex items-center justify-between gap-1 mb-3"
   }, React.createElement("div", {
@@ -7514,7 +6786,7 @@ function CalendarView({
   }, MONTHS[ym.m], " ", ym.y), React.createElement("div", {
     className: "micro mt-1",
     style: {
-      color: UI.mono ? '#8E8E93' : 'rgba(var(--alt-rgb),.7)'
+      color: '#8E8E93'
     }
   }, mAvg != null ? `СРЕДНЕЕ ЗА МЕСЯЦ · ${mAvg.toFixed(1)}` : 'НЕТ ОЦЕНОК')), React.createElement("div", {
     className: "flex gap-1"
@@ -7534,7 +6806,7 @@ function CalendarView({
     key: w,
     className: "f-mono text-[10px] tracking-widest uppercase pb-1",
     style: {
-      color: UI.mono ? '#636366' : 'rgba(var(--main-rgb),.65)'
+      color: '#636366'
     }
   }, w)), cells.map((d, i) => {
     if (!d) return React.createElement("div", {
@@ -7559,13 +6831,13 @@ function CalendarView({
     }), React.createElement(Ring, {
       avg: r ? r.avg : null,
       color: ringColor(r ? r.avg : null, s.thr),
-      size: UI.mono ? 40 : 38,
-      stroke: UI.mono ? 2.6 : 2.8,
+      size: 40,
+      stroke: 2.6,
       dashed: !!r && r.avg == null
     }), React.createElement("span", {
       className: "relative text-[15px] font-bold day-n",
       style: {
-        color: UI.mono ? future ? '#48484A' : r || isSel ? '#fff' : '#8E8E93' : future ? 'rgba(255,255,255,.22)' : isSel ? 'var(--main)' : r ? '#fff' : 'rgba(255,255,255,.6)'
+        color: future ? '#48484A' : r || isSel ? '#fff' : '#8E8E93'
       }
     }, d), isToday && React.createElement("span", {
       className: "day-today"
@@ -7576,10 +6848,10 @@ function CalendarView({
     key: c,
     className: "flex items-center gap-1"
   }, React.createElement("i", {
-    className: UI.mono ? 'w-2 h-2 rounded-full inline-block' : 'w-2.5 h-1.5 inline-block',
+    className: "w-2 h-2 rounded-full inline-block",
     style: {
       background: c,
-      boxShadow: UI.mono ? 'none' : `0 0 6px ${c}`
+      boxShadow: 'none'
     }
   }), "\u2265", Number(v).toFixed(1))))))), React.createElement("div", {
     className: "px-4 mt-4"
@@ -7617,8 +6889,7 @@ function DayDetail({
     count: entries.length
   }), fDay.length > 0 && React.createElement(Frame, {
     cut: 12,
-    className: "mt-2.5",
-    color: "rgba(var(--alt-rgb),.35)"
+    className: "mt-2.5"
   }, React.createElement("div", {
     className: "flex items-center gap-3 p-3"
   }, React.createElement(Brain, {
@@ -7639,8 +6910,7 @@ function DayDetail({
     const c = cardsById[cid];
     return React.createElement(Frame, {
       key: cid,
-      cut: 12,
-      color: "rgba(var(--main-rgb),.35)"
+      cut: 12
     }, React.createElement("div", {
       className: "flex items-center gap-3 p-3"
     }, React.createElement("div", {
@@ -7669,8 +6939,7 @@ function DayDetail({
     icon: Layers,
     title: "\u041D\u0435\u0442 \u043E\u0446\u0435\u043D\u043E\u043A"
   }), r.note && React.createElement(Frame, {
-    cut: 12,
-    color: "rgba(var(--alt-rgb),.35)"
+    cut: 12
   }, React.createElement("div", {
     className: "p-3"
   }, React.createElement("div", {
@@ -7695,89 +6964,19 @@ function HabitCardView({
   onEdit,
   onDelete
 }) {
-  if (UI.mono) {
-    const has = typeof score === 'number';
-    return React.createElement("div", {
-      className: "mono-card",
-      style: {
-        background: `linear-gradient(180deg, ${alpha(card.glow, 1)} 0%, ${alpha(card.glow, 0.45)} 30%, #000 62%)`
-      }
-    }, React.createElement("div", {
-      className: "flex justify-end gap-2 px-4 pt-4"
-    }, React.createElement(IconBtn, {
-      sm: true,
-      icon: Pencil,
-      onClick: onEdit,
-      title: "\u0420\u0435\u0434\u0430\u043A\u0442\u0438\u0440\u043E\u0432\u0430\u0442\u044C"
-    }), React.createElement(IconBtn, {
-      sm: true,
-      red: true,
-      icon: Trash2,
-      onClick: onDelete,
-      title: "\u0423\u0434\u0430\u043B\u0438\u0442\u044C"
-    })), React.createElement("div", {
-      className: "flex justify-center -mt-3"
-    }, React.createElement(Sticker, {
-      icon: card.icon,
-      color: card.iconColor,
-      frame: card.iconFrame,
-      size: 150
-    })), React.createElement("h3", {
-      className: "text-[30px] font-bold text-center mt-6 leading-tight px-4 text-white tracking-[-.02em]"
-    }, card.name), React.createElement("div", {
-      className: "text-center text-[12.5px] text-white/45 mt-1 px-4"
-    }, cap(schedText(card))), React.createElement("div", {
-      className: "mono-score mx-auto mt-4"
-    }, React.createElement("span", {
-      className: "st-score text-[44px] leading-none",
-      style: {
-        color: has ? SCORE_COLOR[score] : '#636366'
-      }
-    }, has ? score : '–'), React.createElement("span", {
-      className: "st-score text-[18px]",
-      style: {
-        color: '#636366'
-      }
-    }, "/ 5")), score === null && React.createElement("div", {
-      className: "text-center text-[12.5px] text-white/45 mt-2"
-    }, "\u041F\u0440\u043E\u043F\u0443\u0449\u0435\u043D\u043E \u0432 \u0432\u044B\u0431\u0440\u0430\u043D\u043D\u044B\u0439 \u0434\u0435\u043D\u044C"), React.createElement("div", {
-      className: "px-5 mt-6 pb-6"
-    }, React.createElement("div", {
-      className: "mono-crit head"
-    }, React.createElement("span", null, "\u041E\u0446\u0435\u043D\u043A\u0430"), React.createElement("span", null, "\u041A\u0440\u0438\u0442\u0435\u0440\u0438\u0438")), [5, 4, 3, 2, 1].map(n => React.createElement("div", {
-      key: n,
-      className: "mono-crit",
-      style: score === n ? {
-        background: alpha(SCORE_COLOR[n], 0.1),
-        borderRadius: 14
-      } : undefined
-    }, React.createElement("span", {
-      className: "st-score text-[24px]",
-      style: {
-        color: SCORE_COLOR[n]
-      }
-    }, n), React.createElement("span", {
-      className: "text-[14.5px] leading-snug px-1",
-      style: {
-        color: '#9A9AA0'
-      }
-    }, card.criteria[n] || '—')))));
-  }
-  return React.createElement(Frame, {
-    cut: 20,
-    color: alpha(card.glow, 1),
-    bg: `linear-gradient(180deg, ${alpha(card.glow, 0.95)} 0%, rgba(16,10,20,.97) 46%, rgba(8,7,12,.98) 100%)`
-  }, React.createElement("div", {
-    className: "relative"
-  }, React.createElement("div", {
-    className: "flex items-center justify-between px-4 pt-3"
-  }, React.createElement("span", {
-    className: "micro",
+  const {
+    data
+  } = useApp();
+  const tr = data.persona.traits.find(t => t.id === card.trait);
+  const trText = tr ? `${tr.name}${traitHero(tr, data.persona) ? ` · ${traitHero(tr, data.persona)}` : ''}` : '';
+  const has = typeof score === 'number';
+  return React.createElement("div", {
+    className: "mono-card",
     style: {
-      color: 'rgba(255,255,255,.55)'
+      background: `linear-gradient(180deg, ${alpha(card.glow, 1)} 0%, ${alpha(card.glow, 0.45)} 30%, #000 62%)`
     }
-  }, "CARD // ", card.id.slice(-6).toUpperCase()), React.createElement("div", {
-    className: "flex gap-2"
+  }, React.createElement("div", {
+    className: "flex justify-end gap-2 px-4 pt-4"
   }, React.createElement(IconBtn, {
     sm: true,
     icon: Pencil,
@@ -7789,71 +6988,58 @@ function HabitCardView({
     icon: Trash2,
     onClick: onDelete,
     title: "\u0423\u0434\u0430\u043B\u0438\u0442\u044C"
-  }))), React.createElement("div", {
-    className: "flex justify-center pt-3"
+  })), React.createElement("div", {
+    className: "flex justify-center -mt-3"
   }, React.createElement(Sticker, {
     icon: card.icon,
     color: card.iconColor,
     frame: card.iconFrame,
-    size: 118
+    size: 150
   })), React.createElement("h3", {
-    className: "text-[30px] font-bold text-center mt-4 leading-tight px-4 uppercase tracking-wide txt-main glow-main"
+    className: "text-[30px] font-bold text-center mt-6 leading-tight px-4 text-white tracking-[-.02em]"
   }, card.name), React.createElement("div", {
-    className: "text-center micro mt-1.5 px-4",
+    className: "text-center text-[12.5px] text-white/45 mt-1 px-4"
+  }, cap(schedText(card))), tr && React.createElement("div", {
+    className: "text-center text-[12.5px] font-semibold mt-1 px-4 truncate",
     style: {
-      color: 'rgba(var(--alt-rgb),.75)'
+      color: tr.color || '#fff'
     }
-  }, schedText(card)), React.createElement("div", {
-    className: "flex justify-center mt-4"
-  }, React.createElement("div", {
-    className: "cut flex items-baseline justify-center gap-1.5 px-8 py-3",
-    style: {
-      '--cut': '12px',
-      background: 'rgba(0,0,0,.5)',
-      boxShadow: 'inset 0 0 0 1px rgba(var(--main-rgb),.45)'
-    }
+  }, trText), React.createElement("div", {
+    className: "mono-score mx-auto mt-4"
   }, React.createElement("span", {
-    className: "st-score text-[40px]",
+    className: "st-score text-[44px] leading-none",
     style: {
-      color: typeof score === 'number' ? SCORE_COLOR[score] : '#6a6a72',
-      textShadow: typeof score === 'number' ? `0 0 16px ${alpha(SCORE_COLOR[score], 0.5)}` : 'none'
+      color: has ? SCORE_COLOR[score] : '#636366'
     }
-  }, typeof score === 'number' ? score : '—'), React.createElement("span", {
-    className: "st-score text-[16px] text-white/35"
-  }, "/ 5"))), score === null && React.createElement("div", {
-    className: "text-center micro mt-2"
-  }, "\u041F\u0420\u041E\u041F\u0423\u0429\u0415\u041D\u041E \u0412 \u0412\u042B\u0411\u0420\u0410\u041D\u041D\u042B\u0419 \u0414\u0415\u041D\u042C"), React.createElement("div", {
-    className: "px-4 mt-5 pb-5"
+  }, has ? score : '–'), React.createElement("span", {
+    className: "st-score text-[18px]",
+    style: {
+      color: '#636366'
+    }
+  }, "/ 5")), score === null && React.createElement("div", {
+    className: "text-center text-[12.5px] text-white/45 mt-2"
+  }, "\u041F\u0440\u043E\u043F\u0443\u0449\u0435\u043D\u043E \u0432 \u0432\u044B\u0431\u0440\u0430\u043D\u043D\u044B\u0439 \u0434\u0435\u043D\u044C"), React.createElement("div", {
+    className: "px-5 mt-6 pb-6"
   }, React.createElement("div", {
-    className: "crit-row",
-    style: {
-      paddingTop: 0
-    }
-  }, React.createElement("span", {
-    className: "lbl text-center",
-    style: {
-      marginBottom: 0
-    }
-  }, "\u041E\u0446\u0435\u043D\u043A\u0430"), React.createElement("span", {
-    className: "lbl",
-    style: {
-      marginBottom: 0
-    }
-  }, "\u041A\u0440\u0438\u0442\u0435\u0440\u0438\u0438")), [5, 4, 3, 2, 1].map(n => React.createElement("div", {
+    className: "mono-crit head"
+  }, React.createElement("span", null, "\u041E\u0446\u0435\u043D\u043A\u0430"), React.createElement("span", null, "\u041A\u0440\u0438\u0442\u0435\u0440\u0438\u0438")), [5, 4, 3, 2, 1].map(n => React.createElement("div", {
     key: n,
-    className: "crit-row",
+    className: "mono-crit",
     style: score === n ? {
-      background: alpha(SCORE_COLOR[n], 0.09),
-      boxShadow: `inset 3px 0 0 ${SCORE_COLOR[n]}`
+      background: alpha(SCORE_COLOR[n], 0.1),
+      borderRadius: 14
     } : undefined
-  }, React.createElement("div", {
-    className: "flex justify-center"
-  }, React.createElement(ScoreBox, {
-    score: n,
-    size: 34
-  })), React.createElement("div", {
-    className: "text-[14px] text-white/70 leading-snug pr-1 f-read"
-  }, card.criteria[n] || '—'))))));
+  }, React.createElement("span", {
+    className: "st-score text-[24px]",
+    style: {
+      color: SCORE_COLOR[n]
+    }
+  }, n), React.createElement("span", {
+    className: "text-[14.5px] leading-snug px-1",
+    style: {
+      color: '#9A9AA0'
+    }
+  }, card.criteria[n] || '—')))));
 }
 const CRIT_PH = {
   5: 'Идеальное выполнение',
@@ -7879,6 +7065,7 @@ function CardEditor({
   }));
   const isNew = !data.cards.some(x => x.id === c.id);
   const traits = data.persona.traits;
+  const linked = traits.some(t => t.id === c.trait) ? c.trait : '';
   const order = data.settings.weekStart === 1 ? [0, 1, 2, 3, 4, 5, 6] : [6, 0, 1, 2, 3, 4, 5];
   const toggleDay = d => set({
     days: c.days.includes(d) ? c.days.filter(x => x !== d) : [...c.days, d].sort((a, b) => a - b)
@@ -7902,7 +7089,6 @@ function CardEditor({
   return React.createElement(Modal, {
     full: true,
     title: isNew ? 'Новая карточка' : 'Редактор карточки',
-    code: "CATALOG // CARD.EDIT",
     onClose: onClose,
     footer: React.createElement(React.Fragment, null, React.createElement(Btn, {
       variant: "ghost",
@@ -7917,10 +7103,8 @@ function CardEditor({
   }, React.createElement(Frame, {
     cut: 14,
     className: "mb-5",
-    color: alpha(c.glow, 1),
-    bg: `linear-gradient(180deg, ${alpha(c.glow, 0.95)}, rgba(8,7,12,.97))`,
-    mc: "transparent",
-    mb: `linear-gradient(180deg, ${alpha(c.glow, 1)}, #000)`
+    color: "transparent",
+    bg: `linear-gradient(180deg, ${alpha(c.glow, 1)}, #000)`
   }, React.createElement("div", {
     className: "flex items-center gap-4 p-4"
   }, React.createElement(Sticker, {
@@ -7972,7 +7156,7 @@ function CardEditor({
     size: 30
   }), React.createElement("span", {
     className: "f-mono text-[9px] text-white/55 uppercase"
-  }, UI.mono ? TOON_FRAME_NAMES[v] : l))))), React.createElement(Field, {
+  }, TOON_FRAME_NAMES[v]))))), React.createElement(Field, {
     label: `Иконка · ${stickerLabel(c.icon)}`
   }, React.createElement("div", {
     className: "grid grid-cols-6 gap-1.5"
@@ -7999,9 +7183,9 @@ function CardEditor({
   })))), React.createElement("div", {
     className: "micro mt-2",
     style: {
-      color: UI.mono ? '#8E8E93' : 'rgba(var(--alt-rgb),.7)'
+      color: '#8E8E93'
     }
-  }, STICKERS.length, " \u0418\u041A\u041E\u041D\u041E\u041A \xB7 6 \u0420\u0410\u041C\u041E\u041A \xB7 \u041B\u042E\u0411\u041E\u0419 ", UI.mono ? '' : 'НЕОНОВЫЙ ', "\u0426\u0412\u0415\u0422"), React.createElement("div", {
+  }, STICKERS.length, " \u0418\u041A\u041E\u041D\u041E\u041A \xB7 6 \u0420\u0410\u041C\u041E\u041A \xB7 \u041B\u042E\u0411\u041E\u0419 \u0426\u0412\u0415\u0422"), React.createElement("div", {
     className: "flex gap-2 mt-2"
   }, React.createElement("input", {
     className: "inp flex-1 min-w-0",
@@ -8022,13 +7206,14 @@ function CardEditor({
   }, React.createElement("span", {
     className: "lbl"
   }, "\u0421\u0432\u043E\u044F \u043A\u0430\u0440\u0442\u0438\u043D\u043A\u0430-\u0441\u0442\u0438\u043A\u0435\u0440"), React.createElement(ImageInput, {
+    aspect: 1,
     maxDim: 360,
     value: c.icon.startsWith('url:') ? c.icon.slice(4) : '',
     onChange: v => set({
       icon: v ? `url:${v}` : 'st:star'
     })
   }))), React.createElement(Field, {
-    label: UI.mono ? 'Цвет стикера' : 'Неоновый цвет стикера'
+    label: "\u0426\u0432\u0435\u0442 \u0441\u0442\u0438\u043A\u0435\u0440\u0430"
   }, React.createElement(ColorRow, {
     value: c.iconColor,
     onChange: v => set({
@@ -8036,7 +7221,7 @@ function CardEditor({
     }),
     presets: ['#FCEE0A', '#00F0FF', '#FF4655', '#B98CF0', '#59FF00', '#FF7A00', '#FF2E8C', '#FFFFFF']
   })), React.createElement(Field, {
-    label: UI.mono ? 'Цвет фона карточки' : 'Цвет свечения карточки'
+    label: "\u0426\u0432\u0435\u0442 \u0444\u043E\u043D\u0430 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438"
   }, React.createElement(ColorRow, {
     value: c.glow,
     onChange: v => set({
@@ -8114,9 +7299,11 @@ function CardEditor({
   }), React.createElement("div", {
     className: "text-[12px] text-white/50 f-read leading-snug mt-2"
   }, WEIGHT_HINT[cardW(c)])), traits.length > 0 && React.createElement(Field, {
-    label: `Черта персоны${data.persona.name ? ` · ${data.persona.name}` : ''}`
+    label: "\u041A\u0430\u0440\u0442\u043E\u0447\u043A\u0430 \u043F\u0435\u0440\u0441\u043E\u043D\u044B"
   }, React.createElement("div", {
-    className: "flex flex-wrap gap-2"
+    className: "flex gap-2 overflow-x-auto noscb pt-1 pb-1"
+  }, React.createElement("div", {
+    className: `tc-pick ${!linked ? 'on' : ''}`
   }, React.createElement("button", {
     type: "button",
     onClick: () => {
@@ -8125,28 +7312,36 @@ function CardEditor({
         trait: ''
       });
     },
-    className: `tag cut ${!c.trait ? 'on' : ''}`,
+    className: "tc-none cut",
     style: {
-      '--tc': '#8E8E93',
-      '--cut': '6px'
+      '--cut': '7px'
     }
-  }, "\u0411\u0415\u0417 \u0427\u0415\u0420\u0422\u042B"), traits.map(t => React.createElement("button", {
+  }, React.createElement(X, {
+    size: 18
+  }), "\u0411\u0435\u0437 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438")), traits.map((t, i) => React.createElement("div", {
     key: t.id,
+    className: `tc-pick ${linked === t.id ? 'on' : ''}`
+  }, React.createElement("button", {
     type: "button",
+    className: "pf pf-mini cut block",
     onClick: () => {
       sfx();
       set({
         trait: t.id
       });
-    },
-    className: `tag cut ${c.trait === t.id ? 'on' : ''}`,
-    style: {
-      '--tc': t.color || '#fff',
-      '--cut': '6px'
     }
-  }, nice(t.name.toUpperCase())))), React.createElement("div", {
+  }, React.createElement(TraitFace, {
+    mini: true,
+    t: t,
+    i: i,
+    hero: traitHero(t, data.persona)
+  })), linked === t.id && React.createElement("span", {
+    className: "tc-pick-mark"
+  }, React.createElement(Check, {
+    size: 14
+  }))))), React.createElement("div", {
     className: "text-[12px] text-white/50 f-read leading-snug mt-2"
-  }, "\u041E\u0446\u0435\u043D\u043A\u0438 \u044D\u0442\u043E\u0439 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438 \u0438\u0434\u0443\u0442 \u0432 \u043F\u0440\u043E\u0433\u0440\u0435\u0441\u0441 \u0432\u044B\u0431\u0440\u0430\u043D\u043D\u043E\u0439 \u0447\u0435\u0440\u0442\u044B \u043D\u0430 \u044D\u043A\u0440\u0430\u043D\u0435 \xAB\u041F\u0435\u0440\u0441\u043E\u043D\u0430\xBB.")), React.createElement(Field, {
+  }, "\u041E\u0446\u0435\u043D\u043A\u0438 \u044D\u0442\u043E\u0439 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438 \u0437\u0430\u043F\u043E\u043B\u043D\u044F\u044E\u0442 \u043B\u0438\u043D\u0438\u044E \u0432\u044B\u0431\u0440\u0430\u043D\u043D\u043E\u0439 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438 \u043F\u0435\u0440\u0441\u043E\u043D\u044B \u0437\u0430 7 \u0434\u043D\u0435\u0439.")), React.createElement(Field, {
     label: "\u0422\u0430\u0431\u043B\u0438\u0446\u0430 \u043A\u0440\u0438\u0442\u0435\u0440\u0438\u0435\u0432 (5 \u2192 1)"
   }, [5, 4, 3, 2, 1].map(n => React.createElement("div", {
     key: n,
@@ -8211,7 +7406,6 @@ function CardCatalog({
   const del = async c => {
     const ok = await ask({
       title: 'Удалить карточку?',
-      code: 'CATALOG // DELETE',
       text: `«${c.name}» исчезнет из каталога. Прошлые оценки останутся в календаре.`,
       ok: 'Удалить',
       danger: true
@@ -8230,7 +7424,7 @@ function CardCatalog({
   }, "\u041A\u0430\u0442\u0430\u043B\u043E\u0433 \u043A\u0430\u0440\u0442\u043E\u0447\u0435\u043A"), React.createElement("div", {
     className: "micro mt-1",
     style: {
-      color: UI.mono ? '#8E8E93' : 'rgba(var(--alt-rgb),.7)'
+      color: '#8E8E93'
     }
   }, cards.length, " ", plural(cards.length, 'КАРТОЧКА', 'КАРТОЧКИ', 'КАРТОЧЕК'), " \xB7 \u0411\u0410\u041B\u041B\u042B \u0417\u0410 ", fmtShort(sel))), React.createElement("div", {
     className: "flex items-center gap-2 shrink-0"
@@ -8290,7 +7484,6 @@ function CardCatalog({
     onClose: () => setEdit(null)
   }), order && React.createElement(ReorderModal, {
     title: "\u041F\u043E\u0440\u044F\u0434\u043E\u043A \u043A\u0430\u0440\u0442\u043E\u0447\u0435\u043A",
-    code: "CATALOG // ORDER",
     list: order,
     setList: setOrder,
     onClose: () => setOrder(null),
@@ -8319,42 +7512,144 @@ function CardCatalog({
     className: "text-[12px] text-white/45 f-read mb-2"
   }, "\u0412 \u044D\u0442\u043E\u043C \u043F\u043E\u0440\u044F\u0434\u043A\u0435 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438 \u0438\u0434\u0443\u0442 \u0432 \u043A\u0430\u0442\u0430\u043B\u043E\u0433\u0435 \u0438 \u0432 \u0432\u0435\u0447\u0435\u0440\u043D\u0435\u0439 \u043E\u0446\u0435\u043D\u043A\u0435 \u0434\u043D\u044F.")));
 }
-const TRAIT_WEEKS = 4;
-function traitStats(data, endKey) {
-  const byCard = {};
-  data.cards.forEach(c => {
-    if (c.trait) byCard[c.id] = c.trait;
-  });
-  const end = parseKey(endKey),
-    acc = {};
+const TRAIT_DAYS = 7;
+const TRAIT_DONE = 4;
+const TRAIT_EMPTY = {
+  days: Array(TRAIT_DAYS).fill('off'),
+  done: 0,
+  plan: 0
+};
+function traitWeeks(data) {
+  const now = new Date(),
+    today = dKey(now),
+    out = {},
+    bound = {};
   data.persona.traits.forEach(t => {
-    acc[t.id] = Array.from({
-      length: TRAIT_WEEKS
-    }, () => []);
-  });
-  for (const [k, r] of Object.entries(data.ratings)) {
-    const diff = Math.round((end - parseKey(k)) / 86400000);
-    if (diff < 0 || diff >= TRAIT_WEEKS * 7) continue;
-    for (const [id, s] of Object.entries(r.scores || {})) {
-      const tid = byCard[id];
-      if (tid && acc[tid]) acc[tid][Math.floor(diff / 7)].push({
-        score: s.score,
-        w: s.w
-      });
-    }
-  }
-  return data.persona.traits.map(t => {
-    const weeks = acc[t.id].map(calcAvgW);
-    return {
-      t,
-      weeks,
-      cur: weeks[0],
-      cards: data.cards.filter(c => c.trait === t.id).length
+    out[t.id] = {
+      days: [],
+      done: 0,
+      plan: 0
     };
   });
+  data.cards.forEach(c => {
+    if (c.trait) bound[c.id] = c.trait;
+  });
+  for (let i = 0; i < TRAIT_DAYS; i++) {
+    const k = dKey(addDays(now, -i)),
+      by = {},
+      sched = {};
+    for (const [id, s] of Object.entries((data.ratings[k] || {}).scores || {})) {
+      const tid = s.tr || bound[id];
+      if (tid) (by[tid] = by[tid] || []).push(s);
+    }
+    activeCards(data.cards, k).forEach(c => {
+      if (c.trait) sched[c.trait] = true;
+    });
+    for (const [tid, w] of Object.entries(out)) {
+      const avg = by[tid] ? calcAvgW(by[tid]) : null;
+      const st = avg != null ? avg >= TRAIT_DONE ? 'on' : 'off' : by[tid] || !sched[tid] ? 'none' : k === today ? 'wait' : 'off';
+      w.days.push(st);
+      if (st === 'on') w.done++;
+      if (st !== 'none') w.plan++;
+    }
+  }
+  return out;
 }
-const pct5 = v => Math.round(v / 5 * 100);
-function PersonaEditor({
+const tcLum = hex => {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex || '');
+  if (!m) return 1;
+  const v = parseInt(m[1], 16),
+    ch = x => {
+      const c = x / 255;
+      return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+    };
+  return 0.2126 * ch(v >> 16) + 0.7152 * ch(v >> 8 & 255) + 0.0722 * ch(v & 255);
+};
+const traitBg = (t, i = 0) => {
+  const keys = Object.keys(TIMER_BGS).filter(k => k !== 'custom');
+  return t.bg || (t.img ? 'custom' : keys[i % keys.length]);
+};
+function TraitFace({
+  t,
+  i,
+  hero,
+  week = TRAIT_EMPTY,
+  links,
+  live,
+  mini
+}) {
+  const col = t.color || '#FFFFFF',
+    ac = tcLum(col) > 0.1 ? col : '#FFFFFF',
+    bg = traitBg(t, i);
+  const word = Math.max(1, ...(t.name || '').split(/\s+/).map(w => w.length));
+  const k = textK(t),
+    size = mini ? Math.min(13, 140 / word) : Math.min(15 * k, 145 / word);
+  return React.createElement(React.Fragment, null, bg === 'custom' && t.img ? (live || mini) && React.createElement(Img, {
+    src: t.img,
+    thumb: !!mini,
+    className: "pf-img"
+  }) : React.createElement(TimerBg, {
+    t: {
+      bg: bg === 'custom' ? 'smoke' : bg
+    },
+    live: live
+  }), React.createElement("div", {
+    className: "pf-vig"
+  }), React.createElement("div", {
+    className: "pf-vig",
+    style: {
+      background: `linear-gradient(180deg,transparent 42%,${alpha(col, 0.2)} 74%,rgba(0,0,0,.4) 100%)`
+    }
+  }), React.createElement("div", {
+    className: "pf-body",
+    style: {
+      '--k': k
+    }
+  }, React.createElement("div", {
+    className: "pf-hero",
+    style: {
+      color: ac,
+      textShadow: 'none'
+    }
+  }, hero || 'Персонаж'), React.createElement("div", {
+    className: "pf-name",
+    style: {
+      fontSize: `min(${size}cqw, ${size * 6}px, 17cqh)`
+    }
+  }, t.name || 'Характеристика'), !mini && t.maxim && React.createElement("div", {
+    className: "pf-maxim"
+  }, t.maxim), !mini && !!links && (links.length ? React.createElement("div", {
+    className: "pf-links"
+  }, links.map(c => React.createElement(Sticker, {
+    key: c.id,
+    icon: c.icon,
+    color: c.iconColor,
+    frame: c.iconFrame,
+    size: 26
+  }))) : React.createElement("div", {
+    className: "pf-maxim"
+  }, "\u041F\u0440\u0438\u0432\u044F\u0436\u0438 \u043A \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0435 \u0432 \u043A\u0430\u0442\u0430\u043B\u043E\u0433\u0435, \u0438 \u043B\u0438\u043D\u0438\u044F \u043D\u0430\u0447\u043D\u0451\u0442 \u0437\u0430\u043F\u043E\u043B\u043D\u044F\u0442\u044C\u0441\u044F")), !mini && React.createElement(React.Fragment, null, React.createElement("div", {
+    className: "pf-meta"
+  }, React.createElement("span", null, nice('СЕГОДНЯ')), React.createElement("span", {
+    className: "pf-count",
+    style: {
+      color: ac,
+      textShadow: 'none'
+    }
+  }, week.plan ? `${week.done}/${week.plan}` : '—'), React.createElement("span", null, nice('7 ДНЕЙ'))), React.createElement("div", {
+    className: "pf-line",
+    style: {
+      '--pc': ac
+    }
+  }, week.days.map((s, d) => React.createElement("i", {
+    key: d,
+    className: s
+  }))))));
+}
+function TraitEditor({
+  initial,
+  week,
+  onSaved,
   onClose
 }) {
   const {
@@ -8362,32 +7657,40 @@ function PersonaEditor({
     up,
     toast
   } = useApp();
-  const [p, setP] = useState(() => JSON.parse(JSON.stringify(data.persona)));
-  const setTrait = (id, patch) => setP(x => ({
-    ...x,
-    traits: x.traits.map(t => t.id === id ? {
-      ...t,
-      ...patch
-    } : t)
+  const [t, setT] = useState(() => ({
+    ...initial,
+    hero: traitHero(initial, data.persona),
+    bg: traitBg(initial, data.persona.traits.findIndex(x => x.id === initial.id))
   }));
+  const set = p => setT(x => ({
+    ...x,
+    ...p
+  }));
+  const exists = data.persona.traits.some(x => x.id === t.id);
+  const heroes = [...new Set(data.persona.traits.map(x => traitHero(x, data.persona)).filter(Boolean))];
   const save = () => {
-    const traits = p.traits.map(t => ({
+    const nt = {
       ...t,
+      hero: t.hero.trim(),
       name: t.name.trim(),
       maxim: (t.maxim || '').trim()
-    })).filter(t => t.name);
-    up('persona', {
-      name: p.name.trim(),
-      traits
-    });
+    };
+    if (!nt.hero || !nt.name) {
+      sfx('error');
+      toast('Укажи персонажа и характеристику');
+      return;
+    }
+    up('persona', p => ({
+      ...p,
+      traits: exists ? p.traits.map(x => x.id === nt.id ? nt : x) : [...p.traits, nt]
+    }));
     sfx('save');
-    toast('Персона сохранена');
-    onClose();
+    toast('Карточка персоны сохранена');
+    onSaved(nt.id);
   };
   return React.createElement(Modal, {
     full: true,
-    title: "\u041F\u0435\u0440\u0441\u043E\u043D\u0430",
-    code: "PERSONA // EDIT",
+    title: exists ? 'Карточка персоны' : 'Новая карточка персоны',
     onClose: onClose,
     footer: React.createElement(React.Fragment, null, React.createElement(Btn, {
       variant: "ghost",
@@ -8399,230 +7702,852 @@ function PersonaEditor({
       snd: "none",
       onClick: save
     }, "\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C"))
-  }, React.createElement(Field, {
-    label: "\u041E\u0431\u0440\u0430\u0437\u0435\u0446 (\u043D\u0430 \u043A\u043E\u0433\u043E \u0440\u0430\u0432\u043D\u044F\u044E\u0441\u044C)"
+  }, React.createElement("div", {
+    className: "pf pf-prev cut mx-auto mb-5"
+  }, React.createElement(TraitFace, {
+    t: t,
+    hero: t.hero,
+    week: week,
+    live: true
+  })), React.createElement(Field, {
+    label: "\u041F\u0435\u0440\u0441\u043E\u043D\u0430\u0436"
   }, React.createElement("input", {
     className: "inp",
-    value: p.name,
-    onChange: e => setP({
-      ...p,
-      name: e.target.value
+    list: "cj-heroes",
+    value: t.hero,
+    onChange: e => set({
+      hero: e.target.value
     }),
     placeholder: "\u041D\u0430\u043F\u0440\u0438\u043C\u0435\u0440: \u0414\u0436\u043E\u043D \u041C\u0430\u043A\u043A\u043B\u0435\u0439\u043D"
-  })), !p.traits.length && React.createElement(Btn, {
-    small: true,
-    variant: "dark",
-    className: "mb-4",
-    onClick: () => setP(MCCLANE())
-  }, "\u0417\u0430\u043F\u043E\u043B\u043D\u0438\u0442\u044C: \u0414\u0436\u043E\u043D \u041C\u0430\u043A\u043A\u043B\u0435\u0439\u043D"), p.traits.map((t, i) => React.createElement(Frame, {
-    key: t.id,
-    cut: 12,
-    className: "mb-4",
-    color: alpha(t.color || '#ffffff', 0.5)
-  }, React.createElement("div", {
-    className: "p-3"
-  }, React.createElement("div", {
-    className: "flex items-center gap-2"
+  }), React.createElement("datalist", {
+    id: "cj-heroes"
+  }, heroes.map(h => React.createElement("option", {
+    key: h,
+    value: h
+  })))), React.createElement(Field, {
+    label: "\u0425\u0430\u0440\u0430\u043A\u0442\u0435\u0440\u0438\u0441\u0442\u0438\u043A\u0430"
   }, React.createElement("input", {
-    className: "inp flex-1 min-w-0",
+    className: "inp",
     value: t.name,
-    onChange: e => setTrait(t.id, {
+    onChange: e => set({
       name: e.target.value
     }),
-    placeholder: "\u041D\u0430\u0437\u0432\u0430\u043D\u0438\u0435 \u0447\u0435\u0440\u0442\u044B"
-  }), React.createElement(IconBtn, {
-    icon: Trash2,
-    title: "\u0423\u0434\u0430\u043B\u0438\u0442\u044C \u0447\u0435\u0440\u0442\u0443",
-    onClick: () => setP(x => ({
-      ...x,
-      traits: x.traits.filter(y => y.id !== t.id)
+    placeholder: "\u041D\u0430\u043F\u0440\u0438\u043C\u0435\u0440: \u0423\u043F\u043E\u0440\u0441\u0442\u0432\u043E"
+  })), React.createElement(Field, {
+    label: "\u0424\u043E\u043D \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438"
+  }, React.createElement("div", {
+    className: "grid grid-cols-3 gap-2"
+  }, Object.entries(TIMER_BGS).map(([k, [name,, css]]) => React.createElement("button", {
+    key: k,
+    type: "button",
+    onClick: () => {
+      sfx();
+      set({
+        bg: k
+      });
+    },
+    className: "cut h-20 flex items-end p-2 text-left",
+    style: {
+      '--cut': '8px',
+      background: css,
+      boxShadow: t.bg === k ? 'inset 0 0 0 2px var(--alt)' : 'inset 0 0 0 1px rgba(255,255,255,.15)'
+    }
+  }, React.createElement("span", {
+    className: "text-[12px] font-semibold leading-tight text-white",
+    style: {
+      textShadow: '0 1px 3px #000'
+    }
+  }, name))))), t.bg === 'custom' && React.createElement(Field, {
+    label: "\u0421\u0432\u043E\u0451 \u0444\u043E\u0442\u043E \u0444\u043E\u043D\u0430"
+  }, React.createElement(ImageInput, {
+    aspect: "full",
+    value: t.img || '',
+    onChange: v => set({
+      img: v
+    }),
+    maxDim: 2560,
+    quality: 0.92
+  })), React.createElement(Field, {
+    label: "\u0420\u0430\u0437\u043C\u0435\u0440 \u0442\u0435\u043A\u0441\u0442\u0430"
+  }, React.createElement(Segmented, {
+    value: t.txt || 'm',
+    onChange: v => set({
+      txt: v
+    }),
+    accent: "var(--alt)",
+    options: TEXT_SIZES.map(([v, l]) => ({
+      v,
+      l
     }))
-  })), React.createElement("div", {
-    className: "mt-3"
+  })), React.createElement(Field, {
+    label: "\u0426\u0432\u0435\u0442 \u0430\u043A\u0446\u0435\u043D\u0442\u0430 \u0438 \u043B\u0438\u043D\u0438\u0438"
   }, React.createElement(ColorRow, {
     value: t.color,
-    onChange: v => setTrait(t.id, {
+    onChange: v => set({
       color: v
     }),
     presets: TRAIT_COLORS
-  })), React.createElement("textarea", {
-    className: "inp f-read mt-3",
+  })), React.createElement(Field, {
+    label: "\u0423\u0441\u0442\u0430\u043D\u043E\u0432\u043A\u0430"
+  }, React.createElement("textarea", {
+    className: "inp f-read",
     rows: 3,
     value: t.maxim || '',
-    onChange: e => setTrait(t.id, {
+    onChange: e => set({
       maxim: e.target.value
     }),
-    placeholder: "\u0423\u0441\u0442\u0430\u043D\u043E\u0432\u043A\u0430: \u0447\u0442\u043E \u0434\u0435\u043B\u0430\u043B \u0431\u044B \u043E\u0431\u0440\u0430\u0437\u0435\u0446"
-  }), React.createElement("div", {
-    className: "micro mt-2"
-  }, "\u0427\u0415\u0420\u0422\u0410 ", i + 1, " \u0418\u0417 ", p.traits.length)))), React.createElement(Btn, {
-    small: true,
-    variant: "dark",
-    icon: Plus,
-    onClick: () => setP(x => ({
-      ...x,
-      traits: [...x.traits, {
-        id: uid('tr'),
-        name: '',
-        color: TRAIT_COLORS[x.traits.length % TRAIT_COLORS.length],
-        maxim: ''
-      }]
-    }))
-  }, "\u0414\u043E\u0431\u0430\u0432\u0438\u0442\u044C \u0447\u0435\u0440\u0442\u0443"), React.createElement("div", {
-    className: "text-[12px] text-white/50 f-read leading-snug mt-3"
-  }, "\u041B\u0443\u0447\u0448\u0435 3\u20135 \u0447\u0435\u0440\u0442. \u041F\u0440\u0438\u0432\u044B\u0447\u043A\u0438 \u043F\u0440\u0438\u0432\u044F\u0437\u044B\u0432\u0430\u044E\u0442\u0441\u044F \u043A \u0447\u0435\u0440\u0442\u0430\u043C \u0432 \u0440\u0435\u0434\u0430\u043A\u0442\u043E\u0440\u0435 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438 (\u043F\u043E\u043B\u0435 \xAB\u0427\u0435\u0440\u0442\u0430 \u043F\u0435\u0440\u0441\u043E\u043D\u044B\xBB)."));
+    placeholder: "\u0427\u0442\u043E \u0431\u044B \u0441\u0434\u0435\u043B\u0430\u043B \u043F\u0435\u0440\u0441\u043E\u043D\u0430\u0436"
+  })), React.createElement("div", {
+    className: "text-[12px] text-white/50 f-read leading-snug"
+  }, "\u0414\u0435\u043D\u044C \u0437\u0430\u0441\u0447\u0438\u0442\u0430\u043D, \u0435\u0441\u043B\u0438 \u0441\u0440\u0435\u0434\u043D\u0438\u0439 \u0431\u0430\u043B\u043B \u043F\u0440\u0438\u0432\u044F\u0437\u0430\u043D\u043D\u044B\u0445 \u043A\u0430\u0440\u0442\u043E\u0447\u0435\u043A \u043D\u0435 \u043D\u0438\u0436\u0435 ", TRAIT_DONE, ". \u0414\u043D\u0438 \u0431\u0435\u0437 \u044D\u0442\u0438\u0445 \u043A\u0430\u0440\u0442\u043E\u0447\u0435\u043A \u0432 \u0440\u0430\u0441\u043F\u0438\u0441\u0430\u043D\u0438\u0438 \u0438 \u043F\u0440\u043E\u043F\u0443\u0441\u043A\u0438 \u043B\u0438\u043D\u0438\u044E \u043D\u0435 \u043F\u043E\u0440\u0442\u044F\u0442."));
 }
-function PersonaView() {
-  const {
-    data,
-    ask
-  } = useApp();
-  const [edit, setEdit] = useState(false);
-  const pr = data.persona,
-    name = pr.name || 'Образец';
-  const st = useMemo(() => traitStats(data, dKey(new Date())), [data.cards, data.ratings, data.persona]);
-  const vals = st.map(s => s.cur).filter(v => v != null);
-  const prevVals = st.map(s => s.weeks[1]).filter(v => v != null);
-  const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
-  const prevAvg = prevVals.length ? prevVals.reduce((a, b) => a + b, 0) / prevVals.length : null;
-  const delta = avg != null && prevAvg != null ? pct5(avg) - pct5(prevAvg) : null;
-  const spin = async () => {
-    const list = pr.traits.filter(t => t.maxim);
-    if (!list.length) return;
-    let i = Math.floor(Math.random() * list.length);
-    for (;;) {
-      const t = list[i];
-      const ok = await ask({
-        title: `${name}: ${t.name}`,
-        code: 'PERSONA // WWJD',
-        text: t.maxim,
-        ok: 'Понял',
-        cancel: list.length > 1 ? 'Другая' : false
-      });
-      if (ok === true || list.length < 2) return;
-      i = (i + 1) % list.length;
+function useDeck(count, onPage) {
+  const box = useRef(null);
+  const st = useRef({
+    pos: 0,
+    raf: 0,
+    drag: null,
+    count,
+    onPage
+  });
+  st.current.count = count;
+  st.current.onPage = onPage;
+  const paint = useCallback(() => {
+    const el = box.current,
+      s = st.current;
+    if (!el) return;
+    for (const c of el.children) {
+      const d = Number(c.dataset.i) - s.pos,
+        show = d > -1.05 && d < 2;
+      c.style.visibility = show ? 'visible' : 'hidden';
+      if (!show) continue;
+      const out = Math.max(0, -d),
+        back = clamp(d, 0, 1);
+      c.style.zIndex = s.count - Number(c.dataset.i);
+      c.style.transform = out ? `translate3d(${-out * 115}%,${out * 5}%,0) rotate(${-out * 9}deg) scale(${1 - out * 0.04})` : back ? `translate3d(0,${back * 3}%,0) scale(${1 - back * 0.08})` : 'none';
+      c.style.borderRadius = `${clamp((out + back) * 8, 0, 1) * 26}px`;
+      c.lastElementChild.style.opacity = back * 0.6;
+    }
+  }, []);
+  const go = useCallback(to => {
+    const s = st.current,
+      from = s.pos,
+      t0 = performance.now(),
+      dur = 240 + 160 * clamp(Math.abs(to - from), 0, 1);
+    cancelAnimationFrame(s.raf);
+    s.onPage(to);
+    const step = t => {
+      const p = clamp((t - t0) / dur, 0, 1);
+      s.pos = from + (to - from) * (1 - (1 - p) ** 3);
+      paint();
+      if (p < 1) s.raf = requestAnimationFrame(step);
+    };
+    s.raf = requestAnimationFrame(step);
+  }, [paint]);
+  useLayoutEffect(paint);
+  useEffect(() => () => cancelAnimationFrame(st.current.raf), []);
+  const down = e => {
+    if (e.button !== 0 || e.target.closest('button')) return;
+    const s = st.current;
+    cancelAnimationFrame(s.raf);
+    s.drag = {
+      id: e.pointerId,
+      x: e.clientX,
+      from: s.pos,
+      on: false,
+      lx: e.clientX,
+      lt: e.timeStamp,
+      v: 0
+    };
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch (err) {}
+  };
+  const move = e => {
+    const s = st.current,
+      g = s.drag;
+    if (!g || g.id !== e.pointerId) return;
+    const dx = e.clientX - g.x;
+    if (!g.on && Math.abs(dx) < 6) return;
+    g.on = true;
+    box.current.classList.add('drag');
+    const dt = e.timeStamp - g.lt;
+    if (dt > 0) {
+      g.v = 0.7 * ((e.clientX - g.lx) / dt) + 0.3 * g.v;
+      g.lx = e.clientX;
+      g.lt = e.timeStamp;
+    }
+    const max = s.count - 1,
+      p = g.from - dx / (box.current.clientWidth * 0.8);
+    s.pos = p < 0 ? p * 0.25 : p > max ? max + (p - max) * 0.25 : p;
+    paint();
+  };
+  const up = e => {
+    const s = st.current,
+      g = s.drag;
+    if (!g || g.id !== e.pointerId) return;
+    s.drag = null;
+    box.current.classList.remove('drag');
+    const flick = Math.abs(g.v) > 0.35 ? g.from - Math.sign(g.v) : Math.round(s.pos);
+    go(clamp(g.on ? flick : Math.round(g.from), 0, Math.max(0, s.count - 1)));
+  };
+  const jump = useCallback(i => {
+    const s = st.current;
+    cancelAnimationFrame(s.raf);
+    s.pos = i;
+    s.onPage(i);
+  }, []);
+  return {
+    box,
+    go,
+    jump,
+    bind: {
+      onPointerDown: down,
+      onPointerMove: move,
+      onPointerUp: up,
+      onPointerCancel: up
     }
   };
-  if (!pr.traits.length) return React.createElement("div", {
-    className: "px-4 pt-4"
-  }, React.createElement(Empty, {
-    icon: Brain,
-    title: "\u041F\u0435\u0440\u0441\u043E\u043D\u0430 \u043D\u0435 \u0437\u0430\u0434\u0430\u043D\u0430",
-    text: "\u0412\u044B\u0431\u0435\u0440\u0438 \u043E\u0431\u0440\u0430\u0437\u0435\u0446 \u0438 3\u20135 \u0435\u0433\u043E \u043A\u0430\u0447\u0435\u0441\u0442\u0432, \u043A\u043E\u0442\u043E\u0440\u044B\u0435 \u0445\u043E\u0447\u0435\u0448\u044C \u0440\u0430\u0437\u0432\u0438\u0442\u044C. \u041F\u0440\u0438\u0432\u044B\u0447\u043A\u0438 \u043F\u0440\u0438\u0432\u044F\u0436\u0443\u0442\u0441\u044F \u043A \u043D\u0438\u043C, \u0430 \u043F\u0440\u043E\u0433\u0440\u0435\u0441\u0441 \u043F\u043E\u043A\u0430\u0436\u0435\u0442, \u043A\u0430\u043A\u0430\u044F \u0447\u0435\u0440\u0442\u0430 \u0440\u0430\u0441\u0442\u0451\u0442."
-  }, React.createElement(Btn, {
-    icon: Plus,
-    snd: "open",
-    onClick: () => setEdit(true)
-  }, "\u0421\u043E\u0437\u0434\u0430\u0442\u044C \u043F\u0435\u0440\u0441\u043E\u043D\u0443")), edit && React.createElement(PersonaEditor, {
-    onClose: () => setEdit(false)
-  }));
-  return React.createElement("div", {
-    className: "px-4 pt-4"
+}
+const tableCard = n => UI.wide ? n <= 3 ? 270 : n <= 8 ? 220 : n <= 24 ? 180 : 150 : n === 1 ? 240 : n <= 4 ? 160 : 106;
+const idSeed = id => {
+  let h = 0;
+  for (const ch of id) h = h * 31 + ch.charCodeAt(0) | 0;
+  return Math.abs(h);
+};
+function TraitCard({
+  t,
+  i,
+  n,
+  hero,
+  week = TRAIT_EMPTY,
+  thumb,
+  onClick
+}) {
+  const col = t.color || '#FFFFFF',
+    photo = traitBg(t, i) === 'custom' && t.img;
+  const word = Math.max(1, ...(t.name || '').split(/\s+/).map(w => w.length));
+  return React.createElement("button", {
+    type: "button",
+    onClick: onClick,
+    "aria-label": `${t.name}, ${hero}`,
+    className: "tc",
+    style: {
+      '--tcl': tcLum(col) > 0.1 ? col : '#FFFFFF'
+    }
+  }, React.createElement("span", {
+    className: "tc-in"
+  }, photo ? React.createElement(Img, {
+    src: t.img,
+    thumb: thumb,
+    className: "tc-img"
+  }) : React.createElement("span", {
+    className: "tc-ph"
+  }, (hero || t.name || '?').trim().charAt(0).toUpperCase()), React.createElement("span", {
+    className: "tc-shade"
+  }), React.createElement("span", {
+    className: "tc-glare"
+  }), React.createElement("span", {
+    className: "tc-sheen"
+  }), React.createElement("span", {
+    className: "tc-foil"
+  }), React.createElement("span", {
+    className: "tc-top"
+  }, React.createElement("span", {
+    className: "tc-hero"
+  }, hero), React.createElement("span", {
+    className: "tc-name",
+    style: {
+      fontSize: `${Math.min(9.5, 116 / word)}cqw`
+    }
+  }, t.name)), React.createElement("span", {
+    className: "tc-bot"
+  }, React.createElement("span", {
+    className: "tc-line"
+  }, week.days.map((s, d) => React.createElement("i", {
+    key: d,
+    className: s
+  }))), React.createElement("span", {
+    className: "tc-meta"
+  }, React.createElement("span", null, "\u2116 ", pad(n)), React.createElement("b", null, week.plan ? `${week.done}/${week.plan}` : '—')))));
+}
+const touchOnly = () => {
+  try {
+    return window.matchMedia('(hover: none)').matches;
+  } catch (e) {
+    return false;
+  }
+};
+const HOLD_MS = 240,
+  OPEN_PX = 70;
+const TILT_DEG = 7.5;
+const CAM_FILL = 0.72,
+  CAM_TOP = 64;
+function useCardFocus(ref, onOpen, onFocus) {
+  const open = useRef(onOpen);
+  open.current = onOpen;
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const cur = {
+        x: 0,
+        y: 0
+      },
+      aim = {
+        x: 0,
+        y: 0
+      };
+    let tile = null,
+      raf = 0,
+      rest = null,
+      g = null,
+      hovered = null,
+      finger = false,
+      zoom = 1;
+    const unset = t => {
+      t.style.removeProperty('--tx');
+      t.style.removeProperty('--ty');
+      t.style.removeProperty('--cz');
+    };
+    const frame = () => {
+      raf = 0;
+      if (tile && !tile.isConnected) {
+        tile = null;
+        g = null;
+      }
+      if (!tile) return;
+      cur.x += (aim.x - cur.x) * 0.14;
+      cur.y += (aim.y - cur.y) * 0.14;
+      tile.style.setProperty('--tx', cur.x.toFixed(3));
+      tile.style.setProperty('--ty', cur.y.toFixed(3));
+      raf = requestAnimationFrame(frame);
+    };
+    const aimCam = () => {
+      const w = el.querySelector('.ptb-w');
+      if (!w || !touchOnly()) return;
+      el.classList.toggle('cam', !!tile);
+      const app = el.closest('.cj-root');
+      if (app) app.toggleAttribute('data-cam', !!tile);
+      if (!tile) {
+        w.style.transform = '';
+        zoom = 1;
+        return;
+      }
+      const fit = Math.min(el.clientWidth * CAM_FILL, (el.clientHeight - CAM_TOP) * 0.62 / 1.4);
+      zoom = clamp(fit / tile.offsetWidth, 1.25, 3);
+      tile.style.setProperty('--cz', zoom.toFixed(3));
+      const x = el.clientWidth / 2 - w.offsetLeft - (tile.offsetLeft + tile.offsetWidth / 2) * zoom;
+      const y = (el.clientHeight + CAM_TOP) / 2 - (w.offsetTop - el.scrollTop) - (tile.offsetTop + tile.offsetHeight / 2 - 6) * zoom;
+      w.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px) scale(${zoom.toFixed(3)})`;
+    };
+    const pick = t => {
+      if (t === tile) return;
+      if (tile) {
+        tile.classList.remove('lit');
+        unset(tile);
+      }
+      tile = t;
+      rest = null;
+      cur.x = 0;
+      cur.y = 0;
+      aim.x = 0;
+      aim.y = 0;
+      aimCam();
+      onFocus(t ? Number(t.dataset.i) : -1);
+      if (!t) return;
+      t.classList.add('lit');
+      sfx('tab');
+      if (!raf) raf = requestAnimationFrame(frame);
+    };
+    const tilt = e => {
+      if (!tile || finger || e.gamma == null || e.beta == null) return;
+      if (!rest) rest = {
+        g: e.gamma,
+        b: e.beta
+      };
+      aim.x = clamp((e.gamma - rest.g) / TILT_DEG, -1, 1);
+      aim.y = clamp((e.beta - rest.b) / TILT_DEG, -1, 1);
+    };
+    const lift = (t, dy) => {
+      if (dy == null) {
+        t.classList.remove('lift');
+        t.style.removeProperty('--lift');
+        return;
+      }
+      t.classList.add('lift');
+      t.style.setProperty('--lift', `${dy / zoom}px`);
+    };
+    const start = e => {
+      if (g) {
+        clearTimeout(g.timer);
+        if (g.up) lift(g.t, null);
+        g = null;
+      }
+      if (e.touches.length !== 1 || e.target.closest('button:not(.tc)')) return;
+      const p = e.touches[0],
+        t = e.target.closest('.tc-t');
+      g = {
+        t,
+        x: p.clientX,
+        y: p.clientY,
+        at: e.timeStamp,
+        had: !!t && t === tile,
+        held: false,
+        up: false,
+        timer: 0
+      };
+      if (t && !g.had) g.timer = setTimeout(() => {
+        if (g && g.t === t) {
+          g.held = true;
+          pick(t);
+        }
+      }, HOLD_MS);
+    };
+    const move = e => {
+      if (!g) return;
+      const p = e.touches[0],
+        dx = p.clientX - g.x,
+        dy = p.clientY - g.y,
+        far = Math.hypot(dx, dy) > 8;
+      if (!g.t || !g.held && !g.had) {
+        if (far) {
+          clearTimeout(g.timer);
+          g = null;
+        }
+        return;
+      }
+      if (!g.up && dy < -6 && Math.abs(dy) > Math.abs(dx)) g.up = true;
+      if (!g.up && !g.held) {
+        if (far) g = null;
+        return;
+      }
+      if (e.cancelable) e.preventDefault();
+      if (g.held) {
+        const r = g.t.getBoundingClientRect();
+        finger = true;
+        aim.x = clamp((p.clientX - r.left) / r.width * 2 - 1, -1, 1);
+        aim.y = clamp((p.clientY - r.top) / r.height * 2 - 1, -1, 1);
+      }
+      if (g.up) lift(g.t, Math.min(0, dy));
+    };
+    const end = e => {
+      if (!g) return;
+      const q = g,
+        dy = e.changedTouches[0] ? e.changedTouches[0].clientY - q.y : 0,
+        ms = Math.max(1, e.timeStamp - q.at);
+      const dx = e.changedTouches[0] ? e.changedTouches[0].clientX - q.x : 0;
+      g = null;
+      finger = false;
+      clearTimeout(q.timer);
+      if (q.up && (dy < -OPEN_PX || dy < -24 && dy / ms < -0.6)) {
+        open.current(Number(q.t.dataset.i), q.t.querySelector('.tc'));
+        return;
+      }
+      if (q.up) lift(q.t, null);
+      if (q.held) {
+        if (!q.had) pick(null);
+        return;
+      }
+      if (q.up || Math.hypot(dx, dy) > 8) return;
+      pick(q.t && q.t !== tile ? q.t : null);
+    };
+    const cancel = () => {
+      if (!g) return;
+      clearTimeout(g.timer);
+      if (g.up) lift(g.t, null);
+      if (g.held && !g.had) pick(null);
+      g = null;
+      finger = false;
+    };
+    const noMenu = e => {
+      if (e.target.closest('.tc-t')) e.preventDefault();
+    };
+    const drop = () => {
+      if (hovered) {
+        unset(hovered);
+        hovered = null;
+      }
+    };
+    const mouse = e => {
+      if (e.pointerType !== 'mouse') return;
+      const t = e.target.closest('.tc-t');
+      if (t !== hovered) drop();
+      if (!t) return;
+      const r = t.getBoundingClientRect();
+      hovered = t;
+      t.style.setProperty('--tx', ((e.clientX - r.left) / r.width * 2 - 1).toFixed(3));
+      t.style.setProperty('--ty', ((e.clientY - r.top) / r.height * 2 - 1).toFixed(3));
+    };
+    window.addEventListener('deviceorientation', tilt);
+    window.addEventListener('resize', aimCam);
+    el.addEventListener('touchstart', start, {
+      passive: true
+    });
+    el.addEventListener('touchmove', move, {
+      passive: false
+    });
+    el.addEventListener('touchend', end);
+    el.addEventListener('touchcancel', cancel);
+    el.addEventListener('contextmenu', noMenu);
+    el.addEventListener('pointermove', mouse);
+    el.addEventListener('pointerleave', drop);
+    return () => {
+      cancelAnimationFrame(raf);
+      if (g) clearTimeout(g.timer);
+      const app = document.querySelector('.cj-root');
+      if (app) app.removeAttribute('data-cam');
+      window.removeEventListener('deviceorientation', tilt);
+      window.removeEventListener('resize', aimCam);
+      el.removeEventListener('touchstart', start);
+      el.removeEventListener('touchmove', move);
+      el.removeEventListener('touchend', end);
+      el.removeEventListener('touchcancel', cancel);
+      el.removeEventListener('contextmenu', noMenu);
+      el.removeEventListener('pointermove', mouse);
+      el.removeEventListener('pointerleave', drop);
+    };
+  }, [ref]);
+}
+function PersonaTable({
+  list,
+  pr,
+  weeks,
+  onOpen,
+  onDeck,
+  onNew,
+  onOrder
+}) {
+  const box = useRef(null);
+  const touch = touchOnly();
+  const [pick, setPick] = useState('');
+  const heroes = useMemo(() => {
+    const m = new Map();
+    list.forEach(t => {
+      const h = traitHero(t, pr);
+      m.set(h, (m.get(h) || 0) + 1);
+    });
+    return [...m];
+  }, [list, pr]);
+  const hero = heroes.some(([h]) => h === pick) ? pick : '';
+  const shown = list.map((t, i) => ({
+    t,
+    i
+  })).filter(({
+    t
+  }) => !hero || traitHero(t, pr) === hero);
+  const many = shown.length > 24,
+    w = tableCard(shown.length);
+  const [focus, setFocus] = useState(-1);
+  useCardFocus(box, onOpen, setFocus);
+  return React.createElement(React.Fragment, null, React.createElement("div", {
+    ref: box,
+    className: "ptb noscb"
+  }, React.createElement("div", {
+    className: "ptb-w"
   }, React.createElement("div", {
     className: "flex items-center justify-between gap-3"
   }, React.createElement("div", {
     className: "min-w-0"
   }, React.createElement("div", {
-    className: "sec-title text-[18px] truncate"
-  }, name), React.createElement("div", {
+    className: "sec-title text-[18px]"
+  }, "\u041A\u043E\u043B\u043B\u0435\u043A\u0446\u0438\u044F"), React.createElement("div", {
     className: "micro mt-1",
     style: {
-      color: UI.mono ? '#8E8E93' : 'rgba(var(--alt-rgb),.7)'
+      color: '#8E8E93'
     }
-  }, "\u041F\u0420\u041E\u0413\u0420\u0415\u0421\u0421 \u0427\u0415\u0420\u0422 \xB7 7 \u0414\u041D\u0415\u0419")), React.createElement(Btn, {
+  }, list.length, " ", plural(list.length, 'КАРТОЧКА', 'КАРТОЧКИ', 'КАРТОЧЕК'), UI.wide ? ` · ЛИНИЯ ЗА ${TRAIT_DAYS} ДНЕЙ` : '')), React.createElement("div", {
+    className: "flex items-center gap-2 shrink-0"
+  }, list.length > 1 && React.createElement(IconBtn, {
+    icon: ArrowUpDown,
+    title: "\u041F\u043E\u0440\u044F\u0434\u043E\u043A \u043A\u0430\u0440\u0442\u043E\u0447\u0435\u043A",
+    onClick: onOrder
+  }), React.createElement(Btn, {
     small: true,
     variant: "dark",
-    icon: Pencil,
-    onClick: () => setEdit(true)
-  }, "\u0418\u0437\u043C\u0435\u043D\u0438\u0442\u044C")), React.createElement(Frame, {
-    cut: 14,
-    className: "mt-4",
-    color: "rgba(var(--main-rgb),.5)"
-  }, React.createElement("div", {
-    className: "flex items-center gap-4 p-4"
-  }, React.createElement("div", {
-    className: "relative w-16 h-16 shrink-0"
-  }, React.createElement(Ring, {
-    avg: avg,
-    color: avg != null ? ringColor(avg, data.settings.thr) : '#6a6a72',
-    size: 64,
-    stroke: 4
-  }), React.createElement("span", {
-    className: "absolute inset-0 flex items-center justify-center st-score text-[15px]",
-    style: {
-      color: avg != null ? ringColor(avg, data.settings.thr) : '#6a6a72'
-    }
-  }, avg != null ? `${pct5(avg)}%` : '—')), React.createElement("div", {
-    className: "min-w-0"
-  }, React.createElement("div", {
-    className: "sec-title text-[16px]"
-  }, "\u041F\u043E\u0445\u043E\u0436\u0435\u0441\u0442\u044C \u043D\u0430 \u043E\u0431\u0440\u0430\u0437\u0435\u0446"), React.createElement("div", {
-    className: "micro mt-1"
-  }, delta == null ? 'ПОКА НЕТ ДАННЫХ ЗА ПРОШЛУЮ НЕДЕЛЮ' : delta === 0 ? 'КАК И НЕДЕЛЮ НАЗАД' : `${delta > 0 ? '+' : ''}${delta}% К ПРОШЛОЙ НЕДЕЛЕ`)))), st.map(({
-    t,
-    weeks,
-    cur,
-    cards
-  }) => {
-    const col = t.color || '#fff',
-      hist = weeks.slice().reverse();
-    return React.createElement(Frame, {
-      key: t.id,
-      cut: 12,
-      className: "mt-3",
-      color: alpha(col, 0.5)
-    }, React.createElement("div", {
-      className: "p-3"
-    }, React.createElement("div", {
-      className: "flex items-center justify-between gap-2"
-    }, React.createElement("div", {
-      className: "m-title text-[18px] truncate",
-      style: {
-        color: col
-      }
-    }, t.name), React.createElement("div", {
-      className: "st-score text-[18px] shrink-0",
-      style: {
-        color: col
-      }
-    }, cur != null ? `${pct5(cur)}%` : '—')), React.createElement("div", {
-      className: "mt-2 h-2",
-      style: {
-        background: 'rgba(255,255,255,.1)',
-        borderRadius: UI.mono ? 99 : 0
-      }
-    }, React.createElement("div", {
-      className: "h-full",
-      style: {
-        width: `${cur != null ? pct5(cur) : 0}%`,
-        background: col,
-        borderRadius: UI.mono ? 99 : 0,
-        boxShadow: UI.mono ? 'none' : `0 0 8px ${col}`
-      }
-    })), React.createElement("div", {
-      className: "flex items-end gap-1.5 mt-3 h-8"
-    }, hist.map((v, i) => React.createElement("div", {
-      key: i,
-      className: "flex-1 flex items-end h-full",
-      title: v != null ? `${pct5(v)}%` : 'нет данных'
-    }, React.createElement("div", {
-      className: "w-full",
-      style: {
-        height: v != null ? `${Math.max(8, pct5(v))}%` : '4px',
-        background: v != null ? alpha(col, i === hist.length - 1 ? 1 : 0.45) : 'rgba(255,255,255,.12)',
-        borderRadius: UI.mono ? 4 : 0
-      }
-    })))), React.createElement("div", {
-      className: "micro mt-2"
-    }, cards ? `${cards} ${plural(cards, 'КАРТОЧКА', 'КАРТОЧКИ', 'КАРТОЧЕК')} · 4 НЕДЕЛИ, СТАРЫЕ СЛЕВА` : 'НЕТ КАРТОЧЕК · ПРИВЯЖИ В КАТАЛОГЕ')));
-  }), React.createElement(Btn, {
-    className: "w-full mt-4",
-    icon: Brain,
+    icon: Layers,
+    onClick: onDeck
+  }, "\u041B\u0438\u0441\u0442\u0430\u0442\u044C"), React.createElement(Btn, {
+    small: true,
+    icon: Plus,
     snd: "open",
-    onClick: spin
-  }, "\u0427\u0442\u043E \u0431\u044B \u0441\u0434\u0435\u043B\u0430\u043B ", name, "?"), edit && React.createElement(PersonaEditor, {
-    onClose: () => setEdit(false)
+    onClick: onNew
+  }, "\u041D\u043E\u0432\u0430\u044F"))), touch && React.createElement("div", {
+    className: "text-[12px] text-white/45 mt-2"
+  }, "\u041D\u0430\u0436\u043C\u0438 \u0438\u043B\u0438 \u0437\u0430\u0436\u043C\u0438 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0443 \u0438 \u0441\u043C\u0430\u0445\u043D\u0438 \u0435\u0451 \u0432\u0432\u0435\u0440\u0445, \u0447\u0442\u043E\u0431\u044B \u043E\u0442\u043A\u0440\u044B\u0442\u044C"), heroes.length > 1 && list.length > 6 && React.createElement("div", {
+    className: "flex gap-2 overflow-x-auto noscb mt-3 shrink-0"
+  }, [['', list.length], ...heroes].map(([h, c]) => React.createElement("button", {
+    key: h || 'all',
+    type: "button",
+    onClick: () => {
+      sfx();
+      setPick(h);
+    },
+    className: `tag cut ${hero === h ? 'on' : ''}`,
+    style: {
+      '--tc': '#F2F2F7',
+      '--cut': '6px'
+    }
+  }, h || 'Все', " \xB7 ", c))), React.createElement("div", {
+    className: `ptb-g ${many ? 'many' : ''}`,
+    "data-rise": "self",
+    style: {
+      '--w': `${w}px`
+    }
+  }, shown.map(({
+    t,
+    i
+  }, n) => {
+    const h = idSeed(t.id);
+    return React.createElement("div", {
+      key: t.id,
+      "data-i": i,
+      className: "tc-t",
+      style: {
+        '--a': `${h % 7 - 3}deg`,
+        '--y': `${h % 5 - 2}px`,
+        '--n': Math.min(n, 18)
+      }
+    }, React.createElement(TraitCard, {
+      t: t,
+      i: i,
+      n: i + 1,
+      hero: traitHero(t, pr),
+      week: weeks[t.id],
+      thumb: shown.length > 12 && focus !== i,
+      onClick: touch ? undefined : e => onOpen(i, e.currentTarget)
+    }));
+  })))), React.createElement("div", {
+    className: "ptb-vig",
+    "data-rise": "self"
   }));
+}
+function PersonaFeed() {
+  const {
+    data,
+    up,
+    ask,
+    undoable
+  } = useApp();
+  const [edit, setEdit] = useState(null);
+  const [page, setPage] = useState(0);
+  const [jump, setJump] = useState(null);
+  const [table, setTable] = useState(() => {
+    try {
+      return sessionStorage.getItem('cj.ptable') === '1';
+    } catch (e) {
+      return false;
+    }
+  });
+  const [zoom, setZoom] = useState('');
+  const [order, setOrder] = useState(null);
+  const root = useRef(null);
+  const pr = data.persona,
+    list = pr.traits;
+  const deck = useDeck(list.length, setPage);
+  const weeks = useMemo(() => traitWeeks(data), [data.cards, data.ratings, data.persona]);
+  useEffect(() => {
+    if (page > 0 && page >= list.length) deck.go(Math.max(0, list.length - 1));
+    if (!jump) return;
+    const i = list.findIndex(x => x.id === jump);
+    if (i >= 0) deck.go(i);
+    setJump(null);
+  }, [list, jump]);
+  const blank = () => ({
+    id: uid('tr'),
+    hero: '',
+    name: '',
+    color: TRAIT_COLORS[list.length % TRAIT_COLORS.length],
+    maxim: '',
+    img: '',
+    bg: traitBg({}, list.length)
+  });
+  const showTable = on => {
+    setTable(on);
+    try {
+      sessionStorage.setItem('cj.ptable', on ? '1' : '0');
+    } catch (e) {}
+  };
+  const openCard = (i, el) => {
+    const a = root.current.getBoundingClientRect(),
+      b = el.getBoundingClientRect();
+    sfx('open');
+    deck.jump(i);
+    setZoom(`${b.left + b.width / 2 - a.left}px ${b.top + b.height / 2 - a.top}px`);
+    showTable(false);
+  };
+  const del = async t => {
+    const ok = await ask({
+      title: 'Удалить карточку персоны?',
+      text: `«${t.name}» исчезнет из ленты и отвяжется от карточек каталога. Оценки в календаре останутся.`,
+      ok: 'Удалить',
+      danger: true
+    });
+    if (ok !== true) return;
+    undoable('Карточка персоны удалена', ['persona', 'cards'], () => {
+      up('persona', p => ({
+        ...p,
+        traits: p.traits.filter(x => x.id !== t.id)
+      }));
+      up('cards', cs => cs.map(c => c.trait === t.id ? {
+        ...c,
+        trait: ''
+      } : c));
+    });
+  };
+  return React.createElement("div", {
+    ref: root,
+    className: "relative h-full"
+  }, list.length && table ? React.createElement(PersonaTable, {
+    list: list,
+    pr: pr,
+    weeks: weeks,
+    onOpen: openCard,
+    onDeck: () => {
+      sfx();
+      setZoom('');
+      showTable(false);
+    },
+    onNew: () => setEdit(blank()),
+    onOrder: () => setOrder(list)
+  }) : list.length ? React.createElement("div", _extends({
+    ref: deck.box,
+    className: `pg ${zoom ? 'pg-in' : ''}`,
+    "data-rise": "whole",
+    style: zoom ? {
+      transformOrigin: zoom
+    } : undefined
+  }, deck.bind), list.map((t, i) => React.createElement("section", {
+    key: t.id,
+    "data-i": i,
+    className: "pg-s"
+  }, React.createElement("div", {
+    className: "pf"
+  }, React.createElement(TraitFace, {
+    t: t,
+    i: i,
+    hero: traitHero(t, pr),
+    week: weeks[t.id],
+    links: data.cards.filter(c => c.trait === t.id),
+    live: Math.abs(i - page) <= 1
+  }), React.createElement("div", {
+    className: "pf-rail flex flex-col items-center gap-3"
+  }, React.createElement("button", {
+    type: "button",
+    "aria-label": "\u0412\u0441\u0435 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438",
+    className: "mono-rail",
+    onClick: () => {
+      sfx('open');
+      showTable(true);
+    }
+  }, React.createElement(LayoutGrid, {
+    size: 19
+  })), React.createElement("button", {
+    type: "button",
+    "aria-label": "\u0418\u0437\u043C\u0435\u043D\u0438\u0442\u044C",
+    className: "mono-rail",
+    onClick: () => {
+      sfx('open');
+      setEdit(t);
+    }
+  }, React.createElement(Pencil, {
+    size: 19
+  })), React.createElement("button", {
+    type: "button",
+    "aria-label": "\u041D\u043E\u0432\u0430\u044F \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0430",
+    className: "mono-rail",
+    onClick: () => {
+      sfx('open');
+      setEdit(blank());
+    }
+  }, React.createElement(Plus, {
+    size: 22
+  })), list.length > 1 && React.createElement("button", {
+    type: "button",
+    "aria-label": "\u041F\u043E\u0440\u044F\u0434\u043E\u043A \u043A\u0430\u0440\u0442\u043E\u0447\u0435\u043A",
+    className: "mono-rail",
+    onClick: () => {
+      sfx('open');
+      setOrder(list);
+    }
+  }, React.createElement(ArrowUpDown, {
+    size: 19
+  })), React.createElement("button", {
+    type: "button",
+    "aria-label": "\u0423\u0434\u0430\u043B\u0438\u0442\u044C",
+    className: "mono-rail",
+    onClick: () => {
+      sfx();
+      del(t);
+    }
+  }, React.createElement(Trash2, {
+    size: 18
+  })))), React.createElement("div", {
+    className: "pg-dim"
+  })))) : React.createElement("section", {
+    className: "tk flex items-center justify-center",
+    "data-rise": "whole"
+  }, React.createElement(TimerBg, {
+    t: {
+      bg: 'smoke'
+    },
+    live: true
+  }), React.createElement("div", {
+    className: "relative"
+  }, React.createElement(Empty, {
+    icon: Layers,
+    title: "\u041A\u043E\u043B\u043B\u0435\u043A\u0446\u0438\u044F \u043F\u0443\u0441\u0442\u0430",
+    text: "\u0421\u043E\u0437\u0434\u0430\u0439 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0443: \u043E\u0434\u0438\u043D \u043F\u0435\u0440\u0441\u043E\u043D\u0430\u0436 \u0438 \u043E\u0434\u043D\u0430 \u0435\u0433\u043E \u0445\u0430\u0440\u0430\u043A\u0442\u0435\u0440\u0438\u0441\u0442\u0438\u043A\u0430. \u041F\u0440\u0438\u0432\u044F\u0436\u0438 \u0435\u0451 \u043A \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0435 \u043A\u0430\u0442\u0430\u043B\u043E\u0433\u0430, \u0438 \u043B\u0438\u043D\u0438\u044F \u043F\u043E\u043A\u0430\u0436\u0435\u0442, \u043A\u0430\u043A \u0442\u044B \u0434\u0435\u0440\u0436\u0438\u0448\u044C\u0441\u044F 7 \u0434\u043D\u0435\u0439."
+  }, React.createElement(Btn, {
+    icon: Plus,
+    snd: "open",
+    onClick: () => setEdit(blank())
+  }, "\u0421\u043E\u0437\u0434\u0430\u0442\u044C \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0443")))), list.length > 1 && !table && React.createElement("div", {
+    className: "pg-dots"
+  }, list.length > 14 ? React.createElement("span", null, page + 1, " / ", list.length) : list.map((t, i) => React.createElement("i", {
+    key: t.id,
+    style: {
+      width: i === page ? 22 : 8,
+      background: i === page ? '#fff' : 'rgba(255,255,255,.35)',
+      boxShadow: i === page ? '0 0 8px #fff' : 'none'
+    }
+  }))), edit && React.createElement(TraitEditor, {
+    initial: edit,
+    week: weeks[edit.id],
+    onSaved: id => {
+      setEdit(null);
+      setJump(id);
+    },
+    onClose: () => setEdit(null)
+  }), order && React.createElement(ReorderModal, {
+    title: "\u041F\u043E\u0440\u044F\u0434\u043E\u043A \u043A\u0430\u0440\u0442\u043E\u0447\u0435\u043A",
+    list: order,
+    setList: setOrder,
+    onClose: () => setOrder(null),
+    onSave: () => {
+      const id = (list[page] || {}).id;
+      up('persona', p => ({
+        ...p,
+        traits: byOrder(p.traits, order)
+      }));
+      sfx('save');
+      setOrder(null);
+      setJump(id);
+    },
+    row: t => React.createElement(React.Fragment, null, React.createElement("span", {
+      className: "w-1.5 h-9 shrink-0 rounded-[3px]",
+      style: {
+        background: t.color || '#fff'
+      }
+    }), React.createElement("span", {
+      className: "min-w-0"
+    }, React.createElement("span", {
+      className: "block text-[15px] font-semibold truncate"
+    }, t.name), React.createElement("span", {
+      className: "block text-[12px] text-white/45 truncate"
+    }, traitHero(t, pr))))
+  }, React.createElement("div", {
+    className: "text-[12px] text-white/45 f-read mb-2"
+  }, "\u0412 \u044D\u0442\u043E\u043C \u043F\u043E\u0440\u044F\u0434\u043A\u0435 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438 \u043B\u0435\u0436\u0430\u0442 \u043D\u0430 \u0441\u0442\u043E\u043B\u0435 \u0438 \u0438\u0434\u0443\u0442 \u0432 \u043B\u0435\u043D\u0442\u0435.")));
 }
 function StatsScreen({
   openRate
@@ -8635,16 +8560,41 @@ function StatsScreen({
     }
   });
   const [sel, setSel] = useState(() => dKey(new Date()));
+  const prevTab = useRef(tab),
+    side = useRef(null);
   const pick = v => {
+    prevTab.current = tab;
     setTab(v);
     try {
       sessionStorage.setItem('cj.stab', v);
     } catch (e) {}
   };
+  useReveal(tab, () => tab !== 'persona' && prevTab.current !== 'persona' ? side.current : null);
+  if (tab === 'persona') return React.createElement("div", {
+    className: "absolute inset-0",
+    "data-rise": "root"
+  }, React.createElement(PersonaFeed, null), React.createElement("div", {
+    className: "pf-tabs"
+  }, React.createElement(Segmented, {
+    value: tab,
+    onChange: pick,
+    options: [{
+      v: 'cal',
+      l: UI.wide ? 'Выбранный день' : 'Календарь',
+      i: CalendarDays
+    }, {
+      v: 'cards',
+      l: 'Каталог',
+      i: Layers
+    }, {
+      v: 'persona',
+      l: 'Персона',
+      i: Brain
+    }]
+  })));
   if (UI.wide) return React.createElement("div", {
     className: "pb-8"
   }, React.createElement(ScreenHeader, {
-    code: "BIOMONITOR 7.2 // DAILY.LOG",
     title: "\u0421\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043A\u0430 \u0434\u043D\u044F",
     sub: "\u0418\u0442\u043E\u0433\u0438, \u043A\u043E\u043B\u044C\u0446\u0430 \u043F\u0440\u043E\u0433\u0440\u0435\u0441\u0441\u0430 \u0438 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438 \u043F\u0440\u0438\u0432\u044B\u0447\u0435\u043A"
   }), React.createElement("div", {
@@ -8654,7 +8604,9 @@ function StatsScreen({
     setSel: setSel,
     openRate: openRate,
     noDetail: true
-  })), React.createElement("div", null, React.createElement("div", {
+  })), React.createElement("div", {
+    ref: side
+  }, React.createElement("div", {
     className: "px-4 mt-4"
   }, React.createElement(Segmented, {
     value: tab,
@@ -8675,13 +8627,12 @@ function StatsScreen({
   })), tab === 'cal' ? React.createElement(DayDetail, {
     k: sel,
     openRate: openRate
-  }) : tab === 'persona' ? React.createElement(PersonaView, null) : React.createElement(CardCatalog, {
+  }) : React.createElement(CardCatalog, {
     sel: sel
   }))));
   return React.createElement("div", {
     className: "pb-8"
   }, React.createElement(ScreenHeader, {
-    code: "BIOMONITOR 7.2 // DAILY.LOG",
     title: "\u0421\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043A\u0430 \u0434\u043D\u044F",
     sub: "\u0418\u0442\u043E\u0433\u0438, \u043A\u043E\u043B\u044C\u0446\u0430 \u043F\u0440\u043E\u0433\u0440\u0435\u0441\u0441\u0430 \u0438 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438 \u043F\u0440\u0438\u0432\u044B\u0447\u0435\u043A"
   }), React.createElement("div", {
@@ -8706,13 +8657,12 @@ function StatsScreen({
     sel: sel,
     setSel: setSel,
     openRate: openRate
-  }) : tab === 'persona' ? React.createElement(PersonaView, null) : React.createElement(CardCatalog, {
+  }) : React.createElement(CardCatalog, {
     sel: sel
   }));
 }
 function RateModal({
   date,
-  source,
   onClose
 }) {
   const {
@@ -8755,7 +8705,6 @@ function RateModal({
     if (pending) {
       const ok = await ask({
         title: 'Не все карточки оценены',
-        code: 'PROTOCOL // CHECK',
         text: `Без оценки: ${pending}. Они не попадут в средний балл.`,
         ok: 'Сохранить так'
       });
@@ -8767,7 +8716,10 @@ function RateModal({
       if (v !== undefined) sc[c.id] = {
         score: v === 'skip' ? null : v,
         name: c.name,
-        w: cardW(c)
+        w: cardW(c),
+        ...(c.trait ? {
+          tr: c.trait
+        } : {})
       };
     });
     const rec = {
@@ -8815,11 +8767,9 @@ function RateModal({
     toast(`День оценён: ${rec.avg != null ? rec.avg.toFixed(1) : '—'} / 5`);
     onClose();
   };
-  const head = source === 'evening' ? 'ВЕЧЕРНЕЕ ОКНО ОЦЕНКИ' : source === 'retro' ? 'РЕТРОСПЕКТИВНАЯ ОЦЕНКА' : 'ПРОТОКОЛ ОЦЕНКИ ДНЯ';
   return React.createElement(Modal, {
     full: true,
     title: `Итоги · ${fmtDay(date)}`,
-    code: `${head} // ${date}`,
     onClose: onClose,
     footer: cards.length ? React.createElement(React.Fragment, null, React.createElement(Btn, {
       variant: "ghost",
@@ -8836,8 +8786,7 @@ function RateModal({
     }, "\u0417\u0430\u043A\u0440\u044B\u0442\u044C")
   }, cards.length ? React.createElement(React.Fragment, null, React.createElement(Frame, {
     cut: 14,
-    className: "mb-4",
-    color: "rgba(var(--main-rgb),.5)"
+    className: "mb-4"
   }, React.createElement("div", {
     className: "p-3"
   }, React.createElement("div", {
@@ -8873,10 +8822,8 @@ function RateModal({
       key: c.id,
       cut: 16,
       className: "mb-4",
-      color: alpha(c.glow, 1),
-      bg: `linear-gradient(180deg, ${alpha(c.glow, 0.75)}, rgba(10,8,14,.96) 62%)`,
-      mc: "transparent",
-      mb: `linear-gradient(180deg, ${alpha(c.glow, 0.95)}, #111113 55%)`
+      color: "transparent",
+      bg: `linear-gradient(180deg, ${alpha(c.glow, 0.95)}, #111113 55%)`
     }, React.createElement("div", {
       className: "flex items-center gap-3 p-3"
     }, React.createElement(Sticker, {
@@ -8966,229 +8913,12 @@ const TIMER_FONTS = {
   rajdhani: ["'Rajdhani','Exo 2',sans-serif", 'Rajdhani'],
   mono: ["'Share Tech Mono','JetBrains Mono',monospace", 'Mono']
 };
-const TIMER_BGS = [['smoke', 'Багровый дым', 'radial-gradient(circle at 30% 30%,#c0134f,#3a0a2e 55%,#120818)'], ['grid', 'Кибер-сетка', 'linear-gradient(180deg,#12021f,#4a0a4f 55%,#00444d)'], ['city', 'Неоновый город', 'linear-gradient(180deg,#0b0221,#3a0a3f 60%,#ff4655)'], ['matrix', 'Матрица', 'linear-gradient(180deg,#020a04,#0a3a14)'], ['aurora', 'Северное сияние', 'linear-gradient(180deg,#020814,#0b5a4a 40%,#3a1a6e 72%,#01040a)'], ['space', 'Космос', 'radial-gradient(circle at 25% 85%,#ff7ab6 0,#7a2fbf 16%,transparent 32%),radial-gradient(ellipse at 70% 25%,#3b1a6e,transparent 55%),#03020a'], ['custom', 'Своё фото', 'repeating-linear-gradient(45deg,#1c1c1c 0 6px,#2c2c2c 6px 12px)']];
 const TIMER_LAYOUTS = [['classic', 'Классика'], ['flip', 'Табло'], ['ring', 'Кольцо'], ['units', 'Блоки'], ['poster', 'Постер']];
 const timerLayout = t => TIMER_LAYOUTS.some(([k]) => k === t.layout) ? t.layout : 'classic';
+const TEXT_SIZES = [['s', 'Мелкий', 0.82], ['m', 'Обычный', 1], ['l', 'Крупный', 1.18]];
+const textK = x => (TEXT_SIZES.find(([k]) => k === x.txt) || [0, 0, 1])[2];
 const MILESTONES = [7, 14, 30, 60, 90, 100, 180, 365, 500, 730, 1000, 1500, 2000, 3650];
-const MATRIX_CHARS = 'ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎ0123456789Z:=*+<>';
-function SmokeBG({
-  seed = 4
-}) {
-  const id = useMemo(() => uid('smk'), []);
-  return React.createElement("div", {
-    className: "absolute inset-0 overflow-hidden",
-    style: {
-      background: '#140818'
-    }
-  }, React.createElement("svg", {
-    className: "absolute inset-0 w-full h-full smoke-drift",
-    viewBox: "0 0 400 720",
-    preserveAspectRatio: "xMidYMid slice"
-  }, React.createElement("filter", {
-    id: id,
-    x: "0",
-    y: "0",
-    width: "100%",
-    height: "100%",
-    colorInterpolationFilters: "sRGB"
-  }, React.createElement("feTurbulence", {
-    type: "fractalNoise",
-    baseFrequency: "0.0055 0.008",
-    numOctaves: "5",
-    seed: seed
-  }), React.createElement("feColorMatrix", {
-    type: "matrix",
-    values: "2.6 0 0 0 -0.92  0.2 0 0 0 -0.06  0.8 0 0 0 -0.16  0 0 0 0 1"
-  })), React.createElement("rect", {
-    width: "400",
-    height: "720",
-    filter: `url(#${id})`
-  })), React.createElement("div", {
-    className: "absolute inset-0",
-    style: {
-      background: 'radial-gradient(ellipse at 50% 45%,transparent 30%,rgba(10,4,20,.55) 100%)'
-    }
-  }));
-}
-function GridBG() {
-  return React.createElement("div", {
-    className: "absolute inset-0 overflow-hidden",
-    style: {
-      background: 'linear-gradient(180deg,#07010f 0%,#1d0330 38%,#3d0748 57%,#07010d 100%)'
-    }
-  }, React.createElement("div", {
-    className: "grid-sun"
-  }), React.createElement("div", {
-    className: "absolute left-0 right-0",
-    style: {
-      top: '57%',
-      height: 2,
-      background: '#ff2e8c',
-      boxShadow: '0 0 22px 2px #ff2e8c'
-    }
-  }), React.createElement("div", {
-    className: "grid-floor",
-    style: {
-      top: '57%',
-      bottom: 'auto',
-      height: '62%'
-    }
-  }));
-}
-function CityBG() {
-  const g = useMemo(() => {
-    const R = rng(77),
-      back = [],
-      front = [],
-      wins = [];
-    let x = -5;
-    while (x < 405) {
-      const w = 18 + R() * 40,
-        h = 160 + R() * 280;
-      back.push(React.createElement("rect", {
-        key: `b${back.length}`,
-        x: x,
-        y: 720 - h - 70,
-        width: w,
-        height: h + 70,
-        fill: "#1f0b35"
-      }));
-      x += w + 2;
-    }
-    x = -10;
-    while (x < 410) {
-      const w = 28 + R() * 50,
-        h = 90 + R() * 230;
-      front.push(React.createElement("rect", {
-        key: `f${front.length}`,
-        x: x,
-        y: 720 - h,
-        width: w,
-        height: h,
-        fill: "#06030c"
-      }));
-      for (let wy = 720 - h + 10; wy < 712; wy += 12) for (let wx = x + 5; wx < x + w - 6; wx += 9) {
-        if (R() > 0.74) wins.push(React.createElement("rect", {
-          key: `w${wins.length}`,
-          x: wx,
-          y: wy,
-          width: "4",
-          height: "5",
-          fill: R() > 0.5 ? '#FCEE0A' : '#00F0FF',
-          opacity: (0.4 + R() * 0.55).toFixed(2)
-        }));
-      }
-      x += w + 3;
-    }
-    return {
-      back,
-      front,
-      wins
-    };
-  }, []);
-  return React.createElement("div", {
-    className: "absolute inset-0 overflow-hidden",
-    style: {
-      background: 'linear-gradient(180deg,#05010f 0%,#1c0631 42%,#5a0d3d 72%,#ff4655 100%)'
-    }
-  }, React.createElement("svg", {
-    className: "absolute inset-0 w-full h-full",
-    viewBox: "0 0 400 720",
-    preserveAspectRatio: "xMidYMax slice"
-  }, React.createElement("circle", {
-    cx: "300",
-    cy: "170",
-    r: "50",
-    fill: "#ff2e8c",
-    opacity: ".3"
-  }), g.back, g.front, g.wins), React.createElement("div", {
-    className: "rain"
-  }));
-}
-function MatrixBG() {
-  const cols = useMemo(() => Array.from({
-    length: 16
-  }, (_, i) => ({
-    x: i / 16 * 100 + 1,
-    dur: 5 + i * 37 % 7,
-    delay: -(i * 53 % 9),
-    chars: Array.from({
-      length: 30
-    }, () => MATRIX_CHARS[Math.floor(Math.random() * MATRIX_CHARS.length)]).join('')
-  })), []);
-  return React.createElement("div", {
-    className: "absolute inset-0 overflow-hidden",
-    style: {
-      background: 'radial-gradient(ellipse at 50% 40%,#06200d,#010603 75%)'
-    }
-  }, cols.map((c, i) => React.createElement("div", {
-    key: i,
-    className: "mx-col f-mono",
-    style: {
-      left: `${c.x}%`,
-      animationDuration: `${c.dur}s`,
-      animationDelay: `${c.delay}s`
-    }
-  }, c.chars)));
-}
-function AuroraBG() {
-  return React.createElement("div", {
-    className: "absolute inset-0 overflow-hidden",
-    style: {
-      background: 'linear-gradient(180deg,#020814 0%,#04121f 55%,#01040a 100%)'
-    }
-  }, React.createElement("div", {
-    className: "aur a1"
-  }), React.createElement("div", {
-    className: "aur a2"
-  }), React.createElement("div", {
-    className: "aur a3"
-  }), React.createElement("div", {
-    className: "absolute inset-0",
-    style: {
-      background: 'radial-gradient(ellipse at 50% 115%,rgba(0,0,0,.75),transparent 60%)'
-    }
-  }));
-}
-function SpaceBG() {
-  const stars = useMemo(() => {
-    const R = rng(19);
-    return Array.from({
-      length: 150
-    }, () => ({
-      x: R() * 400,
-      y: R() * 720,
-      r: R() < 0.9 ? 0.4 + R() * 0.8 : 1.3 + R() * 0.9,
-      o: 0.35 + R() * 0.65,
-      tw: R() < 0.2,
-      d: (R() * 4).toFixed(2)
-    }));
-  }, []);
-  return React.createElement("div", {
-    className: "absolute inset-0 overflow-hidden",
-    style: {
-      background: 'radial-gradient(ellipse at 70% 25%,#3b1a6e 0%,transparent 45%),radial-gradient(ellipse at 20% 70%,#0b3a6b 0%,transparent 50%),#03020a'
-    }
-  }, React.createElement("svg", {
-    className: "absolute inset-0 w-full h-full space-drift",
-    viewBox: "0 0 400 720",
-    preserveAspectRatio: "xMidYMid slice"
-  }, stars.map((s, i) => React.createElement("circle", {
-    key: i,
-    cx: s.x,
-    cy: s.y,
-    r: s.r,
-    fill: "#fff",
-    opacity: s.o,
-    className: s.tw ? 'twk' : undefined,
-    style: s.tw ? {
-      animationDelay: `${s.d}s`
-    } : undefined
-  }))), React.createElement("div", {
-    className: "planet"
-  }));
-}
-const MONO_TBG = {
+const TIMER_BGS = {
   smoke: ['Гранат', '#C2185B', 'linear-gradient(180deg,#5A0F2B 0%,#1E0610 45%,#000 85%)'],
   grid: ['Океан', '#2F6BFF', 'linear-gradient(180deg,#0F2A6B 0%,#081330 45%,#000 85%)'],
   city: ['Закат', '#FF7A1A', 'linear-gradient(180deg,#6B2A06 0%,#2A1003 45%,#000 85%)'],
@@ -9197,11 +8927,17 @@ const MONO_TBG = {
   space: ['Фиалка', '#8B5CF6', 'linear-gradient(180deg,#3B1A6E 0%,#170A2E 45%,#000 85%)'],
   custom: ['Своё фото', '#888', 'repeating-linear-gradient(45deg,#1c1c1e 0 6px,#2c2c2e 6px 12px)']
 };
-function MonoTimerBg({
-  k,
+function TimerBg({
+  t,
   live
 }) {
-  const p = MONO_TBG[k] || MONO_TBG.smoke;
+  if (t.bg === 'custom' && t.bgUrl && live) return React.createElement(React.Fragment, null, React.createElement(Img, {
+    src: t.bgUrl,
+    className: "absolute inset-0 w-full h-full object-cover"
+  }), React.createElement("div", {
+    className: "absolute inset-0 bg-black/40"
+  }));
+  const p = TIMER_BGS[t.bg] || TIMER_BGS.smoke;
   return React.createElement("div", {
     className: "absolute inset-0 overflow-hidden",
     style: {
@@ -9213,34 +8949,6 @@ function MonoTimerBg({
       background: `radial-gradient(circle, ${alpha(p[1], 0.55)} 0%, transparent 62%)`
     }
   }));
-}
-function TimerBg({
-  t,
-  live
-}) {
-  if (UI.mono && !(t.bg === 'custom' && t.bgUrl && live)) return React.createElement(MonoTimerBg, {
-    k: t.bg,
-    live: live
-  });
-  const preset = TIMER_BGS.find(b => b[0] === t.bg) || TIMER_BGS[0];
-  if (!live) return React.createElement("div", {
-    className: "absolute inset-0",
-    style: {
-      background: preset[2]
-    }
-  });
-  if (t.bg === 'custom' && t.bgUrl) return React.createElement(React.Fragment, null, React.createElement(Img, {
-    src: t.bgUrl,
-    className: "absolute inset-0 w-full h-full object-cover"
-  }), React.createElement("div", {
-    className: "absolute inset-0 bg-black/40"
-  }));
-  if (t.bg === 'grid') return React.createElement(GridBG, null);
-  if (t.bg === 'city') return React.createElement(CityBG, null);
-  if (t.bg === 'matrix') return React.createElement(MatrixBG, null);
-  if (t.bg === 'aurora') return React.createElement(AuroraBG, null);
-  if (t.bg === 'space') return React.createElement(SpaceBG, null);
-  return React.createElement(SmokeBG, null);
 }
 const dayParts = ms => {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -9367,27 +9075,19 @@ function RingFace({
     fill: "none",
     stroke: "rgba(255,255,255,.14)",
     strokeWidth: "2.2"
-  }), !UI.mono && React.createElement("circle", {
-    cx: "50",
-    cy: "50",
-    r: "41",
-    fill: "none",
-    stroke: "rgba(255,255,255,.25)",
-    strokeWidth: "1.6",
-    strokeDasharray: "0.5 3.793"
   }), React.createElement("circle", {
     cx: "50",
     cy: "50",
     r: R,
     fill: "none",
     stroke: accent,
-    strokeWidth: UI.mono ? 3.2 : 2.6,
-    strokeLinecap: UI.mono ? 'round' : 'butt',
+    strokeWidth: 3.2,
+    strokeLinecap: "round",
     strokeDasharray: C,
     strokeDashoffset: C * (1 - st.pct),
     style: {
       transition: 'stroke-dashoffset 1s linear',
-      filter: UI.mono ? 'none' : `drop-shadow(0 0 2.5px ${accent})`
+      filter: 'none'
     }
   })), React.createElement("div", {
     className: "relative flex flex-col items-center"
@@ -9481,7 +9181,7 @@ function PosterFace({
     style: {
       fontWeight: fw,
       fontSize: len > 3 ? 'min(34vw,26vh,250px)' : undefined,
-      filter: UI.mono ? 'none' : `drop-shadow(0 0 14px ${alpha(accent, 0.55)})`
+      filter: 'none'
     }
   }, st.days), React.createElement("div", {
     className: "poster-bottom"
@@ -9501,7 +9201,7 @@ function PosterFace({
     className: "poster-dot",
     style: {
       background: accent,
-      boxShadow: UI.mono ? 'none' : `0 0 8px ${accent}`
+      boxShadow: 'none'
     }
   }), st.done ? 'COMPLETE' : st.hms)));
 }
@@ -9661,7 +9361,8 @@ function TimerCard({
       font,
       fw,
       accent
-    };
+    },
+    tk = textK(t);
   return React.createElement("section", {
     className: "tk"
   }, React.createElement(TimerBg, {
@@ -9673,11 +9374,6 @@ function TimerCard({
       background: 'linear-gradient(180deg,rgba(0,0,0,.25),transparent 25%,transparent 70%,rgba(0,0,0,.55))'
     }
   }), React.createElement("div", {
-    className: "absolute top-4 left-4 micro deco",
-    style: {
-      color: 'rgba(255,255,255,.65)'
-    }
-  }, "COUNTDOWN.FEED // ", pad(index + 1), "/", pad(total)), UI.mono ? React.createElement("div", {
     className: "absolute right-3 top-5 flex flex-col items-center gap-3 z-10"
   }, React.createElement("button", {
     type: "button",
@@ -9729,56 +9425,12 @@ function TimerCard({
     }
   }, React.createElement(Trash2, {
     size: 18
-  }))) : React.createElement("div", {
-    className: "absolute right-3 top-14 flex flex-col items-center gap-6 z-10"
-  }, React.createElement("button", {
-    type: "button",
-    className: "rail-b",
-    onClick: () => {
-      sfx('open');
-      onEdit();
+  }))), React.createElement("div", {
+    className: "absolute inset-0",
+    style: tk === 1 ? undefined : {
+      zoom: tk
     }
-  }, React.createElement(Pencil, {
-    size: 22
-  }), React.createElement("span", null, "EDIT")), t.mode === 'since' && React.createElement("button", {
-    type: "button",
-    "aria-label": "\u0421\u0431\u0440\u043E\u0441\u0438\u0442\u044C \u043E\u0442\u0441\u0447\u0451\u0442",
-    className: "rail-b",
-    onClick: () => {
-      sfx();
-      onReset();
-    }
-  }, React.createElement(RotateCcw, {
-    size: 21
-  }), React.createElement("span", null, "RESET")), React.createElement("button", {
-    type: "button",
-    className: "rail-b",
-    onClick: () => {
-      sfx('open');
-      onAdd();
-    }
-  }, React.createElement(Plus, {
-    size: 24
-  }), React.createElement("span", null, "NEW")), total > 1 && React.createElement("button", {
-    type: "button",
-    "aria-label": "\u041F\u043E\u0440\u044F\u0434\u043E\u043A \u0442\u0430\u0439\u043C\u0435\u0440\u043E\u0432",
-    className: "rail-b",
-    onClick: () => {
-      sfx('open');
-      onOrder();
-    }
-  }, React.createElement(ArrowUpDown, {
-    size: 21
-  }), React.createElement("span", null, "SORT")), React.createElement("button", {
-    type: "button",
-    className: "rail-b",
-    onClick: () => {
-      sfx();
-      onDelete();
-    }
-  }, React.createElement(Trash2, {
-    size: 20
-  }), React.createElement("span", null, "DEL"))), lay === 'flip' && React.createElement(FlipFace, face), lay === 'ring' && React.createElement(RingFace, face), lay === 'units' && React.createElement(UnitsFace, face), lay === 'poster' && React.createElement(PosterFace, face), lay === 'classic' && React.createElement("div", {
+  }, lay === 'flip' && React.createElement(FlipFace, face), lay === 'ring' && React.createElement(RingFace, face), lay === 'units' && React.createElement(UnitsFace, face), lay === 'poster' && React.createElement(PosterFace, face), lay === 'classic' && React.createElement("div", {
     className: "absolute inset-0 flex flex-col items-center justify-center px-12 text-center",
     style: {
       fontFamily: font
@@ -9812,7 +9464,7 @@ function TimerCard({
     style: {
       color: 'rgba(255,255,255,.55)'
     }
-  }, st.cap)), lay !== 'ring' && React.createElement("div", {
+  }, st.cap))), lay !== 'ring' && React.createElement("div", {
     className: "absolute left-5 right-5 bottom-6 z-10"
   }, React.createElement("div", {
     className: "flex justify-between items-end f-mono text-[10px] tracking-widest text-white/75 mb-1.5"
@@ -9820,9 +9472,9 @@ function TimerCard({
     className: "text-[13px]",
     style: {
       color: accent,
-      textShadow: UI.mono ? 'none' : `0 0 10px ${accent}`
+      textShadow: 'none'
     }
-  }, (st.pct * 100).toFixed(1), "%"), React.createElement("span", null, st.right)), UI.mono ? React.createElement("div", {
+  }, (st.pct * 100).toFixed(1), "%"), React.createElement("span", null, st.right)), React.createElement("div", {
     className: "relative h-[8px] rounded-full overflow-hidden",
     style: {
       background: 'rgba(255,255,255,.16)'
@@ -9834,27 +9486,7 @@ function TimerCard({
       background: accent,
       transition: 'width 1s linear'
     }
-  })) : React.createElement("div", {
-    className: "relative h-[7px]",
-    style: {
-      background: 'rgba(255,255,255,.12)',
-      boxShadow: 'inset 0 0 0 1px rgba(255,255,255,.18)'
-    }
-  }, React.createElement("div", {
-    className: "absolute left-0 top-0 bottom-0",
-    style: {
-      width: `${st.pct * 100}%`,
-      background: accent,
-      boxShadow: `0 0 12px ${accent}, 0 0 26px ${accent}`,
-      transition: 'width 1s linear'
-    }
-  }), [1, 2, 3, 4, 5, 6, 7, 8, 9].map(i => React.createElement("i", {
-    key: i,
-    className: "absolute top-0 bottom-0 w-px bg-black/50",
-    style: {
-      left: `${i * 10}%`
-    }
-  })))));
+  }))));
 }
 function TimerEditor({
   initial,
@@ -9904,7 +9536,6 @@ function TimerEditor({
   return React.createElement(Modal, {
     full: true,
     title: isNew ? 'Новый таймер' : 'Редактор таймера',
-    code: "COUNTDOWN // EDIT",
     onClose: onClose,
     footer: React.createElement(React.Fragment, null, React.createElement(Btn, {
       variant: "ghost",
@@ -9938,7 +9569,7 @@ function TimerEditor({
     onChange: e => set({
       sub: e.target.value
     }),
-    placeholder: "NIGHT CITY RECORDS"
+    placeholder: "\u041D\u0430\u043F\u0440\u0438\u043C\u0435\u0440: \u041E\u0442\u043F\u0443\u0441\u043A"
   })), React.createElement(Field, {
     label: "\u0420\u0435\u0436\u0438\u043C"
   }, React.createElement(Segmented, {
@@ -10004,6 +9635,18 @@ function TimerEditor({
       className: "f-mono text-[9px] text-white/55 mt-1"
     }, name));
   }))), React.createElement(Field, {
+    label: "\u0420\u0430\u0437\u043C\u0435\u0440 \u0442\u0435\u043A\u0441\u0442\u0430"
+  }, React.createElement(Segmented, {
+    value: t.txt || 'm',
+    onChange: v => set({
+      txt: v
+    }),
+    accent: "var(--alt)",
+    options: TEXT_SIZES.map(([v, l]) => ({
+      v,
+      l
+    }))
+  })), React.createElement(Field, {
     label: "\u0428\u0440\u0438\u0444\u0442"
   }, React.createElement("div", {
     className: "grid grid-cols-5 gap-1.5"
@@ -10035,7 +9678,7 @@ function TimerEditor({
     label: "\u0424\u043E\u043D \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438"
   }, React.createElement("div", {
     className: "grid grid-cols-3 gap-2"
-  }, TIMER_BGS.map(([k, name, css]) => React.createElement("button", {
+  }, Object.entries(TIMER_BGS).map(([k, [name,, css]]) => React.createElement("button", {
     key: k,
     type: "button",
     onClick: () => {
@@ -10047,7 +9690,7 @@ function TimerEditor({
     className: "cut h-20 flex items-end p-2 text-left",
     style: {
       '--cut': '8px',
-      background: UI.mono ? MONO_TBG[k][2] : css,
+      background: css,
       boxShadow: t.bg === k ? 'inset 0 0 0 2px var(--alt)' : 'inset 0 0 0 1px rgba(255,255,255,.15)'
     }
   }, React.createElement("span", {
@@ -10055,9 +9698,10 @@ function TimerEditor({
     style: {
       textShadow: '0 1px 3px #000'
     }
-  }, UI.mono ? MONO_TBG[k][0] : name))))), t.bg === 'custom' && React.createElement(Field, {
+  }, name))))), t.bg === 'custom' && React.createElement(Field, {
     label: "\u0421\u0432\u043E\u0451 \u0444\u043E\u0442\u043E \u0444\u043E\u043D\u0430"
   }, React.createElement(ImageInput, {
+    aspect: "full",
     value: t.bgUrl,
     onChange: v => set({
       bgUrl: v
@@ -10138,7 +9782,6 @@ function CountdownScreen() {
     const days = timerState(t, Date.now()).days;
     const ok = await ask({
       title: 'Сбросить отсчёт?',
-      code: 'COUNTDOWN // RESET',
       text: `«${t.title}» начнёт считать с нуля. Сейчас: ${days} ${dayWord(days)}.`,
       ok: 'Сбросить',
       danger: true
@@ -10165,7 +9808,6 @@ function CountdownScreen() {
   const delTimer = async t => {
     const ok = await ask({
       title: 'Удалить таймер?',
-      code: 'COUNTDOWN // DELETE',
       text: `«${t.title}» исчезнет из ленты.${t.missionId ? ' Дедлайн миссии останется.' : ''}`,
       ok: 'Удалить',
       danger: true
@@ -10185,7 +9827,8 @@ function CountdownScreen() {
   }, React.createElement("div", {
     ref: feedRef,
     onScroll: onScroll,
-    className: "feed noscb"
+    className: "feed noscb",
+    "data-rise": "whole"
   }, list.length ? list.map((t, i) => React.createElement(TimerCard, {
     key: t.id,
     t: t,
@@ -10200,10 +9843,12 @@ function CountdownScreen() {
     onReset: () => resetTimer(t)
   })) : React.createElement("section", {
     className: "tk flex items-center justify-center"
-  }, UI.mono ? React.createElement(MonoTimerBg, {
-    k: "smoke",
+  }, React.createElement(TimerBg, {
+    t: {
+      bg: 'smoke'
+    },
     live: true
-  }) : React.createElement(SmokeBG, null), React.createElement("div", {
+  }), React.createElement("div", {
     className: "relative"
   }, React.createElement(Empty, {
     icon: Hourglass,
@@ -10230,7 +9875,6 @@ function CountdownScreen() {
     onDelete: () => delTimer(edit)
   }), order && React.createElement(ReorderModal, {
     title: "\u041F\u043E\u0440\u044F\u0434\u043E\u043A \u0442\u0430\u0439\u043C\u0435\u0440\u043E\u0432",
-    code: "COUNTDOWN // ORDER",
     list: order.list,
     setList: l => setOrder(o => ({
       ...o,
@@ -10248,7 +9892,7 @@ function CountdownScreen() {
         className: "w-1.5 h-9 shrink-0",
         style: {
           background: t.accent || '#FF4655',
-          borderRadius: UI.mono ? 3 : 0
+          borderRadius: 3
         }
       }), React.createElement("span", {
         className: "min-w-0"
@@ -10437,8 +10081,7 @@ function ParkedRow({
 }) {
   const ops = useParkOps();
   return React.createElement(Frame, {
-    cut: 10,
-    color: "rgba(var(--alt-rgb),.3)"
+    cut: 10
   }, React.createElement("div", {
     className: "flex items-center gap-2 pl-3 pr-2 py-2"
   }, React.createElement(StickyNote, {
@@ -10545,13 +10188,12 @@ function FocusSetup({
   return React.createElement(Modal, {
     onClose: onClose,
     title: "\u041D\u043E\u0432\u0430\u044F \u0441\u0435\u0441\u0441\u0438\u044F",
-    code: "NEURAL LINK // CALIBRATE",
     footer: React.createElement(Btn, {
       className: "flex-1",
       icon: mode === 'active' ? Eye : Play,
       snd: "open",
       onClick: start
-    }, UI.mono ? 'Начать' : 'Подключиться', " \xB7 ", mode === 'active' ? 'без лимита' : `${dur} мин`)
+    }, "\u041D\u0430\u0447\u0430\u0442\u044C \xB7 ", mode === 'active' ? 'без лимита' : `${dur} мин`)
   }, React.createElement(Field, {
     label: "\u0420\u0435\u0436\u0438\u043C"
   }, React.createElement(Segmented, {
@@ -10663,15 +10305,7 @@ function FocusRing({
     r: r,
     fill: "none",
     stroke: "rgba(255,255,255,.08)",
-    strokeWidth: UI.mono ? 10 : 6
-  }), !UI.mono && React.createElement("circle", {
-    cx: size / 2,
-    cy: size / 2,
-    r: r + 8,
-    fill: "none",
-    stroke: "rgba(var(--main-rgb),.35)",
-    strokeWidth: "1",
-    strokeDasharray: "2 6"
+    strokeWidth: 10
   }), React.createElement("circle", {
     className: "f-ring",
     cx: size / 2,
@@ -10679,8 +10313,8 @@ function FocusRing({
     r: r,
     fill: "none",
     stroke: "var(--alt)",
-    strokeWidth: UI.mono ? 10 : 6,
-    strokeLinecap: UI.mono ? 'round' : 'butt',
+    strokeWidth: 10,
+    strokeLinecap: "round",
     strokeDasharray: c,
     strokeDashoffset: c * (1 - clamp(p, 0, 1)),
     style: {
@@ -10870,7 +10504,6 @@ function FocusSession() {
     const done = Math.floor((Date.now() - a.startAt) / 60e3);
     const ans = await ask({
       title: 'Завершить сессию?',
-      code: 'NEURAL LINK // DISCONNECT',
       text: isActive ? `Прошло ${done} мин. Всё это время будет засчитано.` : `Прошло ${done} из ${a.planMin} мин. Сессия будет записана как прерванная.`,
       ok: 'Завершить',
       cancel: 'Продолжить',
@@ -10941,7 +10574,6 @@ function FocusSession() {
   const discard = async () => {
     const ok = await ask({
       title: 'Не сохранять сессию?',
-      code: 'NEURAL LINK // PURGE',
       text: 'Сессия и отложенные мысли будут удалены.',
       ok: 'Удалить',
       danger: true
@@ -10981,14 +10613,12 @@ function FocusSession() {
     }, React.createElement("div", {
       className: "flex-1 overflow-y-auto noscb -mx-5 px-5"
     }, React.createElement("div", {
-      className: "micro deco"
-    }, "NEURAL LINK // DEBRIEF"), React.createElement("div", {
       className: "h1 mt-1"
     }, isActive ? a.lapsed ? 'Внимание потеряно' : 'Сессия завершена' : a.stoppedAt ? 'Сессия прервана' : 'Сессия завершена'), a.lapsed && React.createElement("div", {
       className: "f-alert cut mt-3 px-4 py-3"
     }, React.createElement("div", {
       className: "font-bold tracking-[.1em] uppercase text-[14px]"
-    }, UI.mono ? 'Отметка пропущена' : 'Сигнал не подтверждён'), React.createElement("div", {
+    }, "\u041E\u0442\u043C\u0435\u0442\u043A\u0430 \u043F\u0440\u043E\u043F\u0443\u0449\u0435\u043D\u0430"), React.createElement("div", {
       className: "text-[12.5px] mt-0.5 opacity-85 f-read leading-snug"
     }, "\u0417\u043D\u0430\u0447\u043E\u043A \u043D\u0435 \u043D\u0430\u0436\u0430\u0442 \u0437\u0430 ", a.win, " \u0441. \u0417\u0430\u0441\u0447\u0438\u0442\u0430\u043D\u043E \u0432\u0440\u0435\u043C\u044F \u0434\u043E \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0435\u0439 \u043E\u0442\u043C\u0435\u0442\u043A\u0438, \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u0435 ", fmtMin(a.lostMs / 60e3), " \u043D\u0435 \u0432 \u0441\u0447\u0451\u0442.")), (title || a.goal) && React.createElement("div", {
       className: "mt-2 text-[14px] text-white/60 f-read leading-snug"
@@ -11078,7 +10708,7 @@ function FocusSession() {
       className: "mt-5 mb-2 p-3 flex items-center gap-3 text-[13px] leading-snug f-read",
       style: {
         boxShadow: 'inset 0 0 0 1px rgba(var(--alt-rgb),.3)',
-        borderRadius: UI.mono ? 14 : 0,
+        borderRadius: 14,
         color: 'rgba(255,255,255,.75)'
       }
     }, React.createElement(Flame, {
@@ -11114,8 +10744,6 @@ function FocusSession() {
   }, React.createElement("div", {
     className: "flex-1 min-w-0"
   }, React.createElement("div", {
-    className: "micro deco"
-  }, "NEURAL LINK // ACTIVE"), React.createElement("div", {
     className: "text-[15px] font-semibold uppercase tracking-wider txt-alt glow-alt truncate mt-0.5"
   }, nice(title || 'Фокус-сессия'))), React.createElement(IconBtn, {
     icon: X,
@@ -11134,7 +10762,7 @@ function FocusSession() {
     className: "f-alert cut absolute top-0 left-0 right-0 px-4 py-3 text-center z-10"
   }, React.createElement("div", {
     className: "font-bold tracking-[.12em] uppercase text-[15px]"
-  }, UI.mono ? 'Ты выходил из приложения' : 'Связь прервана'), React.createElement("div", {
+  }, "\u0422\u044B \u0432\u044B\u0445\u043E\u0434\u0438\u043B \u0438\u0437 \u043F\u0440\u0438\u043B\u043E\u0436\u0435\u043D\u0438\u044F"), React.createElement("div", {
     className: "text-[12.5px] mt-0.5 opacity-80"
   }, "\u0412\u043D\u0435 \u0441\u0435\u0441\u0441\u0438\u0438 ", fmtClock(flash.away), " \xB7 \u0432\u044B\u0445\u043E\u0434 \u2116", flash.n)), isActive ? React.createElement("div", {
     className: "relative",
@@ -11292,7 +10920,6 @@ function FocusBgModal({
   return React.createElement(Modal, {
     onClose: onClose,
     title: "\u0424\u043E\u043D \u0441\u0435\u0441\u0441\u0438\u0438",
-    code: "NEURAL LINK // BACKDROP",
     footer: React.createElement(Btn, {
       className: "flex-1",
       icon: Check,
@@ -11302,7 +10929,7 @@ function FocusBgModal({
     className: "relative h-[230px] overflow-hidden focus-bg cut mb-4 flex flex-col items-center justify-center",
     style: {
       '--cut': '14px',
-      borderRadius: UI.mono ? 18 : 0,
+      borderRadius: 18,
       boxShadow: 'inset 0 0 0 1px rgba(255,255,255,.12)'
     }
   }, React.createElement(FocusBackdrop, {
@@ -11321,6 +10948,7 @@ function FocusBgModal({
   }, "\u041F\u0420\u0415\u0414\u041F\u0420\u041E\u0421\u041C\u041E\u0422\u0420")), React.createElement(Field, {
     label: "\u0424\u043E\u0442\u043E"
   }, React.createElement(ImageInput, {
+    aspect: "full",
     value: f.bg,
     onChange: v => set({
       bg: v
@@ -11423,7 +11051,6 @@ function FocusScreen() {
   return React.createElement("div", {
     className: "pb-8"
   }, React.createElement(ScreenHeader, {
-    code: "NEURAL LINK 2.0 // FOCUS.EXE",
     title: "\u0424\u043E\u043A\u0443\u0441",
     sub: "\u0422\u0440\u0435\u043D\u0438\u0440\u043E\u0432\u043A\u0430 \u043A\u043E\u043D\u0446\u0435\u043D\u0442\u0440\u0430\u0446\u0438\u0438: \u043E\u0434\u043D\u0430 \u0446\u0435\u043B\u044C, \u043D\u043E\u043B\u044C \u043F\u0435\u0440\u0435\u043A\u043B\u044E\u0447\u0435\u043D\u0438\u0439"
   }), React.createElement("div", {
@@ -11432,9 +11059,8 @@ function FocusScreen() {
     className: "px-4 mt-4"
   }, React.createElement(Frame, {
     cut: 18,
-    color: "rgba(var(--alt-rgb),.5)",
-    mc: "transparent",
-    mb: "#111113"
+    color: "transparent",
+    bg: "#111113"
   }, React.createElement("div", {
     className: "p-4"
   }, React.createElement("div", {
@@ -11444,26 +11070,24 @@ function FocusScreen() {
     style: {
       '--cut': '12px',
       background: st.n ? 'rgba(var(--warn-rgb),.12)' : 'rgba(255,255,255,.05)',
-      boxShadow: UI.mono ? 'none' : `inset 0 0 0 1px ${st.n ? 'rgba(var(--warn-rgb),.55)' : 'rgba(255,255,255,.15)'}`,
-      borderRadius: UI.mono ? 20 : 0
+      boxShadow: 'none',
+      borderRadius: 20
     }
   }, React.createElement(Flame, {
     size: 34,
     style: {
       color: st.n ? 'var(--warn)' : 'rgba(255,255,255,.3)',
-      filter: UI.mono || !st.n ? 'none' : 'drop-shadow(0 0 6px var(--warn))'
+      filter: 'none'
     }
   })), React.createElement("div", {
     className: "min-w-0 flex-1"
   }, React.createElement("div", {
-    className: "micro deco"
-  }, "STREAK.PROTOCOL"), React.createElement("div", {
     className: "flex items-baseline gap-2"
   }, React.createElement("span", {
     className: "st-score text-[38px]",
     style: {
       color: st.n ? 'var(--warn)' : 'rgba(255,255,255,.4)',
-      textShadow: UI.mono || !st.n ? 'none' : '0 0 14px rgba(var(--warn-rgb),.5)'
+      textShadow: 'none'
     }
   }, st.n), React.createElement("span", {
     className: "sec-title text-[17px]"
@@ -11482,15 +11106,15 @@ function FocusScreen() {
     className: "mt-1.5 h-2 overflow-hidden",
     style: {
       background: 'rgba(255,255,255,.08)',
-      borderRadius: UI.mono ? 4 : 0
+      borderRadius: 4
     }
   }, React.createElement("div", {
     className: "h-full",
     style: {
       width: `${Math.min(100, st.todayMin / st.goal * 100)}%`,
       background: st.todayDone ? 'var(--warn)' : 'var(--alt)',
-      boxShadow: UI.mono ? 'none' : '0 0 8px var(--alt)',
-      borderRadius: UI.mono ? 4 : 0,
+      boxShadow: 'none',
+      borderRadius: 4,
       transition: 'width .3s'
     }
   })), React.createElement("div", {
@@ -11509,7 +11133,7 @@ function FocusScreen() {
     size: 18,
     style: {
       color: i < st.freezes ? ICE : 'rgba(255,255,255,.15)',
-      filter: i < st.freezes && !UI.mono ? `drop-shadow(0 0 4px ${ICE})` : 'none'
+      filter: 'none'
     }
   })), React.createElement("span", {
     className: "text-[12.5px] text-white/55 f-read ml-1"
@@ -11570,8 +11194,7 @@ function FocusScreen() {
       setBgEdit(true);
     }
   }, React.createElement(Frame, {
-    cut: 12,
-    color: "rgba(var(--main-rgb),.3)"
+    cut: 12
   }, React.createElement("div", {
     className: "flex items-center gap-3 p-2.5"
   }, f.bg ? React.createElement(Img, {
@@ -11580,14 +11203,14 @@ function FocusScreen() {
     className: "w-11 h-11 object-cover cut shrink-0",
     style: {
       '--cut': '6px',
-      borderRadius: UI.mono ? 10 : 0
+      borderRadius: 10
     }
   }) : React.createElement("span", {
     className: "w-11 h-11 shrink-0 flex items-center justify-center cut txt-alt",
     style: {
       '--cut': '6px',
       background: 'rgba(var(--alt-rgb),.08)',
-      borderRadius: UI.mono ? 10 : 0
+      borderRadius: 10
     }
   }, React.createElement(ImagePlus, {
     size: 20
@@ -11607,8 +11230,7 @@ function FocusScreen() {
     count: st.n
   }), React.createElement(Frame, {
     cut: 14,
-    className: "mt-2.5",
-    color: "rgba(var(--main-rgb),.35)"
+    className: "mt-2.5"
   }, React.createElement("div", {
     className: "p-3"
   }, React.createElement("div", {
@@ -11634,7 +11256,7 @@ function FocusScreen() {
       style: {
         '--cut': '5px',
         background: bg,
-        borderRadius: UI.mono ? 7 : 0,
+        borderRadius: 7,
         boxShadow: k === todayK ? 'inset 0 0 0 1.5px var(--warn)' : fut ? 'inset 0 0 0 1px rgba(255,255,255,.06)' : 'none'
       }
     }, fz ? React.createElement(Snowflake, {
@@ -11656,7 +11278,7 @@ function FocusScreen() {
     className: "inline-block w-2.5 h-2.5",
     style: {
       background: 'var(--alt)',
-      borderRadius: UI.mono ? 3 : 0
+      borderRadius: 3
     }
   }), "\u0446\u0435\u043B\u044C \u0432\u044B\u043F\u043E\u043B\u043D\u0435\u043D\u0430"), React.createElement("span", {
     className: "flex items-center gap-1"
@@ -11664,7 +11286,7 @@ function FocusScreen() {
     className: "inline-block w-2.5 h-2.5",
     style: {
       background: 'rgba(var(--alt-rgb),.35)',
-      borderRadius: UI.mono ? 3 : 0
+      borderRadius: 3
     }
   }), "\u0447\u0430\u0441\u0442\u0438\u0447\u043D\u043E"), React.createElement("span", {
     className: "flex items-center gap-1"
@@ -11713,8 +11335,7 @@ function FocusScreen() {
         setSheet(s.id);
       }
     }, React.createElement(Frame, {
-      cut: 12,
-      color: "rgba(var(--main-rgb),.3)"
+      cut: 12
     }, React.createElement("div", {
       className: "flex items-center gap-3 p-3"
     }, React.createElement(ScoreBox, {
@@ -11769,9 +11390,7 @@ function SetBlock({
 }) {
   return React.createElement(Frame, {
     cut: 16,
-    className: "mb-4",
-    color: "rgba(var(--main-rgb),.45)",
-    bg: "linear-gradient(180deg,rgba(18,10,20,.96),rgba(8,7,12,.96))"
+    className: "mb-4"
   }, React.createElement("div", {
     className: "set-head"
   }, React.createElement("span", {
@@ -11819,7 +11438,6 @@ function SyncLoginModal({
       if (!mode) {
         const ans = await ask({
           title: 'На сервере уже есть данные',
-          code: 'SYNC // FIRST.LINK',
           text: 'Это устройство подключается к аккаунту впервые.\n\n«Взять с сервера» — данные этого устройства заменятся серверными. Подходит для нового устройства.\n\n«Объединить» — сольются записи с обеих сторон, при совпадении останется версия с сервера.',
           ok: 'Взять с сервера',
           extra: 'Объединить'
@@ -11842,7 +11460,6 @@ function SyncLoginModal({
   return React.createElement(Modal, {
     onClose: busy ? null : onClose,
     title: "\u041F\u043E\u0434\u043A\u043B\u044E\u0447\u0438\u0442\u044C \u0441\u0435\u0440\u0432\u0435\u0440",
-    code: "SYNC // LINK.DEVICE",
     footer: React.createElement(Btn, {
       className: "w-full",
       icon: KeyRound,
@@ -11921,13 +11538,12 @@ function SyncBlock({
   const [login, setLogin] = useState(false);
   if (!s.ok) return null;
   const st = s.st;
-  const bad = s.status === 'error' || s.status === 'auth' || st && !s.on;
+  const bad = s.status === 'error' || s.status === 'auth' || s.status === 'hold' || st && !s.on;
   const color = !st ? 'rgba(255,255,255,.5)' : bad ? 'var(--warn)' : '#59FF00';
-  const state = !st ? 'ВЫКЛЮЧЕНА' : !s.on ? 'НУЖЕН ВХОД' : s.status === 'busy' ? 'ОБМЕН ДАННЫМИ…' : s.status === 'error' ? 'ОШИБКА' : s.status === 'offline' ? 'ЖДЁТ СЕТИ' : 'ВКЛЮЧЕНА';
+  const state = !st ? 'ВЫКЛЮЧЕНА' : !s.on ? 'НУЖЕН ВХОД' : s.status === 'busy' ? 'ОБМЕН ДАННЫМИ…' : s.status === 'error' ? 'ОШИБКА' : s.status === 'hold' ? 'ОСТАНОВЛЕНА' : s.status === 'offline' ? 'ЖДЁТ СЕТИ' : 'ВКЛЮЧЕНА';
   const logout = async () => {
     const ok = await ask({
       title: 'Отключить синхронизацию?',
-      code: 'SYNC // UNLINK',
       text: `Данные на этом устройстве останутся, но перестанут обмениваться с сервером.${s.pending ? `\n\nНе отправлено изменений: ${s.pending}. Они останутся только здесь.` : ''}`,
       ok: 'Отключить',
       danger: !!s.pending
@@ -11959,7 +11575,13 @@ function SyncBlock({
     className: "text-[12px] text-white/45 f-read mt-2 mb-3 leading-snug"
   }, st ? 'Миссии, дневник, оценки, фокус, таймеры, настройки и фото одинаковые на всех подключённых устройствах. На сервере всё зашифровано твоей фразой. Без сети приложение работает как обычно и догонит изменения позже.' : 'Подключи свой сервер, чтобы данные были одинаковыми на телефоне и компьютере. Все записи шифруются фразой, которую знаешь только ты.'), React.createElement("div", {
     className: "grid gap-2"
-  }, s.on ? React.createElement(Btn, {
+  }, s.status === 'hold' && React.createElement(Btn, {
+    icon: AlertTriangle,
+    onClick: () => {
+      SYNC.holdAsked = false;
+      SYNC.app.hold();
+    }
+  }, "\u0420\u0435\u0448\u0438\u0442\u044C, \u0447\u0442\u043E \u0434\u0435\u043B\u0430\u0442\u044C"), s.on ? React.createElement(Btn, {
     icon: RefreshCw,
     onClick: () => syncSoon(0)
   }, "\u0421\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0438\u0440\u043E\u0432\u0430\u0442\u044C \u0441\u0435\u0439\u0447\u0430\u0441") : React.createElement(Btn, {
@@ -11972,6 +11594,79 @@ function SyncBlock({
   }, "\u041E\u0442\u043A\u043B\u044E\u0447\u0438\u0442\u044C \u043D\u0430 \u044D\u0442\u043E\u043C \u0443\u0441\u0442\u0440\u043E\u0439\u0441\u0442\u0432\u0435"))), login && React.createElement(SyncLoginModal, {
     onClose: () => setLogin(false)
   }));
+}
+function SnapList() {
+  const {
+    data,
+    ask,
+    toast,
+    replaceAll,
+    undoable
+  } = useApp();
+  const [rows, setRows] = useState(null);
+  useEffect(() => {
+    snapRows().then(setRows).catch(() => setRows(null));
+  }, [data]);
+  if (!rows) return null;
+  const file = async r => {
+    const res = await saveFile(`cyberjournal-snapshot-${dKey(new Date(r.at))}.json`, await r.body.text());
+    if (res === 'saved') {
+      sfx('save');
+      toast('Снимок сохранён в файл');
+    } else if (res !== 'declined') {
+      sfx('error');
+      toast('Не удалось сохранить файл');
+    }
+  };
+  const back = async r => {
+    let nd;
+    try {
+      nd = normalize(JSON.parse(await r.body.text()));
+    } catch (e) {
+      sfx('error');
+      toast('Снимок не читается');
+      return;
+    }
+    const ok = await ask({
+      title: 'Вернуть снимок?',
+      text: `Снимок от ${fmtDT(r.at)}\nМиссий: ${nd.missions.length} · записей: ${nd.shards.length} · оценённых дней: ${Object.keys(nd.ratings).length}\n\nТекущие данные будут заменены, копия останется в снимках.${syncOn() ? '\n\nСинхронизация включена: изменение дойдёт до всех устройств.' : ''}`,
+      ok: 'Вернуть',
+      danger: true
+    });
+    if (ok !== true) return;
+    await snapBefore('Перед возвратом снимка', JSON.stringify(data));
+    undoable('Снимок восстановлен', null, () => replaceAll(nd));
+    sfx('save');
+  };
+  return React.createElement(React.Fragment, null, React.createElement("span", {
+    className: "lbl mt-5"
+  }, "\u0410\u0432\u0442\u043E\u043C\u0430\u0442\u0438\u0447\u0435\u0441\u043A\u0438\u0435 \u0441\u043D\u0438\u043C\u043A\u0438"), React.createElement("div", {
+    className: "text-[12px] text-white/45 f-read mb-1 leading-snug"
+  }, "\u0420\u0430\u0437 \u0432 \u0434\u0435\u043D\u044C \u043F\u0440\u0438\u043B\u043E\u0436\u0435\u043D\u0438\u0435 \u0441\u0430\u043C\u043E \u0441\u043E\u0445\u0440\u0430\u043D\u044F\u0435\u0442 \u043A\u043E\u043F\u0438\u044E \u0434\u0430\u043D\u043D\u044B\u0445 \u043D\u0430 \u044D\u0442\u043E\u043C \u0443\u0441\u0442\u0440\u043E\u0439\u0441\u0442\u0432\u0435, \u0445\u0440\u0430\u043D\u0438\u0442 ", SNAP_KEEP.day, " \u0434\u043D\u0435\u0439. \u041F\u0435\u0440\u0435\u0434 \u0438\u043C\u043F\u043E\u0440\u0442\u043E\u043C, \u0441\u0431\u0440\u043E\u0441\u043E\u043C \u0438 \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u043E\u0439 \u0441 \u0441\u0435\u0440\u0432\u0435\u0440\u0430 \u0434\u0435\u043B\u0430\u0435\u0442\u0441\u044F \u043E\u0442\u0434\u0435\u043B\u044C\u043D\u0430\u044F \u043A\u043E\u043F\u0438\u044F. \u0427\u0438\u0441\u0442\u043A\u0430 \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0430 \u0443\u0434\u0430\u043B\u0438\u0442 \u0438 \u0441\u043D\u0438\u043C\u043A\u0438, \u043F\u043E\u044D\u0442\u043E\u043C\u0443 \u0431\u044D\u043A\u0430\u043F \u0432 \u0444\u0430\u0439\u043B \u0432\u0441\u0451 \u0440\u0430\u0432\u043D\u043E \u043D\u0443\u0436\u0435\u043D."), !rows.length && React.createElement("div", {
+    className: "text-[12.5px] text-white/40 f-read py-2"
+  }, "\u0421\u043D\u0438\u043C\u043A\u043E\u0432 \u043F\u043E\u043A\u0430 \u043D\u0435\u0442. \u041F\u0435\u0440\u0432\u044B\u0439 \u043F\u043E\u044F\u0432\u0438\u0442\u0441\u044F \u043F\u0440\u0438 \u0441\u043B\u0435\u0434\u0443\u044E\u0449\u0435\u043C \u0437\u0430\u043F\u0443\u0441\u043A\u0435."), rows.map(r => React.createElement("div", {
+    key: r.id,
+    className: "flex items-center gap-2 py-2",
+    style: {
+      borderBottom: '1px solid rgba(255,255,255,.06)'
+    }
+  }, React.createElement("div", {
+    className: "flex-1 min-w-0"
+  }, React.createElement("div", {
+    className: "text-[14.5px] font-semibold text-white/90"
+  }, fmtDT(r.at)), React.createElement("div", {
+    className: "f-mono text-[10px] text-white/40 truncate"
+  }, snapInfo(r))), React.createElement(IconBtn, {
+    sm: true,
+    icon: Download,
+    title: "\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C \u0432 \u0444\u0430\u0439\u043B",
+    onClick: () => file(r)
+  }), r.kind !== 'broken' && React.createElement(IconBtn, {
+    sm: true,
+    icon: RotateCcw,
+    title: "\u0412\u0435\u0440\u043D\u0443\u0442\u044C \u044D\u0442\u043E\u0442 \u0441\u043D\u0438\u043C\u043E\u043A",
+    onClick: () => back(r)
+  }))));
 }
 function SettingsScreen({
   forceEvening,
@@ -12052,12 +11747,12 @@ function SettingsScreen({
       const photos = imgs.filter(([k]) => !k.endsWith('.t')).length + listImages(nd).filter(isInline).length;
       const ok = await ask({
         title: 'Импорт данных',
-        code: 'SYS // RESTORE',
         text: `Файл: ${f.name}\nМиссий: ${nd.missions.length} · записей: ${nd.shards.length} · оценённых дней: ${Object.keys(nd.ratings).length} · таймеров: ${nd.timers.length} · фото: ${photos}\n\nТекущие данные будут заменены.${syncNote}`,
         ok: 'Восстановить',
         danger: true
       });
       if (ok !== true) return;
+      await snapBefore('Перед импортом', JSON.stringify(data));
       if (imgs.length) {
         try {
           await imgPut(imgs.map(([k, v]) => [k, dataURLToBlob(v)]));
@@ -12076,12 +11771,12 @@ function SettingsScreen({
   const resetDemo = async () => {
     const ok = await ask({
       title: 'Сбросить до демо?',
-      code: 'SYS // RESET.DEMO',
       text: `Все миссии, записи, карточки, оценки и таймеры будут заменены примерами со скриншотов. Настройки сохранятся.${syncNote}`,
       ok: 'Сбросить',
       danger: true
     });
     if (ok !== true) return;
+    await snapBefore('Перед сбросом до демо', JSON.stringify(data));
     const demo = makeDemo();
     undoable('Демо-данные восстановлены', null, () => replaceAll({
       ...demo,
@@ -12095,12 +11790,13 @@ function SettingsScreen({
   const clearAll = async () => {
     const ok = await ask({
       title: 'Очистить все данные?',
-      code: 'SYS // WIPE',
-      text: `Будут удалены ВСЕ миссии, записи журнала, карточки, оценки и таймеры. Останутся пустые разделы MAIN JOBS / SIDE JOBS / GIGS, базовые теги и настройки.\n\nСовет: сначала сделай экспорт бэкапа.${syncNote}`,
+      text: `Будут удалены ВСЕ миссии, записи журнала, карточки, оценки и таймеры. Останутся пустые разделы, базовые теги и настройки.\n\nСовет: сначала сделай экспорт бэкапа.${syncNote}`,
       ok: 'Стереть всё',
       danger: true
     });
-    if (ok === true) undoable('Память очищена · чистый лист', null, () => replaceAll({
+    if (ok !== true) return;
+    await snapBefore('Перед очисткой данных', JSON.stringify(data));
+    undoable('Память очищена · чистый лист', null, () => replaceAll({
       ...emptyState(),
       settings: s,
       meta: {
@@ -12121,11 +11817,12 @@ function SettingsScreen({
     }
     const ok = await ask({
       title: 'Взять данные из основной версии?',
-      code: 'BETA // SYNC',
       text: 'Данные тестовой версии заменятся текущими данными основного приложения. Основное приложение не изменится.',
       ok: 'Заменить'
     });
-    if (ok === true) undoable('Данные основной версии загружены', null, () => replaceAll({
+    if (ok !== true) return;
+    await snapBefore('Перед загрузкой из основной версии', JSON.stringify(data));
+    undoable('Данные основной версии загружены', null, () => replaceAll({
       ...normalize(d),
       settings: s
     }));
@@ -12133,14 +11830,13 @@ function SettingsScreen({
   return React.createElement("div", {
     className: "pb-8"
   }, React.createElement(ScreenHeader, {
-    code: "SYS://ROOT/CONFIG \u2014 TERMINAL v1.0",
     title: "\u0421\u0438\u0441\u0442\u0435\u043C\u0430",
-    sub: "\u041F\u0440\u043E\u0442\u043E\u043A\u043E\u043B\u044B, \u043F\u0435\u0440\u0441\u043E\u043D\u0430\u043B\u0438\u0437\u0430\u0446\u0438\u044F, \u0441\u043F\u0440\u0430\u0432\u043E\u0447\u043D\u0438\u043A\u0438 \u0438 \u0440\u0435\u0437\u0435\u0440\u0432\u043D\u044B\u0435 \u043A\u043E\u043F\u0438\u0438"
+    sub: "\u041D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438, \u0441\u043F\u0440\u0430\u0432\u043E\u0447\u043D\u0438\u043A\u0438 \u0438 \u0440\u0435\u0437\u0435\u0440\u0432\u043D\u044B\u0435 \u043A\u043E\u043F\u0438\u0438"
   }), React.createElement("div", {
     className: `px-4 mt-4 ${UI.wide ? 'set-cols' : ''}`
   }, React.createElement(SetBlock, {
     n: "01",
-    title: "\u041F\u0440\u043E\u0442\u043E\u043A\u043E\u043B \u043E\u0446\u0435\u043D\u043A\u0438 \u0434\u043D\u044F",
+    title: "\u041E\u0446\u0435\u043D\u043A\u0430 \u0434\u043D\u044F",
     icon: Clock
   }, React.createElement("span", {
     className: "lbl"
@@ -12242,74 +11938,9 @@ function SettingsScreen({
     onClick: simulateSkip
   }, "\u0421\u0438\u043C\u0443\u043B\u0438\u0440\u043E\u0432\u0430\u0442\u044C \u043F\u0440\u043E\u043F\u0443\u0441\u043A \u0432\u0447\u0435\u0440\u0430\u0448\u043D\u0435\u0433\u043E \u0434\u043D\u044F"))), React.createElement(SetBlock, {
     n: "02",
-    title: UI.mono ? 'Внешний вид' : 'Персонализация и FX',
+    title: "\u0412\u043D\u0435\u0448\u043D\u0438\u0439 \u0432\u0438\u0434",
     icon: Palette
   }, React.createElement("span", {
-    className: "lbl"
-  }, "\u0421\u0442\u0438\u043B\u044C \u0438\u043D\u0442\u0435\u0440\u0444\u0435\u0439\u0441\u0430"), React.createElement("div", {
-    className: "grid grid-cols-2 gap-2 mb-4"
-  }, UI_STYLES.map(st => {
-    const on = (s.ui || 'cyber') === st.id,
-      mono = st.id === 'mono';
-    return React.createElement("button", {
-      key: st.id,
-      type: "button",
-      onClick: () => {
-        if (!on) {
-          sfx('save');
-          set({
-            ui: st.id
-          });
-        }
-      },
-      className: "cut relative flex flex-col items-center text-center px-2 pt-3 pb-2.5",
-      style: {
-        '--cut': '10px',
-        background: mono ? 'linear-gradient(180deg,#0F3B52,#000 75%)' : 'linear-gradient(135deg,#18080C,#0A0A0F)',
-        boxShadow: on ? 'inset 0 0 0 2px var(--alt)' : 'inset 0 0 0 1px rgba(255,255,255,.15)',
-        borderRadius: mono ? 18 : undefined
-      }
-    }, mono ? React.createElement(Sticker, {
-      icon: "st:sleep",
-      color: "#4DB6FF",
-      frame: "oct",
-      size: 46,
-      toon: true
-    }) : React.createElement(Sticker, {
-      icon: "st:bolt",
-      color: "#FF4655",
-      frame: "hex",
-      size: 46,
-      toon: false
-    }), React.createElement("div", {
-      className: "mt-2 leading-tight",
-      style: mono ? {
-        fontFamily: 'Inter, sans-serif',
-        fontWeight: 700,
-        fontSize: 16,
-        color: '#fff'
-      } : {
-        fontFamily: 'Rajdhani, sans-serif',
-        fontWeight: 700,
-        fontSize: 16,
-        letterSpacing: '.1em',
-        textTransform: 'uppercase',
-        color: '#FF4655',
-        textShadow: '0 0 8px rgba(255,70,85,.6)'
-      }
-    }, st.name), React.createElement("div", {
-      className: "text-[11px] text-white/50 mt-0.5 leading-tight",
-      style: {
-        fontFamily: mono ? 'Inter, sans-serif' : "'Exo 2', sans-serif"
-      }
-    }, st.sub), on && React.createElement(Check, {
-      size: 15,
-      className: "absolute top-2 right-2.5",
-      style: {
-        color: 'var(--alt)'
-      }
-    }));
-  })), React.createElement("span", {
     className: "lbl"
   }, "\u0410\u0432\u0430\u0442\u0430\u0440 \u043D\u0430 \u044D\u043A\u0440\u0430\u043D\u0435 \u0441\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043A\u0438"), React.createElement("div", {
     className: "flex items-center gap-4 mb-4"
@@ -12325,11 +11956,11 @@ function SettingsScreen({
     variant: "ghost",
     icon: Pencil,
     onClick: () => setAvEdit(true)
-  }, "\u0418\u0437\u043C\u0435\u043D\u0438\u0442\u044C \u0430\u0432\u0430\u0442\u0430\u0440"))), UI.mono ? React.createElement(React.Fragment, null, React.createElement("span", {
+  }, "\u0418\u0437\u043C\u0435\u043D\u0438\u0442\u044C \u0430\u0432\u0430\u0442\u0430\u0440"))), React.createElement("span", {
     className: "lbl"
   }, "\u0410\u043A\u0446\u0435\u043D\u0442\u043D\u044B\u0439 \u0446\u0432\u0435\u0442"), React.createElement("div", {
     className: "grid grid-cols-3 gap-2"
-  }, MONO_ACCENTS.map(a => React.createElement("button", {
+  }, ACCENTS.map(a => React.createElement("button", {
     key: a.id,
     type: "button",
     onClick: () => {
@@ -12350,78 +11981,11 @@ function SettingsScreen({
     }
   }), React.createElement("span", {
     className: "text-[13px] font-semibold text-white/90 truncate"
-  }, a.name))))) : React.createElement(React.Fragment, null, React.createElement("span", {
-    className: "lbl"
-  }, "\u0426\u0432\u0435\u0442\u043E\u0432\u0430\u044F \u043F\u0430\u043B\u0438\u0442\u0440\u0430 \u0438\u043D\u0442\u0435\u0440\u0444\u0435\u0439\u0441\u0430"), React.createElement("div", {
-    className: "grid grid-cols-2 gap-2"
-  }, Object.entries(THEMES).map(([k, th]) => React.createElement("button", {
-    key: k,
-    type: "button",
-    onClick: () => {
-      sfx('tab');
-      set({
-        theme: k
-      });
-    },
-    className: "cut text-left p-3 relative",
-    style: {
-      '--cut': '10px',
-      background: `linear-gradient(135deg, ${th.bg1}, ${th.bg2})`,
-      boxShadow: s.theme === k ? `inset 0 0 0 2px ${th.alt}` : 'inset 0 0 0 1px rgba(255,255,255,.15)'
-    }
-  }, React.createElement("div", {
-    className: "flex gap-1 mb-2"
-  }, [th.main, th.alt, th.warn].map((c, i) => React.createElement("i", {
-    key: i,
-    className: "w-5 h-2 block",
-    style: {
-      background: c,
-      boxShadow: `0 0 6px ${c}`
-    }
-  }))), React.createElement("div", {
-    className: "text-[14px] font-bold leading-tight",
-    style: {
-      color: th.main
-    }
-  }, th.name), React.createElement("div", {
-    className: "f-mono text-[9px] tracking-wider text-white/50 uppercase mt-0.5"
-  }, th.sub), s.theme === k && React.createElement(Check, {
-    size: 16,
-    className: "absolute top-2 right-3",
-    style: {
-      color: th.alt
-    }
-  })))), React.createElement("div", {
+  }, a.name)))), React.createElement("div", {
     className: "mt-3",
     style: {
       borderTop: '1px solid rgba(255,255,255,.07)'
     }
-  }, React.createElement(Toggle, {
-    on: s.scanlines,
-    onChange: v => set({
-      scanlines: v
-    }),
-    label: "\u0421\u043A\u0430\u043D\u043B\u0430\u0439\u043D\u044B",
-    hint: "\u0422\u043E\u043D\u043A\u0438\u0435 \u0433\u043E\u0440\u0438\u0437\u043E\u043D\u0442\u0430\u043B\u044C\u043D\u044B\u0435 \u043F\u043E\u043B\u043E\u0441\u044B \u043C\u043E\u043D\u0438\u0442\u043E\u0440\u0430 \u043F\u043E\u0432\u0435\u0440\u0445 \u044D\u043A\u0440\u0430\u043D\u0430"
-  }), React.createElement(Toggle, {
-    on: s.crt,
-    onChange: v => set({
-      crt: v
-    }),
-    label: "\u042D\u0444\u0444\u0435\u043A\u0442 \u042D\u041B\u0422-\u044D\u043A\u0440\u0430\u043D\u0430",
-    hint: "\u041C\u0435\u0440\u0446\u0430\u043D\u0438\u0435 \u0438 \u0437\u0430\u0442\u0435\u043C\u043D\u0435\u043D\u0438\u0435 \u043F\u043E \u043A\u0440\u0430\u044F\u043C. \u0412\u044B\u043A\u043B\u044E\u0447\u0438, \u0435\u0441\u043B\u0438 \u0443\u0441\u0442\u0430\u044E\u0442 \u0433\u043B\u0430\u0437\u0430"
-  }), React.createElement(Toggle, {
-    on: s.glitch,
-    onChange: v => set({
-      glitch: v
-    }),
-    label: "\u0410\u043D\u0438\u043C\u0430\u0446\u0438\u044F \u0433\u043B\u0438\u0442\u0447\u0430",
-    hint: "\u041F\u0435\u0440\u0438\u043E\u0434\u0438\u0447\u0435\u0441\u043A\u0438\u0435 \u0441\u0431\u043E\u0438 \u043D\u0430 \u0437\u0430\u0433\u043E\u043B\u043E\u0432\u043A\u0430\u0445"
-  }))), React.createElement("div", {
-    className: UI.mono ? 'mt-3' : '',
-    style: UI.mono ? {
-      borderTop: '1px solid rgba(255,255,255,.07)'
-    } : undefined
   }, React.createElement(Toggle, {
     on: s.sound,
     onChange: v => {
@@ -12431,7 +11995,7 @@ function SettingsScreen({
       });
     },
     label: "\u0417\u0432\u0443\u043A\u043E\u0432\u043E\u0439 \u043E\u0442\u043A\u043B\u0438\u043A \u0438\u043D\u0442\u0435\u0440\u0444\u0435\u0439\u0441\u0430",
-    hint: UI.mono ? 'Мягкие щелчки при нажатиях' : 'Синтезированные sci-fi клики (Web Audio API)'
+    hint: "\u041C\u044F\u0433\u043A\u0438\u0435 \u0449\u0435\u043B\u0447\u043A\u0438 \u043F\u0440\u0438 \u043D\u0430\u0436\u0430\u0442\u0438\u044F\u0445"
   })), s.sound && React.createElement(Btn, {
     small: true,
     variant: "dark",
@@ -12661,23 +12225,26 @@ function SettingsScreen({
     variant: "dangerGhost",
     icon: Eraser,
     onClick: clearAll
-  }, "\u041E\u0447\u0438\u0441\u0442\u0438\u0442\u044C \u0432\u0441\u0435 \u0434\u0430\u043D\u043D\u044B\u0435"))), React.createElement(SyncBlock, {
+  }, "\u041E\u0447\u0438\u0441\u0442\u0438\u0442\u044C \u0432\u0441\u0435 \u0434\u0430\u043D\u043D\u044B\u0435")), React.createElement(SnapList, null)), React.createElement(SyncBlock, {
     n: "05"
   })), React.createElement("div", {
     className: "px-4"
   }, React.createElement("div", {
     className: "micro text-center mt-6 mb-2"
-  }, UI.mono ? 'CYBERJOURNAL' : 'CYBER//JOURNAL 2077', " \xB7 v", APP_VERSION, " \xB7 BUILD ", window.CJ_BUILD || 'DEV', " \xB7 ", cloudOn ? 'LOCAL + CLOUD SYNC' : syncOn() ? 'LOCAL + SERVER SYNC' : 'LOCAL STORAGE')), avEdit && React.createElement(AvatarEditor, {
+  }, "CYBERJOURNAL \xB7 v", APP_VERSION, " \xB7 BUILD ", window.CJ_BUILD || 'DEV', " \xB7 ", cloudOn ? 'LOCAL + CLOUD SYNC' : syncOn() ? 'LOCAL + SERVER SYNC' : 'LOCAL STORAGE')), avEdit && React.createElement(AvatarEditor, {
     onClose: () => setAvEdit(false)
   }));
 }
-function revealBlocks(main) {
+function revealBlocks(main, scope = main) {
+  const start = scope.querySelector('[data-rise="root"]') || scope;
   const box = main.getBoundingClientRect(),
     items = [];
   const walk = (el, depth) => {
+    const rise = el.dataset.rise;
+    if (rise === 'self') return;
     const r = el.getBoundingClientRect();
     if (!r.height || r.top >= box.bottom || r.bottom <= box.top) return;
-    if (depth < 6 && r.height > 260 && (getComputedStyle(el).display !== 'grid' || el.classList.contains('desk-cols'))) {
+    if (rise !== 'whole' && depth < 6 && r.height > 260 && (getComputedStyle(el).display !== 'grid' || el.classList.contains('desk-cols'))) {
       if (el.children.length === 1) {
         walk(el.children[0], depth);
         return;
@@ -12689,7 +12256,7 @@ function revealBlocks(main) {
     }
     items.push(el);
   };
-  Array.from(main.children).forEach(c => walk(c, 1));
+  Array.from(start.children).forEach(c => walk(c, 1));
   const step = Math.min(40, 420 / Math.max(1, items.length));
   items.forEach((el, i) => {
     const delay = Math.round(i * step);
@@ -12707,10 +12274,26 @@ function revealBlocks(main) {
     timer = setTimeout(end, delay + 600);
   });
 }
+function useReveal(dep, scope) {
+  const first = useRef(true);
+  useLayoutEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return undefined;
+    }
+    const main = document.querySelector('main');
+    if (!main) return undefined;
+    try {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return undefined;
+    } catch (e) {}
+    const raf = requestAnimationFrame(() => revealBlocks(main, scope && scope() || main));
+    return () => cancelAnimationFrame(raf);
+  }, [dep]);
+}
 function SideFoot() {
   const s = useSync();
-  const good = s.on && s.status !== 'error' && s.status !== 'auth';
-  const state = !s.on ? 'НУЖЕН ВХОД' : s.status === 'busy' ? 'ОБМЕН ДАННЫМИ…' : s.status === 'error' ? 'НЕТ СВЯЗИ С СЕРВЕРОМ' : s.status === 'offline' ? 'ЖДЁТ СЕТИ' : 'СИНХРОНИЗАЦИЯ ВКЛ.';
+  const good = s.on && s.status !== 'error' && s.status !== 'auth' && s.status !== 'hold';
+  const state = !s.on ? 'НУЖЕН ВХОД' : s.status === 'busy' ? 'ОБМЕН ДАННЫМИ…' : s.status === 'error' ? 'НЕТ СВЯЗИ С СЕРВЕРОМ' : s.status === 'hold' ? 'СИНХРОНИЗАЦИЯ ОСТАНОВЛЕНА' : s.status === 'offline' ? 'ЖДЁТ СЕТИ' : 'СИНХРОНИЗАЦИЯ ВКЛ.';
   return React.createElement("div", {
     className: "side-foot"
   }, s.ok && s.st && React.createElement("div", {
@@ -12721,43 +12304,266 @@ function SideFoot() {
 }
 const TABS = [{
   id: 'missions',
-  label: 'МИССИИ',
-  sub: 'И ЖУРНАЛ',
-  icon: Crosshair,
-  mLabel: 'Миссии',
-  mIcon: ListChecks
+  label: 'Миссии',
+  icon: ListChecks
 }, {
   id: 'stats',
-  label: 'СТАТИСТИКА',
-  sub: 'ДНЯ',
-  icon: Activity,
-  mLabel: 'Итоги',
-  mIcon: CalendarDays
+  label: 'Итоги',
+  icon: CalendarDays
 }, {
   id: 'focus',
-  label: 'ФОКУС',
-  sub: 'НЕЙРОЛИНК',
-  icon: Brain,
-  mLabel: 'Фокус',
-  mIcon: Target
+  label: 'Фокус',
+  icon: Target
 }, {
   id: 'timer',
-  label: 'ОТСЧЁТ',
-  sub: 'ВРЕМЕНИ',
-  icon: Hourglass,
-  mLabel: 'Отсчёт',
-  mIcon: Timer
+  label: 'Отсчёт',
+  icon: Timer
 }, {
   id: 'system',
-  label: 'СИСТЕМА',
-  sub: 'НАСТРОЙКИ',
-  icon: Terminal,
-  mLabel: 'Система',
-  mIcon: Settings
+  label: 'Система',
+  icon: Settings
 }];
-const FONTS_URL = 'https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Exo+2:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Orbitron:wght@500;700;900&family=Oswald:wght@400;500;600;700&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Unbounded:wght@500;700&display=swap';
+const FONTS_URL = 'https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Exo+2:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Orbitron:wght@500;700;900&family=Oswald:wght@400;500;600;700&family=Prosto+One&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Unbounded:wght@500;700&display=swap';
+const SAFE_BTN = {
+  display: 'block',
+  width: '100%',
+  marginTop: 10,
+  padding: '13px 14px',
+  font: '600 15px/1.3 system-ui, sans-serif',
+  color: '#fff',
+  background: '#1C1C1E',
+  border: '1px solid rgba(255,255,255,.2)',
+  borderRadius: 10,
+  textAlign: 'left',
+  cursor: 'pointer'
+};
+const SAFE_NOTE = {
+  margin: '8px 0 0',
+  fontSize: 13,
+  lineHeight: 1.45,
+  color: 'rgba(255,255,255,.55)'
+};
+const errText = e => String(e && e.message || e || 'неизвестная ошибка');
+function RescueScreen({
+  broken,
+  err
+}) {
+  const [rows, setRows] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const [sure, setSure] = useState(false);
+  const raw = useMemo(() => {
+    if (broken) return broken;
+    try {
+      return localStorage.getItem(LS_KEY) || '';
+    } catch (e) {
+      return '';
+    }
+  }, [broken]);
+  useEffect(() => {
+    (async () => {
+      if (broken) {
+        try {
+          const last = (await snapRows()).find(r => r.kind === 'broken');
+          if (!last || last.body.size !== new Blob([broken]).size) await snapPut('broken', broken, 'Данные, которые не удалось прочитать');
+        } catch (e) {}
+      }
+      try {
+        setRows((await snapRows()).filter(r => r.kind !== 'broken'));
+      } catch (e) {
+        setRows([]);
+      }
+    })();
+  }, [broken]);
+  const act = fn => async () => {
+    if (busy) return;
+    setBusy(true);
+    setMsg('');
+    try {
+      await fn();
+    } catch (e) {
+      setMsg(e && e.auth ? 'Вход на сервер истёк. Этот способ сейчас недоступен' : /[а-я]/i.test(errText(e)) ? errText(e) : 'Не получилось. Проверь интернет или выбери другой способ');
+    }
+    setBusy(false);
+  };
+  const restart = text => {
+    localStorage.setItem(LS_KEY, text);
+    setLocalAt('');
+    location.reload();
+  };
+  const saveAll = act(async () => {
+    let text = raw;
+    try {
+      text = await backupText(normalize(JSON.parse(raw)));
+    } catch (e) {}
+    const res = await saveFile(`cyberjournal-rescue-${dKey(new Date())}.json`, text);
+    setMsg(res === 'saved' ? 'Файл сохранён' : res === 'declined' ? 'Сохранение отменено' : 'Не удалось сохранить файл');
+  });
+  const back = r => act(async () => {
+    const text = await r.body.text(),
+      d = normalize(JSON.parse(text));
+    if (!broken) await snapBefore('Перед возвратом снимка', raw);
+    SYNC.app = null;
+    syncRebase(d);
+    restart(text);
+  });
+  const fromServer = act(async () => {
+    const st = SYNC.st,
+      got = await syncFetch(st, 0);
+    if (!got.changes.length) throw new Error('На сервере нет данных');
+    st.local = {};
+    st.dirty = {};
+    st.files = {};
+    const r = syncMerge(emptyState(), got.changes, true);
+    st.cursor = got.max;
+    syncSave();
+    restart(JSON.stringify(r.d));
+  });
+  const fresh = act(async () => {
+    if (!sure) {
+      setSure(true);
+      return;
+    }
+    const d = emptyState();
+    syncRebase(d);
+    restart(JSON.stringify(d));
+  });
+  return React.createElement("div", {
+    style: {
+      height: '100%',
+      overflowY: 'auto',
+      background: '#0A0A0F',
+      color: '#ECE6E9',
+      font: '400 15px/1.45 system-ui, sans-serif'
+    }
+  }, React.createElement("div", {
+    style: {
+      maxWidth: 480,
+      margin: '0 auto',
+      padding: '32px 16px'
+    }
+  }, React.createElement("div", {
+    style: {
+      font: '600 11px/1.4 ui-monospace, monospace',
+      letterSpacing: '.14em',
+      color: '#FF4655'
+    }
+  }, broken ? 'SYS // DATA.RECOVERY' : 'SYS // CRASH.RECOVERY'), React.createElement("h1", {
+    style: {
+      font: '700 24px/1.2 system-ui, sans-serif',
+      margin: '6px 0 10px',
+      color: '#fff'
+    }
+  }, broken ? 'Данные не читаются' : 'Приложение дало сбой'), React.createElement("p", {
+    style: {
+      margin: 0
+    }
+  }, broken ? 'Сохранённые данные повреждены. Они не удалены и ничего не отправлено на сервер. Выбери, что сделать.' : 'Данные на месте. Обычно хватает перезапуска. Если сбой повторяется, сохрани данные в файл.'), React.createElement("pre", {
+    style: {
+      margin: '10px 0 0',
+      whiteSpace: 'pre-wrap',
+      wordBreak: 'break-word',
+      font: '12px/1.4 ui-monospace, monospace',
+      color: '#FCEE0A'
+    }
+  }, errText(err)), !broken && React.createElement("button", {
+    type: "button",
+    style: SAFE_BTN,
+    disabled: busy,
+    onClick: () => location.reload()
+  }, "\u041F\u0435\u0440\u0435\u0437\u0430\u043F\u0443\u0441\u0442\u0438\u0442\u044C"), React.createElement("button", {
+    type: "button",
+    style: SAFE_BTN,
+    disabled: busy,
+    onClick: saveAll
+  }, "\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C \u0434\u0430\u043D\u043D\u044B\u0435 \u0432 \u0444\u0430\u0439\u043B"), broken && syncOn() && React.createElement("button", {
+    type: "button",
+    style: SAFE_BTN,
+    disabled: busy,
+    onClick: fromServer
+  }, "\u0412\u0437\u044F\u0442\u044C \u0434\u0430\u043D\u043D\u044B\u0435 \u0441 \u0441\u0435\u0440\u0432\u0435\u0440\u0430"), rows && rows.length > 0 && React.createElement(React.Fragment, null, React.createElement("div", {
+    style: {
+      ...SAFE_NOTE,
+      marginTop: 18
+    }
+  }, "\u0412\u0435\u0440\u043D\u0443\u0442\u044C \u0441\u043D\u0438\u043C\u043E\u043A", syncOn() ? ' (записи с сервера сольются с ним)' : '', ":"), rows.map(r => React.createElement("button", {
+    key: r.id,
+    type: "button",
+    style: SAFE_BTN,
+    disabled: busy,
+    onClick: back(r)
+  }, fmtDT(r.at), React.createElement("span", {
+    style: {
+      display: 'block',
+      fontSize: 12,
+      fontWeight: 400,
+      color: 'rgba(255,255,255,.55)'
+    }
+  }, snapInfo(r))))), broken && React.createElement(React.Fragment, null, React.createElement("button", {
+    type: "button",
+    style: {
+      ...SAFE_BTN,
+      marginTop: 18,
+      color: '#FF7A7A',
+      borderColor: 'rgba(255,90,90,.5)'
+    },
+    disabled: busy,
+    onClick: fresh
+  }, sure ? 'Точно начать с чистого листа?' : 'Начать с чистого листа'), React.createElement("div", {
+    style: SAFE_NOTE
+  }, "\u041F\u043E\u0432\u0440\u0435\u0436\u0434\u0451\u043D\u043D\u0430\u044F \u043A\u043E\u043F\u0438\u044F \u043E\u0441\u0442\u0430\u043D\u0435\u0442\u0441\u044F \u0432 \xAB\u0421\u0438\u0441\u0442\u0435\u043C\u0435\xBB, \u0432 \u0441\u043D\u0438\u043C\u043A\u0430\u0445. \u0424\u0430\u0439\u043B \u0431\u044D\u043A\u0430\u043F\u0430 \u043C\u043E\u0436\u043D\u043E \u0431\u0443\u0434\u0435\u0442 \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044C \u0442\u0430\u043C \u0436\u0435.")), msg && React.createElement("div", {
+    style: {
+      ...SAFE_NOTE,
+      color: '#FCEE0A'
+    }
+  }, busy ? '' : msg)));
+}
+class Guard extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      err: null
+    };
+  }
+  static getDerivedStateFromError(err) {
+    return {
+      err
+    };
+  }
+  render() {
+    const {
+      err
+    } = this.state;
+    if (!err) return this.props.children;
+    if (!this.props.inline) return React.createElement(RescueScreen, {
+      err: err
+    });
+    return React.createElement(Empty, {
+      icon: AlertTriangle,
+      title: "\u042D\u043A\u0440\u0430\u043D \u043D\u0435 \u043E\u0442\u043A\u0440\u044B\u043B\u0441\u044F",
+      text: `Данные не пострадали, другие вкладки работают. Ошибка: ${errText(err)}`
+    }, React.createElement(Btn, {
+      variant: "ghost",
+      icon: RotateCcw,
+      onClick: () => this.setState({
+        err: null
+      })
+    }, "\u041F\u043E\u0432\u0442\u043E\u0440\u0438\u0442\u044C"));
+  }
+}
 function App() {
-  const [data, setData] = useState(loadState);
+  const [boot] = useState(readBoot);
+  return React.createElement(Guard, null, boot.broken ? React.createElement(RescueScreen, {
+    broken: boot.broken,
+    err: boot.err
+  }) : React.createElement(MainApp, {
+    initial: boot.data
+  }));
+}
+function MainApp({
+  initial
+}) {
+  const [data, setData] = useState(initial);
   const [tab, setTabRaw] = useState(() => {
     try {
       return localStorage.getItem(`${LS_KEY}.tab`) || 'missions';
@@ -12766,6 +12572,7 @@ function App() {
     }
   });
   const [dialog, setDialog] = useState(null);
+  const [cropReq, setCropReq] = useState(null);
   const [toastMsg, setToastMsg] = useState(null);
   const [rate, setRate] = useState(null);
   const [focusSetup, setFocusSetup] = useState(null);
@@ -12787,14 +12594,10 @@ function App() {
   const toastTimer = useRef(null);
   SFX.on = !!data.settings.sound;
   SFX.vib = !!data.settings.haptics;
-  const mono = data.settings.ui === 'mono';
-  UI.mono = mono;
-  SFX.soft = mono;
   const wide = useWide();
   UI.wide = wide;
-  const th = THEMES[data.settings.theme] || THEMES.classic;
-  const acc = (MONO_ACCENTS.find(a => a.id === data.settings.monoAccent) || MONO_ACCENTS[0]).c;
-  const pageBg = mono ? '#000000' : th.bg2;
+  const acc = (ACCENTS.find(a => a.id === data.settings.monoAccent) || ACCENTS[0]).c;
+  const pageBg = '#000000';
   const switched = useRef(false);
   const mainRef = useRef(null);
   const setTab = t => {
@@ -12833,7 +12636,14 @@ function App() {
     res,
     k: Date.now()
   })), []);
+  const crop = useCallback((file, aspect) => new Promise(res => setCropReq({
+    file,
+    aspect,
+    res,
+    k: Date.now()
+  })), []);
   const replaceAll = useCallback(d => {
+    SYNC.okDel = true;
     setRate(null);
     setData(normalize(d));
   }, []);
@@ -12987,6 +12797,36 @@ function App() {
           setData(r.d);
         }
         return r.n;
+      },
+      hold: async () => {
+        if (SYNC.holdAsked || uiRef.current.dialog || dataRef.current.focus.active) return;
+        SYNC.holdAsked = true;
+        const n = SYNC.hold;
+        const ans = await ask({
+          title: 'Синхронизация остановлена',
+          text: `Это устройство собирается удалить на сервере ${n} ${plural(n, 'запись', 'записи', 'записей')} сразу. Так бывает после сбоя, поэтому на сервер пока ничего не ушло.\n\n«Взять с сервера» вернёт данные на это устройство.\n\n«Удалить на сервере» подтвердит удаление на всех устройствах.`,
+          ok: 'Взять с сервера',
+          extra: 'Удалить на сервере',
+          cancel: 'Решить позже'
+        });
+        if (ans === 'extra') {
+          SYNC.okDel = true;
+          SYNC.holdAsked = false;
+          syncSoon(0);
+        } else if (ans === true) {
+          try {
+            await syncStart({
+              ...SYNC.st
+            }, 'replace');
+            SYNC.holdAsked = false;
+            sfx('save');
+            toast('Данные загружены с сервера');
+          } catch (e) {
+            SYNC.holdAsked = false;
+            sfx('error');
+            toast('Сервер недоступен, данные не изменены');
+          }
+        }
       }
     };
     if (syncOn()) syncRefresh().then(() => {
@@ -13043,7 +12883,8 @@ function App() {
           const b = localStorage.getItem(BETA_KEY);
           if (b) beta = listImages(normalize(JSON.parse(b)));
         } catch (e) {}
-        const used = new Set([...listImages(bootData.current), ...listImages(dataRef.current), ...beta].filter(isIdb).map(v => v.slice(4)));
+        const kept = (await snapList()).flatMap(r => r.imgs || []);
+        const used = new Set([...listImages(bootData.current), ...listImages(dataRef.current), ...beta, ...kept].filter(isIdb).map(v => v.slice(4)));
         const old = Date.now() - 3 * 864e5;
         const dead = (await imgList()).filter(r => !used.has(String(r.id).replace(/\.t$/, '')) && r.at < old).map(r => r.id);
         if (dead.length) await imgDel(dead);
@@ -13059,8 +12900,7 @@ function App() {
   }, [pageBg]);
   const askRetro = useCallback(async y => {
     const ans = await ask({
-      title: 'Протокол: пропуск',
-      code: 'RETRO.CHECK // MISSED DAY',
+      title: 'Пропущенный день',
       text: `Не подведены итоги за вчерашний день (${fmtDay(y)}). Провести оценку сейчас?`,
       ok: 'Оценить',
       cancel: 'Позже',
@@ -13115,7 +12955,6 @@ function App() {
         const share = canShareFiles();
         const ans = await ask({
           title: 'Пора сделать бэкап',
-          code: 'SYS // BACKUP.CHECK',
           text: `${last ? `Последний экспорт был ${age} ${plural(age, 'день', 'дня', 'дней')} назад.` : 'Экспорта данных ещё не было.'}\n\nВсе записи хранятся только в памяти этого браузера. ${share ? 'Отправь бэкап в надёжное место: Telegram «Избранное» или Google Диск' : 'Сохрани файл .json в надёжное место (например, на Google Диск)'}, чтобы не потерять их.`,
           ok: share ? 'Отправить' : 'Экспорт сейчас',
           cancel: 'Позже'
@@ -13136,12 +12975,17 @@ function App() {
   }, [askRetro, ask, up, toast, markBackup]);
   useEffect(() => {
     const t0 = setTimeout(runChecks, 900);
-    const iv = setInterval(runChecks, 60000);
+    snapDaily();
+    const iv = setInterval(() => {
+      snapDaily();
+      runChecks();
+    }, 60000);
     const onVis = () => {
       if (document.visibilityState === 'hidden') {
         session.current.hiddenAt = Date.now();
         return;
       }
+      snapDaily();
       const away = session.current.hiddenAt ? Date.now() - session.current.hiddenAt : 0;
       if (away > 30 * 60e3) {
         session.current.retroAsked = false;
@@ -13175,7 +13019,6 @@ function App() {
     if (data.ratings[y]) {
       const ok = await ask({
         title: 'Симуляция пропуска',
-        code: 'SYS // TEST',
         text: `Оценка за ${fmtDay(y)} будет удалена, чтобы проверить сценарий ретроспективной оценки. Продолжить?`,
         ok: 'Удалить и проверить',
         danger: true
@@ -13198,7 +13041,7 @@ function App() {
     });
     setTimeout(() => askRetro(y), 350);
   };
-  const vars = mono ? {
+  const vars = {
     '--main': '#F2F2F7',
     '--alt': acc,
     '--warn': '#FFD60A',
@@ -13211,33 +13054,23 @@ function App() {
     '--main-rgb': hexRgb('#F2F2F7'),
     '--alt-rgb': hexRgb(acc),
     '--warn-rgb': hexRgb('#FFD60A')
-  } : {
-    '--main': th.main,
-    '--alt': th.alt,
-    '--warn': th.warn,
-    '--bg1': th.bg1,
-    '--bg2': th.bg2,
-    '--sel1': th.sel[0],
-    '--sel2': th.sel[1],
-    '--sel-fg': th.selFg,
-    '--sel-sub': th.selSub,
-    '--sel-shadow': th.selFg ? 'none' : '0 1px 3px rgba(0,0,0,.55)',
-    '--main-rgb': hexRgb(th.main),
-    '--alt-rgb': hexRgb(th.alt),
-    '--warn-rgb': hexRgb(th.warn)
   };
   const ctx = useMemo(() => ({
     data,
     up,
     ask,
+    crop,
     toast,
     replaceAll,
     undoable,
     markBackup,
     cloudOn,
     openFocus
-  }), [data, up, ask, toast, replaceAll, undoable, markBackup, cloudOn, openFocus]);
-  const screen = React.createElement(React.Fragment, null, tab === 'missions' && React.createElement(MissionsScreen, null), tab === 'stats' && React.createElement(StatsScreen, {
+  }), [data, up, ask, crop, toast, replaceAll, undoable, markBackup, cloudOn, openFocus]);
+  const screen = React.createElement(Guard, {
+    inline: true,
+    key: tab
+  }, tab === 'missions' && React.createElement(MissionsScreen, null), tab === 'stats' && React.createElement(StatsScreen, {
     openRate: (date, source) => setRate({
       date,
       source
@@ -13249,36 +13082,29 @@ function App() {
   return React.createElement(AppCtx.Provider, {
     value: ctx
   }, React.createElement("div", {
-    className: `cj-root ${wide ? 'cj-wide' : ''} ${mono ? 'ui-mono' : `${data.settings.glitch ? 'fx-glitch' : ''} ${data.settings.crt ? 'crt-on' : ''}`}`,
+    className: `cj-root ${wide ? 'cj-wide' : ''} ui-mono`,
     style: vars
-  }, React.createElement("style", null, mono ? CSS + MONO_CSS : CSS), wide ? React.createElement("div", {
+  }, React.createElement("style", null, CSS + MONO_CSS), wide ? React.createElement("div", {
     className: "h-full flex"
   }, React.createElement("aside", {
     className: "side"
   }, React.createElement("div", {
     className: "side-logo"
-  }, React.createElement("b", null, mono ? 'CyberJournal' : 'CYBER//JOURNAL'), React.createElement("div", {
-    className: "micro deco mt-1.5"
-  }, "NIGHT CITY // 2077")), React.createElement("nav", {
+  }, React.createElement("b", null, "CyberJournal")), React.createElement("nav", {
     className: "flex flex-col"
   }, TABS.map(t => React.createElement("button", {
     key: t.id,
     type: "button",
     onClick: () => setTab(t.id),
     className: `side-b ${tab === t.id ? 'on' : ''}`
-  }, mono ? React.createElement(t.mIcon, {
-    size: 20,
-    strokeWidth: 2
-  }) : React.createElement(t.icon, {
+  }, React.createElement(t.icon, {
     size: 20,
     strokeWidth: 2
   }), React.createElement("span", {
     className: "min-w-0"
   }, React.createElement("span", {
     className: "nl"
-  }, mono ? t.mLabel : t.label), !mono && React.createElement("span", {
-    className: "ns"
-  }, t.sub))))), React.createElement(SideFoot, null)), React.createElement("main", {
+  }, t.label))))), React.createElement(SideFoot, null)), React.createElement("main", {
     key: tab,
     ref: mainRef,
     className: `flex-1 min-w-0 relative ${tab === 'timer' ? 'overflow-hidden' : 'overflow-y-auto overscroll-contain'}`
@@ -13297,26 +13123,24 @@ function App() {
     type: "button",
     onClick: () => setTab(t.id),
     className: `nav-b ${tab === t.id ? 'on' : ''}`
-  }, mono ? React.createElement(t.mIcon, {
+  }, React.createElement(t.icon, {
     size: 22,
-    strokeWidth: 2
-  }) : React.createElement(t.icon, {
-    size: 20,
     strokeWidth: 2
   }), React.createElement("span", {
     className: "nl"
-  }, mono ? t.mLabel : t.label), !mono && React.createElement("span", {
-    className: "ns"
-  }, t.sub))))), rate && React.createElement(RateModal, {
+  }, t.label))))), rate && React.createElement(RateModal, {
     key: `${rate.date}-${rate.source}`,
     date: rate.date,
-    source: rate.source,
     onClose: () => setRate(null)
   }), focusSetup && !data.focus.active && React.createElement(FocusSetup, {
     missionId: focusSetup.missionId,
     onClose: () => setFocusSetup(null)
   }), data.focus.active && React.createElement(FocusSession, {
     key: data.focus.active.id
+  }), cropReq && React.createElement(CropDialog, {
+    key: cropReq.k,
+    req: cropReq,
+    close: () => setCropReq(null)
   }), dialog && React.createElement(Dialog, {
     key: dialog.k,
     d: dialog,
@@ -13337,10 +13161,6 @@ function App() {
     }
   }, React.createElement(Undo2, {
     size: 14
-  }), toastMsg.action.label)), !mono && data.settings.crt && React.createElement("div", {
-    className: "crt"
-  }), !mono && data.settings.scanlines && React.createElement("div", {
-    className: "scan"
-  })));
+  }), toastMsg.action.label))));
 }
 ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App, null));

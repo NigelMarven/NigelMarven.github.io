@@ -1,4 +1,4 @@
-/* CJ_BUILD BETA-20261031-233525 */
+/* CJ_BUILD BETA-20261101-000703 */
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
 const {
   useState,
@@ -2117,8 +2117,6 @@ textarea.inp{resize:vertical;line-height:1.5;}
 .modal-foot{display:flex;gap:8px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));border-top:1px solid rgba(var(--main-rgb),.25);background:rgba(0,0,0,.35);}
 @keyframes fadein{from{opacity:0}to{opacity:1}}
 @keyframes sheetin{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
-@keyframes dlgin{0%{transform:scale(.94);opacity:0;filter:hue-rotate(90deg)}60%{filter:none}100%{transform:none;opacity:1}}
-.dlg-in{animation:dlgin .22s ease-out;}
 .sheet-item{display:flex;align-items:center;gap:12px;width:100%;padding:14px 12px;font-size:16px;font-weight:600;letter-spacing:.04em;color:#EDE7EA;text-align:left;border-bottom:1px solid rgba(255,255,255,.06);}
 .sheet-item:last-child{border-bottom:0}
 .sheet-item:active{background:rgba(var(--main-rgb),.15);}
@@ -2168,7 +2166,7 @@ textarea.inp{resize:vertical;line-height:1.5;}
 }
 .nav-b.on::before{animation:navon .3s ease-out backwards;}
 @keyframes navon{from{opacity:0;transform:scaleX(.2)}to{opacity:1;transform:none}}
-@media (prefers-reduced-motion:reduce){.cj-rise,.nav-b.on::before{animation:none;}}
+@media (prefers-reduced-motion:reduce){.cj-rise,.nav-b.on::before,.tc-t,.pg-in{animation:none;}}
 /* перетаскивание миссий (useMissionDrag): копия строки за пальцем, линия или рамка места вставки */
 .drag-src{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
 .drag-ghost{position:fixed;left:0;top:0;z-index:85;pointer-events:none;opacity:.94;filter:drop-shadow(0 12px 22px rgba(0,0,0,.65));will-change:transform;}
@@ -2195,7 +2193,7 @@ body.cj-dragging,body.cj-dragging *{cursor:grabbing !important;}
 @media (max-width:1279px){.cj-wide .desk-cols>*{max-width:720px;margin-left:auto;margin-right:auto;}}
 .set-cols{columns:2 400px;column-gap:20px;}
 .set-cols>*{break-inside:avoid;}
-.cj-wide .modal-panel.wide{border:1px solid rgba(var(--main-rgb),.55);box-shadow:0 0 50px rgba(var(--main-rgb),.22);animation:dlgin .2s ease-out;}
+.cj-wide .modal-panel.wide{border:1px solid rgba(var(--main-rgb),.55);box-shadow:0 0 50px rgba(var(--main-rgb),.22);}
 .cj-wide .toast{bottom:28px;left:calc(50% + 116px);}
 .cj-wide main::-webkit-scrollbar{width:10px;}
 .cj-wide main::-webkit-scrollbar-thumb{background:rgba(var(--main-rgb),.28);border:3px solid transparent;background-clip:padding-box;}
@@ -2226,19 +2224,25 @@ body.cj-dragging,body.cj-dragging *{cursor:grabbing !important;}
 /* стол персоны: фон не прокручивается, карточек может быть от одной до сотен */
 .ptb{position:absolute;inset:0;display:flex;flex-direction:column;overflow-y:auto;overscroll-behavior:contain;padding:70px 16px 20px;background:radial-gradient(ellipse 90% 60% at 50% 0,rgba(var(--main-rgb),.2),transparent 70%),linear-gradient(rgba(var(--alt-rgb),.05) 1px,transparent 1px) 0 0/100% 34px,linear-gradient(90deg,rgba(var(--alt-rgb),.05) 1px,transparent 1px) 0 0/34px 100%,#08070C;}
 .ptb-g{display:grid;grid-template-columns:repeat(auto-fill,var(--w));justify-content:center;align-content:center;gap:clamp(12px,calc(var(--w) * .1),24px);flex:1 0 auto;padding:16px 0 8px;}
-.tc-t{position:relative;transform:translateY(var(--y)) rotate(var(--a));transition:transform .18s;filter:drop-shadow(0 8px 14px rgba(0,0,0,.65));animation:deal .34s cubic-bezier(.2,.8,.3,1) backwards;animation-delay:calc(var(--n) * 26ms);}
-.tc-t:active{transform:scale(.97);}
+.tc-t{position:relative;transform:translateY(var(--y)) rotate(var(--a));transition:transform .24s cubic-bezier(.2,.8,.3,1);filter:drop-shadow(0 8px 14px rgba(0,0,0,.65));animation:deal .34s cubic-bezier(.2,.8,.3,1) backwards;animation-delay:calc(var(--n) * 26ms);}
+.tc-t.lit{z-index:5;transform:translateY(-5px) scale(1.04);}
 @media (hover:hover){.tc-t:hover{z-index:5;transform:translateY(-6px) scale(1.05);}}
+.tc-t:active{transform:scale(.97);}
 @keyframes deal{from{opacity:0;transform:translateY(-26px) rotate(calc(var(--a) * -2)) scale(1.14);}}
 .many .tc-t{filter:none;content-visibility:auto;contain-intrinsic-size:auto var(--w) calc(var(--w) * 1.4);}
+.many .tc{transform:none;}
+.many .tc-glare::after{display:none;}
+.many .tc-sheen{animation:none;}
 /* коллекционная карточка на столе: тёмная, фото почти без цвета, тонкая голографическая рамка. Размеры внутри в cqw */
-.tc{position:relative;display:block;width:100%;aspect-ratio:5/7;padding:0;container-type:inline-size;background:none;text-align:left;color:#fff;}
+.tc{position:relative;display:block;width:100%;aspect-ratio:5/7;padding:0;container-type:inline-size;background:none;text-align:left;color:#fff;transform:perspective(620px) rotateY(calc(var(--tx,0) * 9deg)) rotateX(calc(var(--ty,0) * -9deg));}
 .tc-in{position:absolute;inset:0;display:block;overflow:hidden;border-radius:5cqw;background:#0C0C0E;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);}
 .tc-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 22%;filter:grayscale(1) contrast(1.08) brightness(.9);transition:filter .3s;}
 .tc-ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Oswald',sans-serif;font-weight:700;font-size:64cqw;line-height:1;color:transparent;-webkit-text-stroke:1px rgba(255,255,255,.1);background:radial-gradient(ellipse 90% 70% at 50% 36%,#2E2F34,#0C0C0E 76%);}
 .tc-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.74) 0,rgba(0,0,0,.28) 30%,transparent 46%,transparent 62%,rgba(0,0,0,.84) 100%);}
 .tc-sheen{position:absolute;inset:0;pointer-events:none;background:linear-gradient(115deg,transparent 36%,rgba(255,255,255,.1) 46%,rgba(170,200,255,.12) 52%,transparent 63%) 100% 0/260% 100% no-repeat;transition:background-position .7s ease;}
-.tc-foil{position:absolute;inset:3.2cqw;border-radius:3.2cqw;padding:max(1px,.45cqw);background:linear-gradient(135deg,#A6DCFF,#C9A8FF 22%,#FFBDE3 42%,#FFF3B5 60%,#A8FFDA 78%,#A6DCFF);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:.8;}
+.tc-glare{position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at calc(50% + var(--tx,0) * 60%) calc(42% + var(--ty,0) * 60%),rgba(255,255,255,.17),rgba(190,210,255,.06) 36%,transparent 64%);}
+.tc-glare::after{content:'';position:absolute;inset:0;opacity:.09;background:linear-gradient(115deg,#6FC8FF,#B18CFF,#FF9AD5,#FFE98A,#7DFFC6,#6FC8FF,#B18CFF,#FF9AD5) calc(50% + var(--tx,0) * 45%) 0/320% 100%;transition:opacity .3s;}
+.tc-foil{position:absolute;inset:3.2cqw;border-radius:3.2cqw;padding:max(1px,.45cqw);background:linear-gradient(135deg,#A6DCFF,#C9A8FF,#FFBDE3,#FFF3B5,#A8FFDA,#A6DCFF,#C9A8FF,#FFBDE3,#FFF3B5,#A8FFDA) calc(50% + var(--tx,0) * 50%) calc(50% + var(--ty,0) * 50%)/320% 320%;transition:opacity .3s;-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:.8;}
 .tc-top{position:absolute;left:8cqw;right:8cqw;top:8.5cqw;display:block;text-align:center;}
 .tc-hero{display:block;font-size:max(5cqw,8px);font-weight:600;letter-spacing:.14em;line-height:1.2;text-transform:uppercase;color:rgba(255,255,255,.74);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .tc-name{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;margin-top:1.2cqw;font-family:'Oswald',sans-serif;font-weight:700;line-height:1.12;letter-spacing:.015em;text-transform:uppercase;color:transparent;background:linear-gradient(180deg,#FFF 18%,#C4C7CF 62%,#F1F2F5 100%);-webkit-background-clip:text;background-clip:text;filter:drop-shadow(0 1px 3px rgba(0,0,0,.6));}
@@ -2250,7 +2254,14 @@ body.cj-dragging,body.cj-dragging *{cursor:grabbing !important;}
 .tc-line i.none{background:rgba(255,255,255,.08);}
 .tc-meta{display:flex;justify-content:space-between;margin-top:2.6cqw;font-size:max(4.6cqw,8px);font-weight:600;line-height:1;letter-spacing:.04em;font-variant-numeric:tabular-nums;color:rgba(255,255,255,.6);}
 .tc-meta b{font-weight:600;color:#fff;}
-@media (hover:hover){.tc-t:hover .tc-sheen{background-position:0 0;}.tc-t:hover .tc-img{filter:grayscale(.2) brightness(.98);}}
+.tc-t.lit .tc-sheen{background-position:0 0;}
+.tc-t.lit .tc-img{filter:grayscale(.2) brightness(.98);}
+.tc-t.lit .tc-foil{opacity:1;}
+.tc-t.lit .tc-glare::after{opacity:.17;}
+@media (hover:hover){.tc-t:hover .tc-sheen{background-position:0 0;}.tc-t:hover .tc-img{filter:grayscale(.2) brightness(.98);}.tc-t:hover .tc-foil{opacity:1;}.tc-t:hover .tc-glare::after{opacity:.17;}}
+/* на телефоне блик сам иногда пробегает по карточкам: наведения там нет */
+@media (hover:none) and (prefers-reduced-motion:no-preference){.tc-sheen{animation:tcsweep 9s ease-in-out infinite;animation-delay:calc(var(--n) * .42s + 1.2s);}}
+@keyframes tcsweep{0%,84%{background-position:100% 0;}100%{background-position:0 0;}}
 .crop-stage{position:relative;flex:1;min-height:0;overflow:hidden;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none;}
 .crop-stage:active{cursor:grabbing;}
 .crop-img{position:absolute;left:50%;top:50%;max-width:none;pointer-events:none;}
@@ -2324,7 +2335,6 @@ body.cj-dragging,body.cj-dragging *{cursor:grabbing !important;}
 .poster-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;animation:pdot 1s steps(1) infinite;}
 @keyframes pdot{50%{opacity:.2}}
 @keyframes drift{0%,100%{transform:scale(1.15) translate(0,0)}50%{transform:scale(1.35) translate(-5%,4%) rotate(3deg)}}
-@keyframes rain{from{transform:translate(0,0)}to{transform:translate(-6px,28px)}}
 /* настройки */
 .set-head{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid rgba(var(--main-rgb),.3);background:linear-gradient(90deg,rgba(var(--main-rgb),.14),transparent);}
 .set-n{font-family:'Share Tech Mono',monospace;font-size:11px;color:#0a0a0f;background:var(--main);padding:2px 5px;letter-spacing:.06em;}
@@ -2335,7 +2345,7 @@ body.cj-dragging,body.cj-dragging *{cursor:grabbing !important;}
 .focus-bg{background:radial-gradient(120% 60% at 50% 38%,var(--bg1) 0%,var(--bg2) 75%);}
 .f-ring{filter:drop-shadow(0 0 7px rgba(var(--alt-rgb),.75));}
 .f-time{font-family:'Orbitron','Russo One',sans-serif;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.02em;line-height:1;color:#fff;text-shadow:0 0 18px rgba(var(--alt-rgb),.55);}
-.f-alert{--cut:10px;background:rgba(255,42,42,.14);box-shadow:inset 0 0 0 1px #FF2A2A,0 0 24px rgba(255,42,42,.35);color:#FF5A5A;animation:dlgin .25s ease-out;}
+.f-alert{--cut:10px;background:rgba(255,42,42,.14);box-shadow:inset 0 0 0 1px #FF2A2A,0 0 24px rgba(255,42,42,.35);color:#FF5A5A;}
 .f-chip{--cut:7px;padding:8px 12px;font-weight:700;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--alt);box-shadow:inset 0 0 0 1px rgba(var(--alt-rgb),.55);background:rgba(var(--alt-rgb),.06);}
 .f-chip:active{filter:brightness(1.4);}
 /* значок проверки внимания: кольцо убывает за время на ответ */
@@ -2823,7 +2833,7 @@ function Sheet({
     className: `w-full p-3 ${UI.wide ? 'max-w-[440px]' : 'max-w-[480px]'}`,
     style: {
       paddingBottom: 'calc(12px + env(safe-area-inset-bottom))',
-      animation: UI.wide ? 'dlgin .2s ease-out' : 'sheetin .2s ease-out'
+      animation: UI.wide ? 'mdlg .2s ease-out' : 'sheetin .2s ease-out'
     }
   }, React.createElement(Frame, {
     cut: 14,
@@ -6127,6 +6137,7 @@ function MissionsScreen() {
     } catch (e) {}
   };
   const [q, setQ] = useState('');
+  useReveal(mode);
   const [openId, setOpenId] = useState(null);
   const [editM, setEditM] = useState(null);
   const [editS, setEditS] = useState(null);
@@ -7917,6 +7928,8 @@ function TraitCard({
   }, (hero || t.name || '?').trim().charAt(0).toUpperCase()), React.createElement("span", {
     className: "tc-shade"
   }), React.createElement("span", {
+    className: "tc-glare"
+  }), React.createElement("span", {
     className: "tc-sheen"
   }), React.createElement("span", {
     className: "tc-foil"
@@ -7940,6 +7953,119 @@ function TraitCard({
     className: "tc-meta"
   }, React.createElement("span", null, "\u2116 ", pad(n)), React.createElement("b", null, week.plan ? `${week.done}/${week.plan}` : '—')))));
 }
+const touchOnly = () => {
+  try {
+    return window.matchMedia('(hover: none)').matches;
+  } catch (e) {
+    return false;
+  }
+};
+function useShine(ref) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    try {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return undefined;
+    } catch (e) {}
+    const cur = {
+        x: 0,
+        y: 0
+      },
+      aim = {
+        x: 0,
+        y: 0
+      };
+    let raf = 0,
+      rest = null,
+      sway = 0,
+      tile = null;
+    const frame = () => {
+      raf = 0;
+      const y = aim.y + sway;
+      cur.x += (aim.x - cur.x) * 0.16;
+      cur.y += (y - cur.y) * 0.16;
+      el.style.setProperty('--tx', cur.x.toFixed(3));
+      el.style.setProperty('--ty', cur.y.toFixed(3));
+      if (Math.abs(aim.x - cur.x) + Math.abs(y - cur.y) > 0.004) raf = requestAnimationFrame(frame);
+    };
+    const wake = () => {
+      if (!raf) raf = requestAnimationFrame(frame);
+    };
+    const tilt = e => {
+      if (e.gamma == null || e.beta == null) return;
+      if (!rest) rest = {
+        g: e.gamma,
+        b: e.beta
+      };
+      rest.g += (e.gamma - rest.g) * 0.012;
+      rest.b += (e.beta - rest.b) * 0.012;
+      aim.x = clamp((e.gamma - rest.g) / 16, -1, 1);
+      aim.y = clamp((e.beta - rest.b) / 16, -1, 1);
+      wake();
+    };
+    const scroll = () => {
+      sway = Math.sin(el.scrollTop / 130) * 0.5;
+      wake();
+    };
+    const drop = () => {
+      if (tile) {
+        tile.style.removeProperty('--tx');
+        tile.style.removeProperty('--ty');
+        tile = null;
+      }
+    };
+    const mouse = e => {
+      if (e.pointerType !== 'mouse') return;
+      const t = e.target.closest('.tc-t');
+      if (t !== tile) drop();
+      if (!t) return;
+      const r = t.getBoundingClientRect();
+      tile = t;
+      t.style.setProperty('--tx', ((e.clientX - r.left) / r.width * 2 - 1).toFixed(3));
+      t.style.setProperty('--ty', ((e.clientY - r.top) / r.height * 2 - 1).toFixed(3));
+    };
+    window.addEventListener('deviceorientation', tilt);
+    el.addEventListener('scroll', scroll, {
+      passive: true
+    });
+    el.addEventListener('pointermove', mouse);
+    el.addEventListener('pointerleave', drop);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('deviceorientation', tilt);
+      el.removeEventListener('scroll', scroll);
+      el.removeEventListener('pointermove', mouse);
+      el.removeEventListener('pointerleave', drop);
+    };
+  }, [ref]);
+}
+function useSpotlight(ref, key) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !touchOnly()) return undefined;
+    const tiles = [...el.querySelectorAll('.tc-t')];
+    if (!tiles.length) return undefined;
+    if (el.scrollHeight > el.clientHeight + 4) {
+      const io = new IntersectionObserver(es => es.forEach(x => x.target.classList.toggle('lit', x.isIntersecting)), {
+        root: el,
+        rootMargin: '-49% 0px -49% 0px'
+      });
+      tiles.forEach(t => io.observe(t));
+      return () => io.disconnect();
+    }
+    let i = 0;
+    const step = () => {
+      tiles.forEach((t, n) => t.classList.toggle('lit', n === i));
+      i = (i + 1) % tiles.length;
+    };
+    const start = setTimeout(step, 700),
+      id = setInterval(step, 3400);
+    return () => {
+      clearTimeout(start);
+      clearInterval(id);
+    };
+  }, [ref, key]);
+}
 function PersonaTable({
   list,
   pr,
@@ -7948,6 +8074,7 @@ function PersonaTable({
   onDeck,
   onNew
 }) {
+  const box = useRef(null);
   const [pick, setPick] = useState('');
   const heroes = useMemo(() => {
     const m = new Map();
@@ -7966,7 +8093,18 @@ function PersonaTable({
   }) => !hero || traitHero(t, pr) === hero);
   const many = shown.length > 24,
     w = tableCard(shown.length);
+  useShine(box);
+  useSpotlight(box, `${hero}/${shown.length}`);
+  const tap = (i, el) => {
+    if (!touchOnly()) {
+      onOpen(i, el);
+      return;
+    }
+    el.parentElement.classList.add('lit');
+    setTimeout(() => onOpen(i, el), 170);
+  };
   return React.createElement("div", {
+    ref: box,
     className: "ptb noscb"
   }, React.createElement("div", {
     className: "flex items-center justify-between gap-3"
@@ -8007,6 +8145,7 @@ function PersonaTable({
     }
   }, h || 'Все', " \xB7 ", c))), React.createElement("div", {
     className: `ptb-g ${many ? 'many' : ''}`,
+    "data-rise": "self",
     style: {
       '--w': `${w}px`
     }
@@ -8030,7 +8169,7 @@ function PersonaTable({
       hero: traitHero(t, pr),
       week: weeks[t.id],
       thumb: shown.length > 12,
-      onClick: e => onOpen(i, e)
+      onClick: e => tap(i, e.currentTarget)
     }));
   })));
 }
@@ -8079,9 +8218,9 @@ function PersonaFeed() {
       sessionStorage.setItem('cj.ptable', on ? '1' : '0');
     } catch (e) {}
   };
-  const openCard = (i, e) => {
+  const openCard = (i, el) => {
     const a = root.current.getBoundingClientRect(),
-      b = e.currentTarget.getBoundingClientRect();
+      b = el.getBoundingClientRect();
     sfx('open');
     deck.jump(i);
     setZoom(`${b.left + b.width / 2 - a.left}px ${b.top + b.height / 2 - a.top}px`);
@@ -8123,6 +8262,7 @@ function PersonaFeed() {
   }) : list.length ? React.createElement("div", _extends({
     ref: deck.box,
     className: `pg ${zoom ? 'pg-in' : ''}`,
+    "data-rise": "whole",
     style: zoom ? {
       transformOrigin: zoom
     } : undefined
@@ -8184,7 +8324,8 @@ function PersonaFeed() {
   })))), React.createElement("div", {
     className: "pg-dim"
   })))) : React.createElement("section", {
-    className: "tk flex items-center justify-center"
+    className: "tk flex items-center justify-center",
+    "data-rise": "whole"
   }, React.createElement(TimerBg, {
     t: {
       bg: 'smoke'
@@ -8230,14 +8371,19 @@ function StatsScreen({
     }
   });
   const [sel, setSel] = useState(() => dKey(new Date()));
+  const prevTab = useRef(tab),
+    side = useRef(null);
   const pick = v => {
+    prevTab.current = tab;
     setTab(v);
     try {
       sessionStorage.setItem('cj.stab', v);
     } catch (e) {}
   };
+  useReveal(tab, () => tab !== 'persona' && prevTab.current !== 'persona' ? side.current : null);
   if (tab === 'persona') return React.createElement("div", {
-    className: "absolute inset-0"
+    className: "absolute inset-0",
+    "data-rise": "root"
   }, React.createElement(PersonaFeed, null), React.createElement("div", {
     className: "pf-tabs"
   }, React.createElement(Segmented, {
@@ -8269,7 +8415,9 @@ function StatsScreen({
     setSel: setSel,
     openRate: openRate,
     noDetail: true
-  })), React.createElement("div", null, React.createElement("div", {
+  })), React.createElement("div", {
+    ref: side
+  }, React.createElement("div", {
     className: "px-4 mt-4"
   }, React.createElement(Segmented, {
     value: tab,
@@ -9490,7 +9638,8 @@ function CountdownScreen() {
   }, React.createElement("div", {
     ref: feedRef,
     onScroll: onScroll,
-    className: "feed noscb"
+    className: "feed noscb",
+    "data-rise": "whole"
   }, list.length ? list.map((t, i) => React.createElement(TimerCard, {
     key: t.id,
     t: t,
@@ -11897,13 +12046,16 @@ function SettingsScreen({
     onClose: () => setAvEdit(false)
   }));
 }
-function revealBlocks(main) {
+function revealBlocks(main, scope = main) {
+  const start = scope.querySelector('[data-rise="root"]') || scope;
   const box = main.getBoundingClientRect(),
     items = [];
   const walk = (el, depth) => {
+    const rise = el.dataset.rise;
+    if (rise === 'self') return;
     const r = el.getBoundingClientRect();
     if (!r.height || r.top >= box.bottom || r.bottom <= box.top) return;
-    if (depth < 6 && r.height > 260 && (getComputedStyle(el).display !== 'grid' || el.classList.contains('desk-cols'))) {
+    if (rise !== 'whole' && depth < 6 && r.height > 260 && (getComputedStyle(el).display !== 'grid' || el.classList.contains('desk-cols'))) {
       if (el.children.length === 1) {
         walk(el.children[0], depth);
         return;
@@ -11915,7 +12067,7 @@ function revealBlocks(main) {
     }
     items.push(el);
   };
-  Array.from(main.children).forEach(c => walk(c, 1));
+  Array.from(start.children).forEach(c => walk(c, 1));
   const step = Math.min(40, 420 / Math.max(1, items.length));
   items.forEach((el, i) => {
     const delay = Math.round(i * step);
@@ -11932,6 +12084,22 @@ function revealBlocks(main) {
     el.addEventListener('animationend', end);
     timer = setTimeout(end, delay + 600);
   });
+}
+function useReveal(dep, scope) {
+  const first = useRef(true);
+  useLayoutEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return undefined;
+    }
+    const main = document.querySelector('main');
+    if (!main) return undefined;
+    try {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return undefined;
+    } catch (e) {}
+    const raf = requestAnimationFrame(() => revealBlocks(main, scope && scope() || main));
+    return () => cancelAnimationFrame(raf);
+  }, [dep]);
 }
 function SideFoot() {
   const s = useSync();

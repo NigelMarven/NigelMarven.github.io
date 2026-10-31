@@ -1,4 +1,4 @@
-/* CJ_BUILD BETA-20261101-004212 */
+/* CJ_BUILD BETA-20261101-004949 */
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
 const {
   useState,
@@ -2254,7 +2254,7 @@ body.cj-dragging,body.cj-dragging *{cursor:grabbing !important;}
 @media (hover:none){.tc{transition:none;}.tc-t{--rot:11deg;}}
 .tc-in{position:absolute;inset:0;display:block;overflow:hidden;border-radius:5cqw;background:#0C0C0E;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);}
 .tc-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 22%;filter:grayscale(1) contrast(1.08) brightness(.9);transition:filter .3s;pointer-events:none;}
-.tc-ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Oswald',sans-serif;font-weight:700;font-size:64cqw;line-height:1;color:transparent;-webkit-text-stroke:1px rgba(255,255,255,.1);background:radial-gradient(ellipse 90% 70% at 50% 36%,#2E2F34,#0C0C0E 76%);}
+.tc-ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Unbounded','Inter',sans-serif;font-weight:700;font-size:52cqw;line-height:1;color:rgba(255,255,255,.045);background:radial-gradient(ellipse 90% 70% at 50% 36%,#2E2F34,#0C0C0E 76%);}
 .tc-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.74) 0,rgba(0,0,0,.28) 30%,transparent 46%,transparent 62%,rgba(0,0,0,.84) 100%);}
 .tc-sheen{position:absolute;inset:0;pointer-events:none;background:linear-gradient(115deg,transparent 36%,rgba(255,255,255,.1) 46%,rgba(170,200,255,.12) 52%,transparent 63%) 100% 0/260% 100% no-repeat;transition:background-position .7s ease;}
 .tc-glare{position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at calc(50% + var(--tx,0) * 60%) calc(42% + var(--ty,0) * 60%),rgba(255,255,255,.17),rgba(190,210,255,.06) 36%,transparent 64%);opacity:0;transition:opacity .3s;}
@@ -2262,7 +2262,7 @@ body.cj-dragging,body.cj-dragging *{cursor:grabbing !important;}
 .tc-foil{position:absolute;inset:3.2cqw;border-radius:3.2cqw;padding:max(calc(1px * var(--cz,1)),.45cqw);background:linear-gradient(135deg,#A6DCFF,#C9A8FF 22%,#FFBDE3 42%,#FFF3B5 60%,#A8FFDA 78%,#A6DCFF);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:.8;}
 .tc-top{position:absolute;left:8cqw;right:8cqw;top:8.5cqw;display:block;text-align:center;}
 .tc-hero{display:block;font-size:max(5cqw,calc(8px * var(--cz,1)));font-weight:600;letter-spacing:.14em;line-height:1.2;text-transform:uppercase;color:rgba(255,255,255,.74);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.tc-name{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;margin-top:1.2cqw;font-family:'Oswald',sans-serif;font-weight:700;line-height:1.12;letter-spacing:.015em;text-transform:uppercase;color:transparent;background:linear-gradient(180deg,#FFF 18%,#C4C7CF 62%,#F1F2F5 100%);-webkit-background-clip:text;background-clip:text;filter:drop-shadow(0 1px 3px rgba(0,0,0,.6));}
+.tc-name{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;margin-top:1.6cqw;font-family:'Unbounded','Inter',sans-serif;font-weight:700;line-height:1.18;letter-spacing:-.01em;color:transparent;background:linear-gradient(180deg,#FFF 18%,#C4C7CF 62%,#F1F2F5 100%);-webkit-background-clip:text;background-clip:text;filter:drop-shadow(0 1px 3px rgba(0,0,0,.6));}
 .tc-bot{position:absolute;left:8cqw;right:8cqw;bottom:7.5cqw;display:block;}
 .tc-line{display:grid;grid-template-columns:repeat(7,1fr);gap:1.4cqw;}
 .tc-line i{display:block;height:max(1.5cqw,calc(2px * var(--cz,1)));border-radius:99px;background:rgba(255,255,255,.2);}
@@ -2278,9 +2278,8 @@ body.cj-dragging,body.cj-dragging *{cursor:grabbing !important;}
 @media (hover:hover){.tc-t:hover .tc-sheen{background-position:0 0;}.tc-t:hover .tc-img{filter:grayscale(.2) brightness(.98);}.tc-t:hover .tc-glare{opacity:1;}.tc-t:hover .tc-foil{background:linear-gradient(135deg,#A6DCFF,#C9A8FF,#FFBDE3,#FFF3B5,#A8FFDA,#A6DCFF,#C9A8FF,#FFBDE3,#FFF3B5,#A8FFDA) calc(50% + var(--tx,0) * 50%) calc(50% + var(--ty,0) * 50%)/320% 320%;}}
 /* под камерой карточка крупная и движется постоянно, поэтому радуга слабее, чтобы выглядеть как на ПК */
 @media (hover:none){.tc-glare::after{opacity:.03;}.tc-t.lit .tc-foil{opacity:.6;}}
-/* на телефоне нет движения мыши: пока карточка в руках, блик пробегает по ней снова и снова */
-@media (hover:none) and (prefers-reduced-motion:no-preference){.tc-t.lit .tc-sheen{animation:tcsweep 3.4s ease-in-out infinite;}}
-@keyframes tcsweep{0%,30%{background-position:100% 0;}100%{background-position:0 0;}}
+/* на телефоне полоса блика как отражение: положение зависит только от поворота карточки, по центру — когда карта лежит прямо */
+@media (hover:none){.tc-sheen{transition:none;}.tc-t.lit .tc-sheen{background-position:calc(62% + var(--tx,0) * 40% + var(--ty,0) * 22%) 0;}}
 .crop-stage{position:relative;flex:1;min-height:0;overflow:hidden;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none;}
 .crop-stage:active{cursor:grabbing;}
 .crop-img{position:absolute;left:50%;top:50%;max-width:none;pointer-events:none;}
@@ -7959,7 +7958,7 @@ function TraitCard({
   }, hero), React.createElement("span", {
     className: "tc-name",
     style: {
-      fontSize: `${Math.min(11.5, 120 / word)}cqw`
+      fontSize: `${Math.min(9.5, 96 / word)}cqw`
     }
   }, t.name)), React.createElement("span", {
     className: "tc-bot"
@@ -7990,10 +7989,6 @@ function useCardFocus(ref, onOpen, onFocus) {
   useEffect(() => {
     const el = ref.current;
     if (!el) return undefined;
-    let calm = false;
-    try {
-      calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    } catch (e) {}
     const cur = {
         x: 0,
         y: 0
@@ -8021,11 +8016,8 @@ function useCardFocus(ref, onOpen, onFocus) {
         g = null;
       }
       if (!tile) return;
-      const s = performance.now() / 1000,
-        x = aim.x + (calm || finger ? 0 : Math.sin(s * 1.3) * 0.2),
-        y = aim.y + (calm || finger ? 0 : Math.cos(s * 0.9) * 0.14);
-      cur.x += (x - cur.x) * 0.14;
-      cur.y += (y - cur.y) * 0.14;
+      cur.x += (aim.x - cur.x) * 0.14;
+      cur.y += (aim.y - cur.y) * 0.14;
       tile.style.setProperty('--tx', cur.x.toFixed(3));
       tile.style.setProperty('--ty', cur.y.toFixed(3));
       raf = requestAnimationFrame(frame);
@@ -8073,8 +8065,6 @@ function useCardFocus(ref, onOpen, onFocus) {
         g: e.gamma,
         b: e.beta
       };
-      rest.g += (e.gamma - rest.g) * 0.007;
-      rest.b += (e.beta - rest.b) * 0.007;
       aim.x = clamp((e.gamma - rest.g) / TILT_DEG, -1, 1);
       aim.y = clamp((e.beta - rest.b) / TILT_DEG, -1, 1);
     };

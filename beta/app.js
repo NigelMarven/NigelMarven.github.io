@@ -1,4 +1,4 @@
-/* CJ_BUILD BETA-20261101-002453 */
+/* CJ_BUILD BETA-20261101-002938 */
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
 const {
   useState,
@@ -2166,7 +2166,7 @@ textarea.inp{resize:vertical;line-height:1.5;}
 }
 .nav-b.on::before{animation:navon .3s ease-out backwards;}
 @keyframes navon{from{opacity:0;transform:scaleX(.2)}to{opacity:1;transform:none}}
-@media (prefers-reduced-motion:reduce){.cj-rise,.nav-b.on::before,.tc-t,.pg-in{animation:none;}}
+@media (prefers-reduced-motion:reduce){.cj-rise,.nav-b.on::before,.tc-t,.pg-in{animation:none;}.ptb-w{transition:none;}}
 /* перетаскивание миссий (useMissionDrag): копия строки за пальцем, линия или рамка места вставки */
 .drag-src{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
 .drag-ghost{position:fixed;left:0;top:0;z-index:85;pointer-events:none;opacity:.94;filter:drop-shadow(0 12px 22px rgba(0,0,0,.65));will-change:transform;}
@@ -2222,12 +2222,14 @@ body.cj-dragging,body.cj-dragging *{cursor:grabbing !important;}
 .pg-in{animation:pgin .3s cubic-bezier(.2,.8,.25,1) backwards;}
 @keyframes pgin{from{opacity:.25;transform:scale(.3);}}
 /* стол персоны: фон не прокручивается, карточек может быть от одной до сотен */
-.ptb{position:absolute;inset:0;display:flex;flex-direction:column;overflow-y:auto;overscroll-behavior:contain;padding:70px 16px 20px;background:radial-gradient(ellipse 90% 60% at 50% 0,rgba(var(--main-rgb),.2),transparent 70%),linear-gradient(rgba(var(--alt-rgb),.05) 1px,transparent 1px) 0 0/100% 34px,linear-gradient(90deg,rgba(var(--alt-rgb),.05) 1px,transparent 1px) 0 0/34px 100%,#08070C;}
+.ptb{position:absolute;inset:0;display:flex;flex-direction:column;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;padding:70px 16px 20px;background:radial-gradient(ellipse 90% 60% at 50% 0,rgba(var(--main-rgb),.2),transparent 70%),linear-gradient(rgba(var(--alt-rgb),.05) 1px,transparent 1px) 0 0/100% 34px,linear-gradient(90deg,rgba(var(--alt-rgb),.05) 1px,transparent 1px) 0 0/34px 100%,#08070C;}
+.ptb.cam{overflow:hidden;}
+.ptb-w{position:relative;flex:1 0 auto;display:flex;flex-direction:column;transform-origin:0 0;transition:transform .42s cubic-bezier(.22,.8,.3,1);}
 .ptb-g{display:grid;grid-template-columns:repeat(auto-fill,var(--w));justify-content:center;align-content:center;gap:clamp(12px,calc(var(--w) * .1),24px);flex:1 0 auto;padding:16px 0 8px;}
 .tc-t{position:relative;transform:translateY(var(--y)) rotate(var(--a));transition:transform .24s cubic-bezier(.2,.8,.3,1);filter:drop-shadow(0 8px 14px rgba(0,0,0,.65));animation:deal .34s cubic-bezier(.2,.8,.3,1) backwards;animation-delay:calc(var(--n) * 26ms);}
 .tc-t{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;}
 .tc-t.lit{z-index:5;transform:translateY(-6px) scale(1.05);}
-.tc-t.lift{z-index:9;transition:none;transform:translateY(var(--lift,0)) scale(1.08);}
+.tc-t.lift{z-index:9;transition:none;transform:translateY(calc(var(--lift,0px) - 6px)) scale(1.05);}
 @media (hover:hover){.tc-t:hover{z-index:5;transform:translateY(-6px) scale(1.05);}.tc-t:active{transform:scale(.97);}}
 @keyframes deal{from{opacity:0;transform:translateY(-26px) rotate(calc(var(--a) * -2)) scale(1.14);}}
 .many .tc-t{filter:none;content-visibility:auto;contain-intrinsic-size:auto var(--w) calc(var(--w) * 1.4);}
@@ -7963,6 +7965,9 @@ const touchOnly = () => {
 };
 const HOLD_MS = 240,
   OPEN_PX = 70;
+const TILT_DEG = 10;
+const CAM_W = 190,
+  CAM_TOP = 64;
 function useCardFocus(ref, onOpen) {
   const open = useRef(onOpen);
   open.current = onOpen;
@@ -7986,7 +7991,8 @@ function useCardFocus(ref, onOpen) {
       rest = null,
       g = null,
       hovered = null,
-      finger = false;
+      finger = false,
+      zoom = 1;
     const unset = t => {
       t.style.removeProperty('--tx');
       t.style.removeProperty('--ty');
@@ -8007,6 +8013,20 @@ function useCardFocus(ref, onOpen) {
       tile.style.setProperty('--ty', cur.y.toFixed(3));
       raf = requestAnimationFrame(frame);
     };
+    const aimCam = () => {
+      const w = el.querySelector('.ptb-w');
+      if (!w || !touchOnly()) return;
+      el.classList.toggle('cam', !!tile);
+      if (!tile) {
+        w.style.transform = '';
+        zoom = 1;
+        return;
+      }
+      zoom = clamp(CAM_W / tile.offsetWidth, 1.12, 1.6);
+      const x = el.clientWidth / 2 - w.offsetLeft - (tile.offsetLeft + tile.offsetWidth / 2) * zoom;
+      const y = (el.clientHeight + CAM_TOP) / 2 - (w.offsetTop - el.scrollTop) - (tile.offsetTop + tile.offsetHeight / 2 - 6) * zoom;
+      w.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px) scale(${zoom.toFixed(3)})`;
+    };
     const pick = t => {
       if (t === tile) return;
       if (tile) {
@@ -8019,6 +8039,7 @@ function useCardFocus(ref, onOpen) {
       cur.y = 0;
       aim.x = 0;
       aim.y = 0;
+      aimCam();
       if (!t) return;
       t.classList.add('lit');
       sfx('tab');
@@ -8030,10 +8051,10 @@ function useCardFocus(ref, onOpen) {
         g: e.gamma,
         b: e.beta
       };
-      rest.g += (e.gamma - rest.g) * 0.012;
-      rest.b += (e.beta - rest.b) * 0.012;
-      aim.x = clamp((e.gamma - rest.g) / 16, -1, 1);
-      aim.y = clamp((e.beta - rest.b) / 16, -1, 1);
+      rest.g += (e.gamma - rest.g) * 0.007;
+      rest.b += (e.beta - rest.b) * 0.007;
+      aim.x = clamp((e.gamma - rest.g) / TILT_DEG, -1, 1);
+      aim.y = clamp((e.beta - rest.b) / TILT_DEG, -1, 1);
     };
     const lift = (t, dy) => {
       if (dy == null) {
@@ -8042,7 +8063,7 @@ function useCardFocus(ref, onOpen) {
         return;
       }
       t.classList.add('lift');
-      t.style.setProperty('--lift', `${dy}px`);
+      t.style.setProperty('--lift', `${dy / zoom}px`);
     };
     const start = e => {
       if (g) {
@@ -8146,6 +8167,7 @@ function useCardFocus(ref, onOpen) {
       t.style.setProperty('--ty', ((e.clientY - r.top) / r.height * 2 - 1).toFixed(3));
     };
     window.addEventListener('deviceorientation', tilt);
+    window.addEventListener('resize', aimCam);
     el.addEventListener('touchstart', start, {
       passive: true
     });
@@ -8161,6 +8183,7 @@ function useCardFocus(ref, onOpen) {
       cancelAnimationFrame(raf);
       if (g) clearTimeout(g.timer);
       window.removeEventListener('deviceorientation', tilt);
+      window.removeEventListener('resize', aimCam);
       el.removeEventListener('touchstart', start);
       el.removeEventListener('touchmove', move);
       el.removeEventListener('touchend', end);
@@ -8204,6 +8227,8 @@ function PersonaTable({
   return React.createElement("div", {
     ref: box,
     className: "ptb noscb"
+  }, React.createElement("div", {
+    className: "ptb-w"
   }, React.createElement("div", {
     className: "flex items-center justify-between gap-3"
   }, React.createElement("div", {
@@ -8276,7 +8301,7 @@ function PersonaTable({
       thumb: shown.length > 12,
       onClick: touch ? undefined : e => onOpen(i, e.currentTarget)
     }));
-  })));
+  }))));
 }
 function PersonaFeed() {
   const {

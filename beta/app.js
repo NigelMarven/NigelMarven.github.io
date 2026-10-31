@@ -1,4 +1,4 @@
-/* CJ_BUILD BETA-20261031-222456 */
+/* CJ_BUILD BETA-20261031-224745 */
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
 const {
   useState,
@@ -2367,12 +2367,23 @@ body.cj-dragging,body.cj-dragging *{cursor:grabbing !important;}
 /* лента персоны: вид «Отсчёта». Размеры внутри .pf в cqw, поэтому лицо карточки масштабируется целиком */
 .pf{position:relative;width:100%;height:100%;overflow:hidden;container-type:size;background:#08070C;text-align:left;color:#fff;}
 .pf-prev{width:168px;height:auto;aspect-ratio:9/16;--cut:12px;}
-.pf-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 22%;}
+.pf-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 22%;pointer-events:none;}
+.pg{position:relative;height:100%;overflow:hidden;background:#000;touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab;}
+.pg.drag{cursor:grabbing;}
+.pg-s{position:absolute;inset:0;overflow:hidden;transform-origin:50% 100%;will-change:transform;box-shadow:0 18px 60px rgba(0,0,0,.65);}
+.pg-dim{position:absolute;inset:0;background:#000;opacity:0;pointer-events:none;}
+.pg-dots{position:absolute;left:50%;top:66px;z-index:15;display:flex;gap:5px;transform:translateX(-50%);pointer-events:none;}
+.pg-dots i{display:block;height:3px;transition:width .2s;}
+.crop-stage{position:relative;flex:1;min-height:0;overflow:hidden;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none;}
+.crop-stage:active{cursor:grabbing;}
+.crop-img{position:absolute;left:50%;top:50%;max-width:none;pointer-events:none;}
+.crop-frame{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;box-shadow:0 0 0 9999px rgba(0,0,0,.62),0 0 0 2px #fff;background-image:linear-gradient(rgba(255,255,255,.28),rgba(255,255,255,.28)),linear-gradient(rgba(255,255,255,.28),rgba(255,255,255,.28)),linear-gradient(rgba(255,255,255,.28),rgba(255,255,255,.28)),linear-gradient(rgba(255,255,255,.28),rgba(255,255,255,.28));background-size:1px 100%,1px 100%,100% 1px,100% 1px;background-position:33.33% 0,66.66% 0,0 33.33%,0 66.66%;background-repeat:no-repeat;}
+.crop-zoom{display:block;width:100%;margin-top:12px;accent-color:var(--alt);}
 .pf-vig{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 85% 70% at 50% 40%,transparent 45%,rgba(0,0,0,.6) 100%),linear-gradient(180deg,rgba(0,0,0,.5) 0%,transparent 24%,transparent 44%,rgba(0,0,0,.72) 76%,rgba(0,0,0,.92) 100%);}
 .pf-body{position:absolute;left:min(5.5cqw,32px);right:min(5.5cqw,32px);bottom:min(5.5cqw,28px);max-width:760px;}
-.pf-hero{font-family:'Share Tech Mono',monospace;font-size:min(3.5cqw,15px);letter-spacing:.24em;line-height:1.2;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pf-hero{font-family:'Share Tech Mono',monospace;font-size:calc(min(4.9cqw,26px) * var(--k,1));letter-spacing:.14em;line-height:1.2;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .pf-name{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;margin-top:min(1.6cqw,8px);font-family:'Oswald',sans-serif;font-weight:700;line-height:1.14;letter-spacing:.005em;text-transform:uppercase;text-shadow:0 4px 30px rgba(0,0,0,.6);}
-.pf-maxim{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;margin-top:min(2.6cqw,12px);font-size:min(4cqw,16px);line-height:1.32;color:rgba(255,255,255,.82);text-shadow:0 1px 8px rgba(0,0,0,.7);}
+.pf-maxim{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;margin-top:min(2.6cqw,12px);font-size:calc(min(4cqw,16px) * var(--k,1));line-height:1.32;color:rgba(255,255,255,.82);text-shadow:0 1px 8px rgba(0,0,0,.7);}
 .pf-links{display:flex;flex-wrap:wrap;gap:6px;margin-top:min(2.6cqw,12px);}
 .pf-meta{display:flex;align-items:flex-end;justify-content:space-between;margin-top:min(4.5cqw,20px);font-family:'Share Tech Mono',monospace;font-size:min(2.8cqw,11px);letter-spacing:.14em;color:rgba(255,255,255,.75);}
 .pf-count{font-size:min(4.6cqw,18px);line-height:1;letter-spacing:.06em;}
@@ -3149,11 +3160,13 @@ function ImageInput({
   onChange,
   maxDim = 1080,
   quality = 0.8,
-  noPreview
+  noPreview,
+  aspect
 }) {
   const fileRef = useRef(null);
   const {
-    toast
+    toast,
+    crop
   } = useApp();
   const [url, setUrl] = useState(value && !isInline(value) && !isIdb(value) ? value : '');
   const [busy, setBusy] = useState(false);
@@ -3204,16 +3217,242 @@ function ImageInput({
     onChange: async e => {
       const f = e.target.files && e.target.files[0];
       if (!f) return;
+      e.target.value = '';
+      const cut = await crop(f, aspect);
+      if (!cut) return;
       setBusy(true);
       try {
-        onChange(await storeImageFile(f, maxDim, quality));
+        onChange(await storeImageFile(cut, maxDim, quality));
       } catch (err) {
         toast('Не удалось прочитать файл');
       }
       setBusy(false);
-      e.target.value = '';
     }
   }));
+}
+const CROP_RATIOS = [['Оригинал', 0], ['1:1', 1], ['4:5', 4 / 5], ['9:16', 9 / 16], ['16:9', 16 / 9]];
+const CROP_MAX = 5;
+function CropDialog({
+  req,
+  close
+}) {
+  const {
+    file,
+    res
+  } = req;
+  const [url] = useState(() => URL.createObjectURL(file));
+  const [size, setSize] = useState(null);
+  const [stage, setStage] = useState(null);
+  const [ratio, setRatio] = useState(() => req.aspect === 'full' ? UI.wide ? 16 / 9 : 9 / 16 : req.aspect || 0);
+  const [v, setV] = useState({
+    k: 1,
+    x: 0,
+    y: 0
+  });
+  const box = useRef(null),
+    imgEl = useRef(null),
+    pts = useRef(new Map()),
+    pinch = useRef(0);
+  const fin = out => {
+    close();
+    res(out);
+  };
+  useEffect(() => () => URL.revokeObjectURL(url), [url]);
+  useEffect(() => {
+    const f = e => {
+      if (e.key === 'Escape') {
+        sfx('close');
+        fin(null);
+      }
+    };
+    window.addEventListener('keydown', f);
+    return () => window.removeEventListener('keydown', f);
+  }, []);
+  useLayoutEffect(() => {
+    const el = box.current,
+      ro = new ResizeObserver(() => setStage({
+        w: el.clientWidth,
+        h: el.clientHeight
+      }));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const r = ratio || (size ? size.w / size.h : 1);
+  const fw = stage ? Math.min(stage.w - 32, (stage.h - 32) * r) : 0,
+    fh = fw / r;
+  const cover = size && fw ? Math.max(fw / size.w, fh / size.h) : 1,
+    s = cover * v.k;
+  const fit = n => {
+    const q = cover * n.k,
+      mx = Math.max(0, (size.w * q - fw) / 2),
+      my = Math.max(0, (size.h * q - fh) / 2);
+    return {
+      k: n.k,
+      x: clamp(n.x, -mx, mx),
+      y: clamp(n.y, -my, my)
+    };
+  };
+  const zoom = f => setV(o => {
+    const k = clamp(f(o.k), 1, CROP_MAX),
+      q = k / o.k;
+    return fit({
+      k,
+      x: o.x * q,
+      y: o.y * q
+    });
+  });
+  const pick = x => {
+    sfx();
+    setRatio(x);
+    setV({
+      k: 1,
+      x: 0,
+      y: 0
+    });
+  };
+  const down = e => {
+    pts.current.set(e.pointerId, {
+      x: e.clientX,
+      y: e.clientY
+    });
+    pinch.current = 0;
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch (err) {}
+  };
+  const move = e => {
+    const p = pts.current.get(e.pointerId);
+    if (!p || !size) return;
+    const dx = e.clientX - p.x,
+      dy = e.clientY - p.y;
+    p.x = e.clientX;
+    p.y = e.clientY;
+    const all = [...pts.current.values()];
+    if (all.length === 1) {
+      setV(o => fit({
+        ...o,
+        x: o.x + dx,
+        y: o.y + dy
+      }));
+      return;
+    }
+    const dist = Math.hypot(all[0].x - all[1].x, all[0].y - all[1].y),
+      was = pinch.current;
+    if (was) zoom(k => k * (dist / was));
+    pinch.current = dist;
+  };
+  const up = e => {
+    pts.current.delete(e.pointerId);
+    pinch.current = 0;
+  };
+  const done = async () => {
+    if (!ratio && v.k === 1) {
+      fin(file);
+      return;
+    }
+    const sw = fw / s,
+      sh = fh / s,
+      n = Math.min(1, 4096 / Math.max(sw, sh));
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(sw * n));
+    c.height = Math.max(1, Math.round(sh * n));
+    c.getContext('2d').drawImage(imgEl.current, size.w / 2 - (fw / 2 + v.x) / s, size.h / 2 - (fh / 2 + v.y) / s, sw, sh, 0, 0, c.width, c.height);
+    const enc = type => new Promise(ok => c.toBlob(ok, type, 0.98));
+    const b = await enc('image/webp');
+    fin(b && b.type === 'image/webp' ? b : await enc('image/jpeg'));
+  };
+  return React.createElement("div", {
+    className: "fixed inset-0 z-[95] flex flex-col modal-bg",
+    style: {
+      background: '#000'
+    }
+  }, React.createElement("div", {
+    className: "modal-head"
+  }, React.createElement("div", {
+    className: "min-w-0"
+  }, React.createElement("div", {
+    className: "micro deco"
+  }, "IMAGE // CROP"), React.createElement("div", {
+    className: "modal-title mt-1"
+  }, "\u041A\u0430\u0434\u0440\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u0435")), React.createElement(IconBtn, {
+    icon: X,
+    title: "\u041E\u0442\u043C\u0435\u043D\u0430",
+    onClick: () => {
+      sfx('close');
+      fin(null);
+    }
+  })), React.createElement("div", {
+    ref: box,
+    className: "crop-stage",
+    onPointerDown: down,
+    onPointerMove: move,
+    onPointerUp: up,
+    onPointerCancel: up,
+    onWheel: e => zoom(k => k * Math.exp(-e.deltaY * 0.0015))
+  }, React.createElement("img", {
+    ref: imgEl,
+    src: url,
+    alt: "",
+    draggable: false,
+    className: "crop-img",
+    onLoad: e => {
+      if (e.target.naturalWidth) setSize({
+        w: e.target.naturalWidth,
+        h: e.target.naturalHeight
+      });else fin(file);
+    },
+    onError: () => fin(file),
+    style: size ? {
+      width: size.w * s,
+      height: size.h * s,
+      transform: `translate(-50%,-50%) translate(${v.x}px,${v.y}px)`
+    } : {
+      visibility: 'hidden'
+    }
+  }), size && React.createElement("div", {
+    className: "crop-frame",
+    style: {
+      width: fw,
+      height: fh
+    }
+  })), React.createElement("div", {
+    className: "w-full max-w-[600px] mx-auto px-4 pt-3"
+  }, React.createElement("div", {
+    className: "flex flex-wrap justify-center gap-1.5"
+  }, CROP_RATIOS.map(([l, x]) => React.createElement(Btn, {
+    key: l,
+    small: true,
+    snd: "none",
+    variant: ratio === x ? 'main' : 'dark',
+    onClick: () => pick(x)
+  }, l))), React.createElement("input", {
+    type: "range",
+    className: "crop-zoom",
+    "aria-label": "\u041C\u0430\u0441\u0448\u0442\u0430\u0431",
+    min: 1,
+    max: CROP_MAX,
+    step: 0.01,
+    value: v.k,
+    onChange: e => {
+      const k = Number(e.target.value);
+      zoom(() => k);
+    }
+  })), React.createElement("div", {
+    className: "modal-foot w-full max-w-[600px] mx-auto"
+  }, React.createElement(Btn, {
+    variant: "ghost",
+    className: "flex-1",
+    onClick: () => fin(null)
+  }, "\u041E\u0442\u043C\u0435\u043D\u0430"), React.createElement(Btn, {
+    className: "flex-[2]",
+    icon: Check,
+    snd: "none",
+    disabled: !size,
+    onClick: () => {
+      sfx('save');
+      done();
+    }
+  }, "\u0413\u043E\u0442\u043E\u0432\u043E")));
 }
 function ColorRow({
   value,
@@ -5575,6 +5814,7 @@ function AvatarEditor({
     label: "\u0421\u0432\u043E\u0451 \u0444\u043E\u0442\u043E (\u0444\u0430\u0439\u043B \u0438\u043B\u0438 \u0441\u0441\u044B\u043B\u043A\u0430)"
   }, React.createElement(ImageInput, {
     noPreview: true,
+    aspect: 1,
     maxDim: 480,
     value: isPresetAvatar(s.avatar) ? '' : s.avatar,
     onChange: v => set({
@@ -8184,6 +8424,7 @@ function CardEditor({
   }, React.createElement("span", {
     className: "lbl"
   }, "\u0421\u0432\u043E\u044F \u043A\u0430\u0440\u0442\u0438\u043D\u043A\u0430-\u0441\u0442\u0438\u043A\u0435\u0440"), React.createElement(ImageInput, {
+    aspect: 1,
     maxDim: 360,
     value: c.icon.startsWith('url:') ? c.icon.slice(4) : '',
     onChange: v => set({
@@ -8492,7 +8733,7 @@ function CardCatalog({
   }, "\u0412 \u044D\u0442\u043E\u043C \u043F\u043E\u0440\u044F\u0434\u043A\u0435 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438 \u0438\u0434\u0443\u0442 \u0432 \u043A\u0430\u0442\u0430\u043B\u043E\u0433\u0435 \u0438 \u0432 \u0432\u0435\u0447\u0435\u0440\u043D\u0435\u0439 \u043E\u0446\u0435\u043D\u043A\u0435 \u0434\u043D\u044F.")));
 }
 const TRAIT_DAYS = 7;
-const TRAIT_DONE = 3;
+const TRAIT_DONE = 4;
 const TRAIT_EMPTY = {
   days: Array(TRAIT_DAYS).fill('off'),
   done: 0,
@@ -8558,8 +8799,9 @@ function TraitFace({
     ac = tcLum(col) > 0.1 ? col : '#FFFFFF',
     bg = traitBg(t, i);
   const word = Math.max(1, ...(t.name || '').split(/\s+/).map(w => w.length));
-  const size = mini ? Math.min(13, 140 / word) : Math.min(20, 145 / word);
-  return React.createElement(React.Fragment, null, bg === 'custom' && t.img ? React.createElement(Img, {
+  const k = textK(t),
+    size = mini ? Math.min(13, 140 / word) : Math.min(15 * k, 145 / word);
+  return React.createElement(React.Fragment, null, bg === 'custom' && t.img ? (live || mini) && React.createElement(Img, {
     src: t.img,
     thumb: !!mini,
     className: "pf-img"
@@ -8576,7 +8818,10 @@ function TraitFace({
       background: `linear-gradient(180deg,transparent 42%,${alpha(col, 0.2)} 74%,rgba(0,0,0,.4) 100%)`
     }
   }), React.createElement("div", {
-    className: "pf-body"
+    className: "pf-body",
+    style: {
+      '--k': k
+    }
   }, React.createElement("div", {
     className: "pf-hero",
     style: {
@@ -8586,7 +8831,7 @@ function TraitFace({
   }, hero || 'Персонаж'), React.createElement("div", {
     className: "pf-name",
     style: {
-      fontSize: `min(${size}cqw, ${size * 8.5}px, 17cqh, 128px)`
+      fontSize: `min(${size}cqw, ${size * 6}px, 17cqh)`
     }
   }, t.name || 'Характеристика'), !mini && t.maxim && React.createElement("div", {
     className: "pf-maxim"
@@ -8733,12 +8978,25 @@ function TraitEditor({
   }, UI.mono ? MONO_TBG[k][0] : name))))), t.bg === 'custom' && React.createElement(Field, {
     label: "\u0421\u0432\u043E\u0451 \u0444\u043E\u0442\u043E \u0444\u043E\u043D\u0430"
   }, React.createElement(ImageInput, {
+    aspect: "full",
     value: t.img || '',
     onChange: v => set({
       img: v
     }),
     maxDim: 2560,
     quality: 0.92
+  })), React.createElement(Field, {
+    label: "\u0420\u0430\u0437\u043C\u0435\u0440 \u0442\u0435\u043A\u0441\u0442\u0430"
+  }, React.createElement(Segmented, {
+    value: t.txt || 'm',
+    onChange: v => set({
+      txt: v
+    }),
+    accent: "var(--alt)",
+    options: TEXT_SIZES.map(([v, l]) => ({
+      v,
+      l
+    }))
   })), React.createElement(Field, {
     label: "\u0426\u0432\u0435\u0442 \u0430\u043A\u0446\u0435\u043D\u0442\u0430 \u0438 \u043B\u0438\u043D\u0438\u0438"
   }, React.createElement(ColorRow, {
@@ -8761,6 +9019,107 @@ function TraitEditor({
     className: "text-[12px] text-white/50 f-read leading-snug"
   }, "\u0414\u0435\u043D\u044C \u0437\u0430\u0441\u0447\u0438\u0442\u0430\u043D, \u0435\u0441\u043B\u0438 \u0441\u0440\u0435\u0434\u043D\u0438\u0439 \u0431\u0430\u043B\u043B \u043F\u0440\u0438\u0432\u044F\u0437\u0430\u043D\u043D\u044B\u0445 \u043A\u0430\u0440\u0442\u043E\u0447\u0435\u043A \u043D\u0435 \u043D\u0438\u0436\u0435 ", TRAIT_DONE, ". \u0414\u043D\u0438 \u0431\u0435\u0437 \u044D\u0442\u0438\u0445 \u043A\u0430\u0440\u0442\u043E\u0447\u0435\u043A \u0432 \u0440\u0430\u0441\u043F\u0438\u0441\u0430\u043D\u0438\u0438 \u0438 \u043F\u0440\u043E\u043F\u0443\u0441\u043A\u0438 \u043B\u0438\u043D\u0438\u044E \u043D\u0435 \u043F\u043E\u0440\u0442\u044F\u0442."));
 }
+function useDeck(count, onPage) {
+  const box = useRef(null);
+  const st = useRef({
+    pos: 0,
+    raf: 0,
+    drag: null,
+    count,
+    onPage
+  });
+  st.current.count = count;
+  st.current.onPage = onPage;
+  const paint = useCallback(() => {
+    const el = box.current,
+      s = st.current;
+    if (!el) return;
+    for (const c of el.children) {
+      const d = Number(c.dataset.i) - s.pos,
+        show = d > -1.05 && d < 2;
+      c.style.visibility = show ? 'visible' : 'hidden';
+      if (!show) continue;
+      const out = Math.max(0, -d),
+        back = clamp(d, 0, 1);
+      c.style.zIndex = s.count - Number(c.dataset.i);
+      c.style.transform = out ? `translate3d(${-out * 115}%,${out * 5}%,0) rotate(${-out * 9}deg) scale(${1 - out * 0.04})` : back ? `translate3d(0,${back * 3}%,0) scale(${1 - back * 0.08})` : 'none';
+      c.style.borderRadius = `${clamp((out + back) * 8, 0, 1) * 26}px`;
+      c.lastElementChild.style.opacity = back * 0.6;
+    }
+  }, []);
+  const go = useCallback(to => {
+    const s = st.current,
+      from = s.pos,
+      t0 = performance.now(),
+      dur = 240 + 160 * clamp(Math.abs(to - from), 0, 1);
+    cancelAnimationFrame(s.raf);
+    s.onPage(to);
+    const step = t => {
+      const p = clamp((t - t0) / dur, 0, 1);
+      s.pos = from + (to - from) * (1 - (1 - p) ** 3);
+      paint();
+      if (p < 1) s.raf = requestAnimationFrame(step);
+    };
+    s.raf = requestAnimationFrame(step);
+  }, [paint]);
+  useLayoutEffect(paint);
+  useEffect(() => () => cancelAnimationFrame(st.current.raf), []);
+  const down = e => {
+    if (e.button !== 0 || e.target.closest('button')) return;
+    const s = st.current;
+    cancelAnimationFrame(s.raf);
+    s.drag = {
+      id: e.pointerId,
+      x: e.clientX,
+      from: s.pos,
+      on: false,
+      lx: e.clientX,
+      lt: e.timeStamp,
+      v: 0
+    };
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch (err) {}
+  };
+  const move = e => {
+    const s = st.current,
+      g = s.drag;
+    if (!g || g.id !== e.pointerId) return;
+    const dx = e.clientX - g.x;
+    if (!g.on && Math.abs(dx) < 6) return;
+    g.on = true;
+    box.current.classList.add('drag');
+    const dt = e.timeStamp - g.lt;
+    if (dt > 0) {
+      g.v = 0.7 * ((e.clientX - g.lx) / dt) + 0.3 * g.v;
+      g.lx = e.clientX;
+      g.lt = e.timeStamp;
+    }
+    const max = s.count - 1,
+      p = g.from - dx / (box.current.clientWidth * 0.8);
+    s.pos = p < 0 ? p * 0.25 : p > max ? max + (p - max) * 0.25 : p;
+    paint();
+  };
+  const up = e => {
+    const s = st.current,
+      g = s.drag;
+    if (!g || g.id !== e.pointerId) return;
+    s.drag = null;
+    box.current.classList.remove('drag');
+    const flick = Math.abs(g.v) > 0.35 ? g.from - Math.sign(g.v) : Math.round(s.pos);
+    go(clamp(g.on ? flick : Math.round(g.from), 0, Math.max(0, s.count - 1)));
+  };
+  return {
+    box,
+    go,
+    bind: {
+      onPointerDown: down,
+      onPointerMove: move,
+      onPointerUp: up,
+      onPointerCancel: up
+    }
+  };
+}
 function PersonaFeed() {
   const {
     data,
@@ -8771,21 +9130,15 @@ function PersonaFeed() {
   const [edit, setEdit] = useState(null);
   const [page, setPage] = useState(0);
   const [jump, setJump] = useState(null);
-  const feedRef = useRef(null);
   const pr = data.persona,
     list = pr.traits;
+  const deck = useDeck(list.length, setPage);
   const weeks = useMemo(() => traitWeeks(data), [data.cards, data.ratings, data.persona]);
-  const onScroll = () => {
-    const el = feedRef.current;
-    if (el) setPage(Math.round(el.scrollTop / Math.max(1, el.clientHeight)));
-  };
   useEffect(() => {
+    if (page > 0 && page >= list.length) deck.go(Math.max(0, list.length - 1));
     if (!jump) return;
-    const el = feedRef.current,
-      i = list.findIndex(x => x.id === jump);
-    if (el && i >= 0) el.scrollTo({
-      top: i * el.clientHeight
-    });
+    const i = list.findIndex(x => x.id === jump);
+    if (i >= 0) deck.go(i);
     setJump(null);
   }, [list, jump]);
   const blank = () => ({
@@ -8819,13 +9172,13 @@ function PersonaFeed() {
   };
   return React.createElement("div", {
     className: "relative h-full"
-  }, React.createElement("div", {
-    ref: feedRef,
-    onScroll: onScroll,
-    className: "feed noscb"
-  }, list.length ? list.map((t, i) => React.createElement("section", {
+  }, list.length ? React.createElement("div", _extends({
+    ref: deck.box,
+    className: "pg"
+  }, deck.bind), list.map((t, i) => React.createElement("section", {
     key: t.id,
-    className: "tk"
+    "data-i": i,
+    className: "pg-s"
   }, React.createElement("div", {
     className: "pf"
   }, React.createElement(TraitFace, {
@@ -8898,7 +9251,9 @@ function PersonaFeed() {
     }
   }, React.createElement(Trash2, {
     size: 20
-  }), React.createElement("span", null, "DEL")))))) : React.createElement("section", {
+  }), React.createElement("span", null, "DEL")))), React.createElement("div", {
+    className: "pg-dim"
+  })))) : React.createElement("section", {
     className: "tk flex items-center justify-center"
   }, UI.mono ? React.createElement(MonoTimerBg, {
     k: "smoke",
@@ -8913,15 +9268,13 @@ function PersonaFeed() {
     icon: Plus,
     snd: "open",
     onClick: () => setEdit(blank())
-  }, "\u0421\u043E\u0437\u0434\u0430\u0442\u044C \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0443"))))), list.length > 1 && React.createElement("div", {
-    className: "absolute left-2 top-1/2 -translate-y-1/2 flex flex-col gap-1.5 pointer-events-none"
+  }, "\u0421\u043E\u0437\u0434\u0430\u0442\u044C \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0443")))), list.length > 1 && React.createElement("div", {
+    className: "pg-dots"
   }, list.map((t, i) => React.createElement("i", {
     key: t.id,
-    className: "block w-[3px]",
     style: {
-      height: i === page ? 22 : 8,
+      width: i === page ? 22 : 8,
       background: i === page ? '#fff' : 'rgba(255,255,255,.35)',
-      transition: 'height .2s',
       boxShadow: i === page ? '0 0 8px #fff' : 'none'
     }
   }))), edit && React.createElement(TraitEditor, {
@@ -9303,6 +9656,8 @@ const TIMER_FONTS = {
 const TIMER_BGS = [['smoke', 'Багровый дым', 'radial-gradient(circle at 30% 30%,#c0134f,#3a0a2e 55%,#120818)'], ['grid', 'Кибер-сетка', 'linear-gradient(180deg,#12021f,#4a0a4f 55%,#00444d)'], ['city', 'Неоновый город', 'linear-gradient(180deg,#0b0221,#3a0a3f 60%,#ff4655)'], ['matrix', 'Матрица', 'linear-gradient(180deg,#020a04,#0a3a14)'], ['aurora', 'Северное сияние', 'linear-gradient(180deg,#020814,#0b5a4a 40%,#3a1a6e 72%,#01040a)'], ['space', 'Космос', 'radial-gradient(circle at 25% 85%,#ff7ab6 0,#7a2fbf 16%,transparent 32%),radial-gradient(ellipse at 70% 25%,#3b1a6e,transparent 55%),#03020a'], ['custom', 'Своё фото', 'repeating-linear-gradient(45deg,#1c1c1c 0 6px,#2c2c2c 6px 12px)']];
 const TIMER_LAYOUTS = [['classic', 'Классика'], ['flip', 'Табло'], ['ring', 'Кольцо'], ['units', 'Блоки'], ['poster', 'Постер']];
 const timerLayout = t => TIMER_LAYOUTS.some(([k]) => k === t.layout) ? t.layout : 'classic';
+const TEXT_SIZES = [['s', 'Мелкий', 0.82], ['m', 'Обычный', 1], ['l', 'Крупный', 1.18]];
+const textK = x => (TEXT_SIZES.find(([k]) => k === x.txt) || [0, 0, 1])[2];
 const MILESTONES = [7, 14, 30, 60, 90, 100, 180, 365, 500, 730, 1000, 1500, 2000, 3650];
 const MATRIX_CHARS = 'ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎ0123456789Z:=*+<>';
 function SmokeBG({
@@ -9995,7 +10350,8 @@ function TimerCard({
       font,
       fw,
       accent
-    };
+    },
+    tk = textK(t);
   return React.createElement("section", {
     className: "tk"
   }, React.createElement(TimerBg, {
@@ -10112,7 +10468,12 @@ function TimerCard({
     }
   }, React.createElement(Trash2, {
     size: 20
-  }), React.createElement("span", null, "DEL"))), lay === 'flip' && React.createElement(FlipFace, face), lay === 'ring' && React.createElement(RingFace, face), lay === 'units' && React.createElement(UnitsFace, face), lay === 'poster' && React.createElement(PosterFace, face), lay === 'classic' && React.createElement("div", {
+  }), React.createElement("span", null, "DEL"))), React.createElement("div", {
+    className: "absolute inset-0",
+    style: tk === 1 ? undefined : {
+      zoom: tk
+    }
+  }, lay === 'flip' && React.createElement(FlipFace, face), lay === 'ring' && React.createElement(RingFace, face), lay === 'units' && React.createElement(UnitsFace, face), lay === 'poster' && React.createElement(PosterFace, face), lay === 'classic' && React.createElement("div", {
     className: "absolute inset-0 flex flex-col items-center justify-center px-12 text-center",
     style: {
       fontFamily: font
@@ -10146,7 +10507,7 @@ function TimerCard({
     style: {
       color: 'rgba(255,255,255,.55)'
     }
-  }, st.cap)), lay !== 'ring' && React.createElement("div", {
+  }, st.cap))), lay !== 'ring' && React.createElement("div", {
     className: "absolute left-5 right-5 bottom-6 z-10"
   }, React.createElement("div", {
     className: "flex justify-between items-end f-mono text-[10px] tracking-widest text-white/75 mb-1.5"
@@ -10338,6 +10699,18 @@ function TimerEditor({
       className: "f-mono text-[9px] text-white/55 mt-1"
     }, name));
   }))), React.createElement(Field, {
+    label: "\u0420\u0430\u0437\u043C\u0435\u0440 \u0442\u0435\u043A\u0441\u0442\u0430"
+  }, React.createElement(Segmented, {
+    value: t.txt || 'm',
+    onChange: v => set({
+      txt: v
+    }),
+    accent: "var(--alt)",
+    options: TEXT_SIZES.map(([v, l]) => ({
+      v,
+      l
+    }))
+  })), React.createElement(Field, {
     label: "\u0428\u0440\u0438\u0444\u0442"
   }, React.createElement("div", {
     className: "grid grid-cols-5 gap-1.5"
@@ -10392,6 +10765,7 @@ function TimerEditor({
   }, UI.mono ? MONO_TBG[k][0] : name))))), t.bg === 'custom' && React.createElement(Field, {
     label: "\u0421\u0432\u043E\u0451 \u0444\u043E\u0442\u043E \u0444\u043E\u043D\u0430"
   }, React.createElement(ImageInput, {
+    aspect: "full",
     value: t.bgUrl,
     onChange: v => set({
       bgUrl: v
@@ -11655,6 +12029,7 @@ function FocusBgModal({
   }, "\u041F\u0420\u0415\u0414\u041F\u0420\u041E\u0421\u041C\u041E\u0422\u0420")), React.createElement(Field, {
     label: "\u0424\u043E\u0442\u043E"
   }, React.createElement(ImageInput, {
+    aspect: "full",
     value: f.bg,
     onChange: v => set({
       bg: v
@@ -13424,6 +13799,7 @@ function MainApp({
     }
   });
   const [dialog, setDialog] = useState(null);
+  const [cropReq, setCropReq] = useState(null);
   const [toastMsg, setToastMsg] = useState(null);
   const [rate, setRate] = useState(null);
   const [focusSetup, setFocusSetup] = useState(null);
@@ -13488,6 +13864,12 @@ function MainApp({
   })), []);
   const ask = useCallback(opts => new Promise(res => setDialog({
     ...opts,
+    res,
+    k: Date.now()
+  })), []);
+  const crop = useCallback((file, aspect) => new Promise(res => setCropReq({
+    file,
+    aspect,
     res,
     k: Date.now()
   })), []);
@@ -13926,13 +14308,14 @@ function MainApp({
     data,
     up,
     ask,
+    crop,
     toast,
     replaceAll,
     undoable,
     markBackup,
     cloudOn,
     openFocus
-  }), [data, up, ask, toast, replaceAll, undoable, markBackup, cloudOn, openFocus]);
+  }), [data, up, ask, crop, toast, replaceAll, undoable, markBackup, cloudOn, openFocus]);
   const screen = React.createElement(Guard, {
     inline: true,
     key: tab
@@ -14016,6 +14399,10 @@ function MainApp({
     onClose: () => setFocusSetup(null)
   }), data.focus.active && React.createElement(FocusSession, {
     key: data.focus.active.id
+  }), cropReq && React.createElement(CropDialog, {
+    key: cropReq.k,
+    req: cropReq,
+    close: () => setCropReq(null)
   }), dialog && React.createElement(Dialog, {
     key: dialog.k,
     d: dialog,

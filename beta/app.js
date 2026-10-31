@@ -1,4 +1,4 @@
-/* CJ_BUILD BETA-20261101-002938 */
+/* CJ_BUILD BETA-20261101-004212 */
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
 const {
   useState,
@@ -2225,19 +2225,33 @@ body.cj-dragging,body.cj-dragging *{cursor:grabbing !important;}
 .ptb{position:absolute;inset:0;display:flex;flex-direction:column;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;padding:70px 16px 20px;background:radial-gradient(ellipse 90% 60% at 50% 0,rgba(var(--main-rgb),.2),transparent 70%),linear-gradient(rgba(var(--alt-rgb),.05) 1px,transparent 1px) 0 0/100% 34px,linear-gradient(90deg,rgba(var(--alt-rgb),.05) 1px,transparent 1px) 0 0/34px 100%,#08070C;}
 .ptb.cam{overflow:hidden;}
 .ptb-w{position:relative;flex:1 0 auto;display:flex;flex-direction:column;transform-origin:0 0;transition:transform .42s cubic-bezier(.22,.8,.3,1);}
+/* камера на телефоне: всё, кроме карточки в руках, уходит в темноту, по краям экрана виньетка */
+.ptb-w>*{transition:opacity .35s;}
+.ptb.cam .ptb-w>:not(.ptb-g){opacity:.16;}
+.ptb.cam .tc-t:not(.lit){opacity:.22;}
+.ptb-vig{position:absolute;inset:0;z-index:5;pointer-events:none;opacity:0;transition:opacity .35s;background:radial-gradient(ellipse 68% 52% at 50% 54%,transparent 76%,rgba(0,0,0,.55) 90%,rgba(0,0,0,.92) 100%);}
+.cj-root[data-cam] .ptb-vig{opacity:1;}
+.cj-root[data-cam] .pf-tabs{opacity:.2;}
+.cj-root[data-cam] .nav{opacity:.25;}
+.pf-tabs,.nav{transition:opacity .35s;}
 .ptb-g{display:grid;grid-template-columns:repeat(auto-fill,var(--w));justify-content:center;align-content:center;gap:clamp(12px,calc(var(--w) * .1),24px);flex:1 0 auto;padding:16px 0 8px;}
-.tc-t{position:relative;transform:translateY(var(--y)) rotate(var(--a));transition:transform .24s cubic-bezier(.2,.8,.3,1);filter:drop-shadow(0 8px 14px rgba(0,0,0,.65));animation:deal .34s cubic-bezier(.2,.8,.3,1) backwards;animation-delay:calc(var(--n) * 26ms);}
+.tc-t{position:relative;transform:translateY(var(--y)) rotate(var(--a));transition:transform .24s cubic-bezier(.2,.8,.3,1),opacity .35s;filter:drop-shadow(0 8px 14px rgba(0,0,0,.65));animation:deal .34s cubic-bezier(.2,.8,.3,1) backwards;animation-delay:calc(var(--n) * 26ms);}
 .tc-t{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;}
 .tc-t.lit{z-index:5;transform:translateY(-6px) scale(1.05);}
 .tc-t.lift{z-index:9;transition:none;transform:translateY(calc(var(--lift,0px) - 6px)) scale(1.05);}
 @media (hover:hover){.tc-t:hover{z-index:5;transform:translateY(-6px) scale(1.05);}.tc-t:active{transform:scale(.97);}}
 @keyframes deal{from{opacity:0;transform:translateY(-26px) rotate(calc(var(--a) * -2)) scale(1.14);}}
 .many .tc-t{filter:none;content-visibility:auto;contain-intrinsic-size:auto var(--w) calc(var(--w) * 1.4);}
+.many .tc-t.lit{content-visibility:visible;}
 .many .tc-t:not(.lit):not(:hover) .tc-glare::after{display:none;}
 /* коллекционная карточка на столе: тёмная, фото почти без цвета, тонкая голографическая рамка. Размеры внутри в cqw */
-.tc{position:relative;display:block;width:100%;aspect-ratio:5/7;padding:0;container-type:inline-size;background:none;text-align:left;color:#fff;transition:transform .24s ease-out;}
-.tc-t.lit .tc{transition:none;transform:perspective(620px) rotateY(calc(var(--tx,0) * 9deg)) rotateX(calc(var(--ty,0) * -9deg));}
-@media (hover:hover){.tc-t:hover .tc{transition:none;transform:perspective(620px) rotateY(calc(var(--tx,0) * 9deg)) rotateX(calc(var(--ty,0) * -9deg));}}
+/* --cz — увеличение камеры. Браузер не учитывает масштаб родителя у слоя с перспективой и растягивал бы карточку в пиксели,
+   поэтому под камерой она рисуется сразу в полном размере и уменьшается на месте. Без камеры --cz нет, это обычный размер */
+.tc-t{aspect-ratio:5/7;}
+.tc{position:absolute;left:50%;top:50%;display:block;width:calc(100% * var(--cz,1));aspect-ratio:5/7;padding:0;container-type:inline-size;background:none;text-align:left;color:#fff;transform:translate(-50%,-50%);transition:transform .24s ease-out;}
+.tc-t.lit .tc{transition:none;transform:translate(-50%,-50%) scale(calc(1 / var(--cz,1))) perspective(calc(620px * var(--cz,1))) rotateY(calc(var(--tx,0) * var(--rot,9deg))) rotateX(calc(var(--ty,0) * -1 * var(--rot,9deg)));}
+@media (hover:hover){.tc-t:hover .tc{transition:none;transform:translate(-50%,-50%) perspective(620px) rotateY(calc(var(--tx,0) * 9deg)) rotateX(calc(var(--ty,0) * -9deg));}}
+@media (hover:none){.tc{transition:none;}.tc-t{--rot:11deg;}}
 .tc-in{position:absolute;inset:0;display:block;overflow:hidden;border-radius:5cqw;background:#0C0C0E;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);}
 .tc-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 22%;filter:grayscale(1) contrast(1.08) brightness(.9);transition:filter .3s;pointer-events:none;}
 .tc-ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Oswald',sans-serif;font-weight:700;font-size:64cqw;line-height:1;color:transparent;-webkit-text-stroke:1px rgba(255,255,255,.1);background:radial-gradient(ellipse 90% 70% at 50% 36%,#2E2F34,#0C0C0E 76%);}
@@ -2245,23 +2259,25 @@ body.cj-dragging,body.cj-dragging *{cursor:grabbing !important;}
 .tc-sheen{position:absolute;inset:0;pointer-events:none;background:linear-gradient(115deg,transparent 36%,rgba(255,255,255,.1) 46%,rgba(170,200,255,.12) 52%,transparent 63%) 100% 0/260% 100% no-repeat;transition:background-position .7s ease;}
 .tc-glare{position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at calc(50% + var(--tx,0) * 60%) calc(42% + var(--ty,0) * 60%),rgba(255,255,255,.17),rgba(190,210,255,.06) 36%,transparent 64%);opacity:0;transition:opacity .3s;}
 .tc-glare::after{content:'';position:absolute;inset:0;opacity:.09;background:linear-gradient(115deg,#6FC8FF,#B18CFF,#FF9AD5,#FFE98A,#7DFFC6,#6FC8FF,#B18CFF,#FF9AD5) calc(50% + var(--tx,0) * 45%) 0/320% 100%;}
-.tc-foil{position:absolute;inset:3.2cqw;border-radius:3.2cqw;padding:max(1px,.45cqw);background:linear-gradient(135deg,#A6DCFF,#C9A8FF 22%,#FFBDE3 42%,#FFF3B5 60%,#A8FFDA 78%,#A6DCFF);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:.8;}
+.tc-foil{position:absolute;inset:3.2cqw;border-radius:3.2cqw;padding:max(calc(1px * var(--cz,1)),.45cqw);background:linear-gradient(135deg,#A6DCFF,#C9A8FF 22%,#FFBDE3 42%,#FFF3B5 60%,#A8FFDA 78%,#A6DCFF);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:.8;}
 .tc-top{position:absolute;left:8cqw;right:8cqw;top:8.5cqw;display:block;text-align:center;}
-.tc-hero{display:block;font-size:max(5cqw,8px);font-weight:600;letter-spacing:.14em;line-height:1.2;text-transform:uppercase;color:rgba(255,255,255,.74);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tc-hero{display:block;font-size:max(5cqw,calc(8px * var(--cz,1)));font-weight:600;letter-spacing:.14em;line-height:1.2;text-transform:uppercase;color:rgba(255,255,255,.74);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .tc-name{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;margin-top:1.2cqw;font-family:'Oswald',sans-serif;font-weight:700;line-height:1.12;letter-spacing:.015em;text-transform:uppercase;color:transparent;background:linear-gradient(180deg,#FFF 18%,#C4C7CF 62%,#F1F2F5 100%);-webkit-background-clip:text;background-clip:text;filter:drop-shadow(0 1px 3px rgba(0,0,0,.6));}
 .tc-bot{position:absolute;left:8cqw;right:8cqw;bottom:7.5cqw;display:block;}
 .tc-line{display:grid;grid-template-columns:repeat(7,1fr);gap:1.4cqw;}
-.tc-line i{display:block;height:max(1.5cqw,2px);border-radius:99px;background:rgba(255,255,255,.2);}
+.tc-line i{display:block;height:max(1.5cqw,calc(2px * var(--cz,1)));border-radius:99px;background:rgba(255,255,255,.2);}
 .tc-line i.on{background:var(--tcl);}
 .tc-line i.wait{background:none;box-shadow:inset 0 0 0 1px var(--tcl);}
 .tc-line i.none{background:rgba(255,255,255,.08);}
-.tc-meta{display:flex;justify-content:space-between;margin-top:2.6cqw;font-size:max(4.6cqw,8px);font-weight:600;line-height:1;letter-spacing:.04em;font-variant-numeric:tabular-nums;color:rgba(255,255,255,.6);}
+.tc-meta{display:flex;justify-content:space-between;margin-top:2.6cqw;font-size:max(4.6cqw,calc(8px * var(--cz,1)));font-weight:600;line-height:1;letter-spacing:.04em;font-variant-numeric:tabular-nums;color:rgba(255,255,255,.6);}
 .tc-meta b{font-weight:600;color:#fff;}
 .tc-t.lit .tc-sheen{background-position:0 0;}
 .tc-t.lit .tc-img{filter:grayscale(.2) brightness(.98);}
 .tc-t.lit .tc-glare{opacity:1;}
 .tc-t.lit .tc-foil{background:linear-gradient(135deg,#A6DCFF,#C9A8FF,#FFBDE3,#FFF3B5,#A8FFDA,#A6DCFF,#C9A8FF,#FFBDE3,#FFF3B5,#A8FFDA) calc(50% + var(--tx,0) * 50%) calc(50% + var(--ty,0) * 50%)/320% 320%;}
 @media (hover:hover){.tc-t:hover .tc-sheen{background-position:0 0;}.tc-t:hover .tc-img{filter:grayscale(.2) brightness(.98);}.tc-t:hover .tc-glare{opacity:1;}.tc-t:hover .tc-foil{background:linear-gradient(135deg,#A6DCFF,#C9A8FF,#FFBDE3,#FFF3B5,#A8FFDA,#A6DCFF,#C9A8FF,#FFBDE3,#FFF3B5,#A8FFDA) calc(50% + var(--tx,0) * 50%) calc(50% + var(--ty,0) * 50%)/320% 320%;}}
+/* под камерой карточка крупная и движется постоянно, поэтому радуга слабее, чтобы выглядеть как на ПК */
+@media (hover:none){.tc-glare::after{opacity:.03;}.tc-t.lit .tc-foil{opacity:.6;}}
 /* на телефоне нет движения мыши: пока карточка в руках, блик пробегает по ней снова и снова */
 @media (hover:none) and (prefers-reduced-motion:no-preference){.tc-t.lit .tc-sheen{animation:tcsweep 3.4s ease-in-out infinite;}}
 @keyframes tcsweep{0%,30%{background-position:100% 0;}100%{background-position:0 0;}}
@@ -7965,10 +7981,10 @@ const touchOnly = () => {
 };
 const HOLD_MS = 240,
   OPEN_PX = 70;
-const TILT_DEG = 10;
-const CAM_W = 190,
+const TILT_DEG = 7.5;
+const CAM_FILL = 0.72,
   CAM_TOP = 64;
-function useCardFocus(ref, onOpen) {
+function useCardFocus(ref, onOpen, onFocus) {
   const open = useRef(onOpen);
   open.current = onOpen;
   useEffect(() => {
@@ -7996,6 +8012,7 @@ function useCardFocus(ref, onOpen) {
     const unset = t => {
       t.style.removeProperty('--tx');
       t.style.removeProperty('--ty');
+      t.style.removeProperty('--cz');
     };
     const frame = () => {
       raf = 0;
@@ -8017,12 +8034,16 @@ function useCardFocus(ref, onOpen) {
       const w = el.querySelector('.ptb-w');
       if (!w || !touchOnly()) return;
       el.classList.toggle('cam', !!tile);
+      const app = el.closest('.cj-root');
+      if (app) app.toggleAttribute('data-cam', !!tile);
       if (!tile) {
         w.style.transform = '';
         zoom = 1;
         return;
       }
-      zoom = clamp(CAM_W / tile.offsetWidth, 1.12, 1.6);
+      const fit = Math.min(el.clientWidth * CAM_FILL, (el.clientHeight - CAM_TOP) * 0.62 / 1.4);
+      zoom = clamp(fit / tile.offsetWidth, 1.25, 3);
+      tile.style.setProperty('--cz', zoom.toFixed(3));
       const x = el.clientWidth / 2 - w.offsetLeft - (tile.offsetLeft + tile.offsetWidth / 2) * zoom;
       const y = (el.clientHeight + CAM_TOP) / 2 - (w.offsetTop - el.scrollTop) - (tile.offsetTop + tile.offsetHeight / 2 - 6) * zoom;
       w.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px) scale(${zoom.toFixed(3)})`;
@@ -8040,6 +8061,7 @@ function useCardFocus(ref, onOpen) {
       aim.x = 0;
       aim.y = 0;
       aimCam();
+      onFocus(t ? Number(t.dataset.i) : -1);
       if (!t) return;
       t.classList.add('lit');
       sfx('tab');
@@ -8182,6 +8204,8 @@ function useCardFocus(ref, onOpen) {
     return () => {
       cancelAnimationFrame(raf);
       if (g) clearTimeout(g.timer);
+      const app = document.querySelector('.cj-root');
+      if (app) app.removeAttribute('data-cam');
       window.removeEventListener('deviceorientation', tilt);
       window.removeEventListener('resize', aimCam);
       el.removeEventListener('touchstart', start);
@@ -8223,8 +8247,9 @@ function PersonaTable({
   }) => !hero || traitHero(t, pr) === hero);
   const many = shown.length > 24,
     w = tableCard(shown.length);
-  useCardFocus(box, onOpen);
-  return React.createElement("div", {
+  const [focus, setFocus] = useState(-1);
+  useCardFocus(box, onOpen, setFocus);
+  return React.createElement(React.Fragment, null, React.createElement("div", {
     ref: box,
     className: "ptb noscb"
   }, React.createElement("div", {
@@ -8298,10 +8323,13 @@ function PersonaTable({
       n: i + 1,
       hero: traitHero(t, pr),
       week: weeks[t.id],
-      thumb: shown.length > 12,
+      thumb: shown.length > 12 && focus !== i,
       onClick: touch ? undefined : e => onOpen(i, e.currentTarget)
     }));
-  }))));
+  })))), React.createElement("div", {
+    className: "ptb-vig",
+    "data-rise": "self"
+  }));
 }
 function PersonaFeed() {
   const {

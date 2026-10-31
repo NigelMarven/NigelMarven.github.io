@@ -1,4 +1,4 @@
-/* CJ_BUILD BETA-20261101-002143 */
+/* CJ_BUILD BETA-20261101-002453 */
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
 const {
   useState,
@@ -2241,9 +2241,9 @@ body.cj-dragging,body.cj-dragging *{cursor:grabbing !important;}
 .tc-ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Oswald',sans-serif;font-weight:700;font-size:64cqw;line-height:1;color:transparent;-webkit-text-stroke:1px rgba(255,255,255,.1);background:radial-gradient(ellipse 90% 70% at 50% 36%,#2E2F34,#0C0C0E 76%);}
 .tc-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.74) 0,rgba(0,0,0,.28) 30%,transparent 46%,transparent 62%,rgba(0,0,0,.84) 100%);}
 .tc-sheen{position:absolute;inset:0;pointer-events:none;background:linear-gradient(115deg,transparent 36%,rgba(255,255,255,.1) 46%,rgba(170,200,255,.12) 52%,transparent 63%) 100% 0/260% 100% no-repeat;transition:background-position .7s ease;}
-.tc-glare{position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at calc(50% + var(--tx,0) * 60%) calc(42% + var(--ty,0) * 60%),rgba(255,255,255,.17),rgba(190,210,255,.06) 36%,transparent 64%);}
-.tc-glare::after{content:'';position:absolute;inset:0;opacity:.09;background:linear-gradient(115deg,#6FC8FF,#B18CFF,#FF9AD5,#FFE98A,#7DFFC6,#6FC8FF,#B18CFF,#FF9AD5) calc(50% + var(--tx,0) * 45%) 0/320% 100%;transition:opacity .3s;}
-.tc-foil{position:absolute;inset:3.2cqw;border-radius:3.2cqw;padding:max(1px,.45cqw);background:linear-gradient(135deg,#A6DCFF,#C9A8FF,#FFBDE3,#FFF3B5,#A8FFDA,#A6DCFF,#C9A8FF,#FFBDE3,#FFF3B5,#A8FFDA) calc(50% + var(--tx,0) * 50%) calc(50% + var(--ty,0) * 50%)/320% 320%;transition:opacity .3s;-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:.8;}
+.tc-glare{position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at calc(50% + var(--tx,0) * 60%) calc(42% + var(--ty,0) * 60%),rgba(255,255,255,.17),rgba(190,210,255,.06) 36%,transparent 64%);opacity:0;transition:opacity .3s;}
+.tc-glare::after{content:'';position:absolute;inset:0;opacity:.09;background:linear-gradient(115deg,#6FC8FF,#B18CFF,#FF9AD5,#FFE98A,#7DFFC6,#6FC8FF,#B18CFF,#FF9AD5) calc(50% + var(--tx,0) * 45%) 0/320% 100%;}
+.tc-foil{position:absolute;inset:3.2cqw;border-radius:3.2cqw;padding:max(1px,.45cqw);background:linear-gradient(135deg,#A6DCFF,#C9A8FF 22%,#FFBDE3 42%,#FFF3B5 60%,#A8FFDA 78%,#A6DCFF);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:.8;}
 .tc-top{position:absolute;left:8cqw;right:8cqw;top:8.5cqw;display:block;text-align:center;}
 .tc-hero{display:block;font-size:max(5cqw,8px);font-weight:600;letter-spacing:.14em;line-height:1.2;text-transform:uppercase;color:rgba(255,255,255,.74);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .tc-name{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;margin-top:1.2cqw;font-family:'Oswald',sans-serif;font-weight:700;line-height:1.12;letter-spacing:.015em;text-transform:uppercase;color:transparent;background:linear-gradient(180deg,#FFF 18%,#C4C7CF 62%,#F1F2F5 100%);-webkit-background-clip:text;background-clip:text;filter:drop-shadow(0 1px 3px rgba(0,0,0,.6));}
@@ -2257,10 +2257,9 @@ body.cj-dragging,body.cj-dragging *{cursor:grabbing !important;}
 .tc-meta b{font-weight:600;color:#fff;}
 .tc-t.lit .tc-sheen{background-position:0 0;}
 .tc-t.lit .tc-img{filter:grayscale(.2) brightness(.98);}
-.tc-t.lit .tc-foil{opacity:1;}
-.tc-t.lit .tc-glare::after{opacity:.17;}
-.tc-t.lit .tc-in{box-shadow:inset 0 0 0 1px rgba(255,255,255,.16),0 0 24px -3px var(--tcl);}
-@media (hover:hover){.tc-t:hover .tc-sheen{background-position:0 0;}.tc-t:hover .tc-img{filter:grayscale(.2) brightness(.98);}.tc-t:hover .tc-foil{opacity:1;}.tc-t:hover .tc-glare::after{opacity:.17;}.tc-t:hover .tc-in{box-shadow:inset 0 0 0 1px rgba(255,255,255,.16),0 0 24px -3px var(--tcl);}}
+.tc-t.lit .tc-glare{opacity:1;}
+.tc-t.lit .tc-foil{background:linear-gradient(135deg,#A6DCFF,#C9A8FF,#FFBDE3,#FFF3B5,#A8FFDA,#A6DCFF,#C9A8FF,#FFBDE3,#FFF3B5,#A8FFDA) calc(50% + var(--tx,0) * 50%) calc(50% + var(--ty,0) * 50%)/320% 320%;}
+@media (hover:hover){.tc-t:hover .tc-sheen{background-position:0 0;}.tc-t:hover .tc-img{filter:grayscale(.2) brightness(.98);}.tc-t:hover .tc-glare{opacity:1;}.tc-t:hover .tc-foil{background:linear-gradient(135deg,#A6DCFF,#C9A8FF,#FFBDE3,#FFF3B5,#A8FFDA,#A6DCFF,#C9A8FF,#FFBDE3,#FFF3B5,#A8FFDA) calc(50% + var(--tx,0) * 50%) calc(50% + var(--ty,0) * 50%)/320% 320%;}}
 /* на телефоне нет движения мыши: пока карточка в руках, блик пробегает по ней снова и снова */
 @media (hover:none) and (prefers-reduced-motion:no-preference){.tc-t.lit .tc-sheen{animation:tcsweep 3.4s ease-in-out infinite;}}
 @keyframes tcsweep{0%,30%{background-position:100% 0;}100%{background-position:0 0;}}

@@ -1,4 +1,4 @@
-/* CJ_BUILD 20261101-010453 */
+/* CJ_BUILD 20261101-011722 */
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
 const {
   useState,
@@ -2269,8 +2269,11 @@ body.cj-dragging,body.cj-dragging *{cursor:grabbing !important;}
 .tc-line i.on{background:var(--tcl);}
 .tc-line i.wait{background:none;box-shadow:inset 0 0 0 1px var(--tcl);}
 .tc-line i.none{background:rgba(255,255,255,.08);}
-.tc-meta{display:flex;justify-content:space-between;margin-top:2.6cqw;font-size:max(4.2cqw,calc(7.5px * var(--cz,1)));line-height:1;letter-spacing:.02em;color:rgba(255,255,255,.6);}
-.tc-meta b{font-weight:400;color:#fff;}
+.tc-meta{display:flex;align-items:baseline;justify-content:space-between;margin-top:2.6cqw;font-size:max(4.2cqw,calc(7.5px * var(--cz,1)));line-height:1;letter-spacing:.02em;color:rgba(255,255,255,.6);}
+.tc-pow{display:flex;align-items:baseline;gap:2cqw;}
+.tc-pow i{font-style:normal;}
+.tc-meta b{font-weight:400;font-size:max(8.5cqw,calc(13px * var(--cz,1)));color:#fff;}
+.tc-meta.idle b{color:rgba(255,255,255,.5);}
 .tc-t.lit .tc-sheen{background-position:0 0;}
 .tc-t.lit .tc-img{filter:grayscale(.2) brightness(.98);}
 .tc-t.lit .tc-glare{opacity:1;}
@@ -2292,7 +2295,11 @@ body.cj-dragging,body.cj-dragging *{cursor:grabbing !important;}
 .pf-maxim{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;margin-top:min(2.6cqw,12px);font-size:calc(min(4cqw,16px) * var(--k,1));line-height:1.32;color:rgba(255,255,255,.82);text-shadow:0 1px 8px rgba(0,0,0,.7);}
 .pf-links{display:flex;flex-wrap:wrap;gap:6px;margin-top:min(2.6cqw,12px);}
 .pf-meta{display:flex;align-items:flex-end;justify-content:space-between;margin-top:min(4.5cqw,20px);font-family:'Share Tech Mono',monospace;font-size:min(2.8cqw,11px);letter-spacing:.14em;color:rgba(255,255,255,.75);}
-.pf-count{font-size:min(4.6cqw,18px);line-height:1;letter-spacing:.06em;}
+.pf-pow{display:flex;align-items:baseline;gap:min(1.8cqw,8px);margin-top:min(4.5cqw,20px);font-size:min(3.2cqw,13px);color:rgba(255,255,255,.75);}
+.pf-pow b{font-size:min(11cqw,44px);line-height:1;}
+.pf-pow.idle b{opacity:.5;}
+.pf-trend{margin-left:auto;}
+.pf-pow+.pf-meta{margin-top:min(2.4cqw,10px);}
 .pf-line{display:grid;grid-template-columns:repeat(7,1fr);gap:min(1.2cqw,6px);margin-top:min(1.8cqw,8px);}
 .pf-line i{display:block;height:min(2.2cqw,9px);background:rgba(255,255,255,.16);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);transform:skewX(-24deg);}
 .pf-line i.on{background:var(--pc);box-shadow:0 0 12px var(--pc),0 0 26px var(--pc);}
@@ -2472,7 +2479,7 @@ const MONO_CSS = `
 .ui-mono .thumb{border-radius:12px;box-shadow:none;opacity:.45;}
 .ui-mono .thumb.on{box-shadow:0 0 0 2px var(--alt);opacity:1;}
 .ui-mono .pf-hero{font-family:'Inter',sans-serif;font-weight:600;letter-spacing:.02em;text-transform:none;}
-.ui-mono .pf-meta,.ui-mono .pf-count{font-family:'Inter',sans-serif;font-weight:600;letter-spacing:.02em;font-variant-numeric:tabular-nums;}
+.ui-mono .pf-meta,.ui-mono .pf-pow{font-family:'Inter',sans-serif;font-weight:600;letter-spacing:.02em;font-variant-numeric:tabular-nums;}
 .ui-mono .pf-line i{transform:none;border-radius:99px;box-shadow:none;}
 .ui-mono .pf-line i.on{box-shadow:none;}
 .ui-mono .pf-line i.wait{box-shadow:inset 0 0 0 1.5px var(--pc);}
@@ -7514,11 +7521,42 @@ function CardCatalog({
 }
 const TRAIT_DAYS = 7;
 const TRAIT_DONE = 4;
+const TRAIT_HALF = 14,
+  TRAIT_TREND = 30,
+  TRAIT_IDLE = 14;
 const TRAIT_EMPTY = {
   days: Array(TRAIT_DAYS).fill('off'),
-  done: 0,
-  plan: 0
+  power: null,
+  trend: 0,
+  idle: false
 };
+const traitDay = (rating, bound) => {
+  const by = {};
+  for (const [id, s] of Object.entries((rating || {}).scores || {})) {
+    const tid = s.tr || bound[id];
+    if (tid) (by[tid] = by[tid] || []).push(s);
+  }
+  return by;
+};
+function traitPower(data, bound, from) {
+  const out = {};
+  for (const k of Object.keys(data.ratings).sort()) {
+    for (const [tid, list] of Object.entries(traitDay(data.ratings[k], bound))) {
+      const avg = calcAvgW(list);
+      if (avg == null) continue;
+      const p = out[tid] || (out[tid] = {
+        s: 0,
+        was: 0,
+        at: ''
+      });
+      const gap = p.at ? Math.min((Date.parse(k) - Date.parse(p.at)) / 864e5, TRAIT_HALF) : 1;
+      p.s += ((avg - 1) * 25 - p.s) * (1 - 2 ** (-gap / TRAIT_HALF));
+      p.at = k;
+      if (k <= from) p.was = p.s;
+    }
+  }
+  return out;
+}
 function traitWeeks(data) {
   const now = new Date(),
     today = dKey(now),
@@ -7526,9 +7564,8 @@ function traitWeeks(data) {
     bound = {};
   data.persona.traits.forEach(t => {
     out[t.id] = {
-      days: [],
-      done: 0,
-      plan: 0
+      ...TRAIT_EMPTY,
+      days: []
     };
   });
   data.cards.forEach(c => {
@@ -7536,25 +7573,26 @@ function traitWeeks(data) {
   });
   for (let i = 0; i < TRAIT_DAYS; i++) {
     const k = dKey(addDays(now, -i)),
-      by = {},
+      by = traitDay(data.ratings[k], bound),
       sched = {};
-    for (const [id, s] of Object.entries((data.ratings[k] || {}).scores || {})) {
-      const tid = s.tr || bound[id];
-      if (tid) (by[tid] = by[tid] || []).push(s);
-    }
     activeCards(data.cards, k).forEach(c => {
       if (c.trait) sched[c.trait] = true;
     });
     for (const [tid, w] of Object.entries(out)) {
       const avg = by[tid] ? calcAvgW(by[tid]) : null;
-      const st = avg != null ? avg >= TRAIT_DONE ? 'on' : 'off' : by[tid] || !sched[tid] ? 'none' : k === today ? 'wait' : 'off';
-      w.days.push(st);
-      if (st === 'on') w.done++;
-      if (st !== 'none') w.plan++;
+      w.days.push(avg != null ? avg >= TRAIT_DONE ? 'on' : 'off' : by[tid] || !sched[tid] ? 'none' : k === today ? 'wait' : 'off');
     }
+  }
+  const idle = dKey(addDays(now, -TRAIT_IDLE));
+  for (const [tid, p] of Object.entries(traitPower(data, bound, dKey(addDays(now, -TRAIT_TREND))))) {
+    if (!out[tid]) continue;
+    out[tid].power = Math.round(p.s);
+    out[tid].trend = out[tid].power - Math.round(p.was);
+    out[tid].idle = p.at < idle;
   }
   return out;
 }
+const traitTrend = w => w.trend > 0 ? `+${w.trend}` : w.trend < 0 ? `−${-w.trend}` : '±0';
 const tcLum = hex => {
   const m = /^#([0-9a-f]{6})$/i.exec(hex || '');
   if (!m) return 1;
@@ -7629,14 +7667,16 @@ function TraitFace({
   }))) : React.createElement("div", {
     className: "pf-maxim"
   }, "\u041F\u0440\u0438\u0432\u044F\u0436\u0438 \u043A \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0435 \u0432 \u043A\u0430\u0442\u0430\u043B\u043E\u0433\u0435, \u0438 \u043B\u0438\u043D\u0438\u044F \u043D\u0430\u0447\u043D\u0451\u0442 \u0437\u0430\u043F\u043E\u043B\u043D\u044F\u0442\u044C\u0441\u044F")), !mini && React.createElement(React.Fragment, null, React.createElement("div", {
-    className: "pf-meta"
-  }, React.createElement("span", null, nice('СЕГОДНЯ')), React.createElement("span", {
-    className: "pf-count",
+    className: `pf-pow${week.idle ? ' idle' : ''}`
+  }, React.createElement("b", {
     style: {
-      color: ac,
-      textShadow: 'none'
+      color: ac
     }
-  }, week.plan ? `${week.done}/${week.plan}` : '—'), React.createElement("span", null, nice('7 ДНЕЙ'))), React.createElement("div", {
+  }, week.power != null ? week.power : '—'), React.createElement("span", null, "\u0421\u0438\u043B\u0430"), week.power != null && React.createElement("span", {
+    className: "pf-trend"
+  }, week.idle ? 'Давно без оценок' : `${traitTrend(week)} за ${TRAIT_TREND} дней`)), React.createElement("div", {
+    className: "pf-meta"
+  }, React.createElement("span", null, nice('СЕГОДНЯ')), React.createElement("span", null, nice('7 ДНЕЙ'))), React.createElement("div", {
     className: "pf-line",
     style: {
       '--pc': ac
@@ -7799,7 +7839,7 @@ function TraitEditor({
     placeholder: "\u0427\u0442\u043E \u0431\u044B \u0441\u0434\u0435\u043B\u0430\u043B \u043F\u0435\u0440\u0441\u043E\u043D\u0430\u0436"
   })), React.createElement("div", {
     className: "text-[12px] text-white/50 f-read leading-snug"
-  }, "\u0414\u0435\u043D\u044C \u0437\u0430\u0441\u0447\u0438\u0442\u0430\u043D, \u0435\u0441\u043B\u0438 \u0441\u0440\u0435\u0434\u043D\u0438\u0439 \u0431\u0430\u043B\u043B \u043F\u0440\u0438\u0432\u044F\u0437\u0430\u043D\u043D\u044B\u0445 \u043A\u0430\u0440\u0442\u043E\u0447\u0435\u043A \u043D\u0435 \u043D\u0438\u0436\u0435 ", TRAIT_DONE, ". \u0414\u043D\u0438 \u0431\u0435\u0437 \u044D\u0442\u0438\u0445 \u043A\u0430\u0440\u0442\u043E\u0447\u0435\u043A \u0432 \u0440\u0430\u0441\u043F\u0438\u0441\u0430\u043D\u0438\u0438 \u0438 \u043F\u0440\u043E\u043F\u0443\u0441\u043A\u0438 \u043B\u0438\u043D\u0438\u044E \u043D\u0435 \u043F\u043E\u0440\u0442\u044F\u0442."));
+  }, "\u0421\u0438\u043B\u0430 \u043E\u0442 0 \u0434\u043E 100 \u043A\u043E\u043F\u0438\u0442\u0441\u044F \u0438\u0437 \u043E\u0446\u0435\u043D\u043E\u043A \u043F\u0440\u0438\u0432\u044F\u0437\u0430\u043D\u043D\u044B\u0445 \u043A\u0430\u0440\u0442\u043E\u0447\u0435\u043A: \u043F\u043E\u0441\u0442\u043E\u044F\u043D\u043D\u044B\u0435 \u0447\u0435\u0442\u0432\u0451\u0440\u043A\u0438 \u0432\u0435\u0434\u0443\u0442 \u043A 75, \u043F\u044F\u0442\u0451\u0440\u043A\u0438 \u043A 100, \u0432\u043A\u043B\u0430\u0434 \u043E\u0446\u0435\u043D\u043A\u0438 \u0432\u0434\u0432\u043E\u0435 \u0441\u043B\u0430\u0431\u0435\u0435\u0442 \u0437\u0430 ", TRAIT_HALF, " \u0434\u043D\u0435\u0439, \u0430 \u0434\u043D\u0438 \u0431\u0435\u0437 \u043E\u0446\u0435\u043D\u043A\u0438 \u0435\u0451 \u043D\u0435 \u043C\u0435\u043D\u044F\u044E\u0442. \u041D\u0430 \u043B\u0438\u043D\u0438\u0438 \u0434\u0435\u043D\u044C \u0437\u0430\u0441\u0447\u0438\u0442\u0430\u043D, \u0435\u0441\u043B\u0438 \u0441\u0440\u0435\u0434\u043D\u0438\u0439 \u0431\u0430\u043B\u043B \u043D\u0435 \u043D\u0438\u0436\u0435 ", TRAIT_DONE, ". \u0414\u043D\u0438 \u0431\u0435\u0437 \u044D\u0442\u0438\u0445 \u043A\u0430\u0440\u0442\u043E\u0447\u0435\u043A \u0432 \u0440\u0430\u0441\u043F\u0438\u0441\u0430\u043D\u0438\u0438 \u0438 \u043F\u0440\u043E\u043F\u0443\u0441\u043A\u0438 \u043B\u0438\u043D\u0438\u044E \u043D\u0435 \u043F\u043E\u0440\u0442\u044F\u0442."));
 }
 function useDeck(count, onPage) {
   const box = useRef(null);
@@ -7968,8 +8008,10 @@ function TraitCard({
     key: d,
     className: s
   }))), React.createElement("span", {
-    className: "tc-meta"
-  }, React.createElement("span", null, "\u2116 ", pad(n)), React.createElement("b", null, week.plan ? `${week.done}/${week.plan}` : '—')))));
+    className: `tc-meta${week.idle ? ' idle' : ''}`
+  }, React.createElement("span", null, "\u2116 ", pad(n)), React.createElement("span", {
+    className: "tc-pow"
+  }, week.power != null && React.createElement("i", null, week.idle ? 'пауза' : traitTrend(week)), React.createElement("b", null, week.power != null ? week.power : '—'))))));
 }
 const touchOnly = () => {
   try {

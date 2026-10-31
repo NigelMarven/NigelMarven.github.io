@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0A0A0F">
+<meta name="theme-color" content="#000000">
 <meta name="description" content="Миссии, дневник, оценка дня и отсчёт времени">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -13,34 +13,38 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<script>window.CJ_FONTS_URL = 'fonts/fonts.css'; /* локальные шрифты, работают офлайн */ window.CJ_BUILD = '20261101-011722';</script>
-<script src="vendor/tailwind.js"></script>
-<script src="vendor/react.production.min.js"></script>
-<script src="vendor/react-dom.production.min.js"></script>
-<script>window.react = window.React; /* lucide-react UMD ждёт глобальный "react" */</script>
-<script src="vendor/lucide-react.min.js"></script>
+<link id="cj-fonts" rel="stylesheet" href="fonts/fonts.css"><!-- локальные шрифты, работают офлайн -->
+<script>
+  window.CJ_BUILD = '20261101-025033';
+  /* загрузочный экран сразу в цвете акцента из настроек, приложение запоминает его при каждом запуске */
+  try { var acc = localStorage.getItem('cyberjournal2077.accent'); if (acc) document.documentElement.style.setProperty('--boot', acc); } catch (e) { /* нет доступа */ }
+</script>
+<!-- defer: скрипты не задерживают показ страницы, поэтому загрузочный экран виден сразу -->
+<script defer src="vendor/react.production.min.js"></script>
+<script defer src="vendor/react-dom.production.min.js"></script>
 <style>
   :root { color-scheme: dark; }
   html { box-sizing: border-box; height: 100%; padding-block: env(safe-area-inset-top, 0px) env(safe-area-inset-bottom, 0px); }
-  html, body { margin: 0; background: #0A0A0F; overscroll-behavior: none; }
+  html, body { margin: 0; background: #000; overscroll-behavior: none; }
   body, #root { height: 100%; }
-  #boot { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
-    font: 600 13px/1.4 ui-monospace, monospace; letter-spacing: .2em; color: #FF4655; text-shadow: 0 0 10px rgba(255,70,85,.6); }
-  #boot i { display: block; width: 160px; height: 3px; background: rgba(255,70,85,.2); position: relative; overflow: hidden; }
-  #boot i::after { content: ''; position: absolute; inset: 0; width: 40%; background: #00F0FF; box-shadow: 0 0 10px #00F0FF; animation: boot 1s linear infinite; }
-  @keyframes boot { from { transform: translateX(-100%); } to { transform: translateX(260%); } }
-  #boot pre { max-width: 92vw; white-space: pre-wrap; color: #FCEE0A; letter-spacing: 0; font-size: 12px; }
+  #boot { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; color: #fff; }
+  #boot b { font: 700 25px/1 'Unbounded', 'Inter', system-ui, sans-serif; letter-spacing: -.01em; animation: bootin .4s ease-out .08s both; }
+  #boot i { display: block; position: relative; width: 124px; height: 4px; border-radius: 99px; background: #1C1C1E; overflow: hidden; animation: bootin .4s ease-out .16s both; }
+  #boot i::after { content: ''; position: absolute; inset: 0; width: 42%; border-radius: inherit; background: var(--boot, #B8FF00); animation: boot 1.1s ease-in-out infinite; }
+  @keyframes bootin { from { opacity: 0; transform: translateY(6px); } }
+  @keyframes boot { from { transform: translateX(-105%); } to { transform: translateX(245%); } }
+  #boot pre { max-width: 92vw; margin: 0; white-space: pre-wrap; text-align: center; font: 12px/1.4 ui-monospace, monospace; color: #FF6961; }
 </style>
 </head>
 <body>
-<div id="root"><div id="boot">BOOTING CYBER//JOURNAL…<i></i></div></div>
+<div id="root"><div id="boot"><b>CyberJournal</b><i></i></div></div>
 <script>
   window.addEventListener('error', function (e) {
     var b = document.getElementById('boot');
-    if (b) b.innerHTML = 'SYSTEM FAILURE<pre>' + (e.message || e) + '</pre>';
+    if (b) b.innerHTML = '<b>CyberJournal</b><pre>Не удалось запустить приложение\n' + (e.message || e) + '</pre>';
   });
 </script>
-<script src="app.js"></script>
+<script defer src="app.js"></script>
 <script>
   /* Офлайн-режим и автообновление: новая версия сайта ставится при следующем запуске */
   if ('serviceWorker' in navigator) {
@@ -51,6 +55,6 @@
     window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
   }
 </script>
-<!-- build 20261101-011722 -->
+<!-- build 20261101-025033 -->
 </body>
 </html>

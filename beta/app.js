@@ -1,4 +1,4 @@
-/* CJ_BUILD BETA-20261031-214535 */
+/* CJ_BUILD BETA-20261031-222456 */
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
 const {
   useState,
@@ -2364,28 +2364,32 @@ body.cj-dragging,body.cj-dragging *{cursor:grabbing !important;}
 .wd-chip.on{background:var(--alt);color:#06080a;box-shadow:none;}
 .thumb{--cut:7px;width:40px;height:54px;display:flex;align-items:flex-start;justify-content:center;padding-top:7px;opacity:.5;transition:opacity .15s,transform .15s;box-shadow:inset 0 0 0 1px rgba(var(--main-rgb),.35);flex-shrink:0;}
 .thumb.on{opacity:1;transform:translateY(-3px);box-shadow:inset 0 0 0 1.5px var(--alt);}
-/* коллекционная карточка персоны: размеры внутри в cqw, поэтому карточка масштабируется целиком */
-.tc{position:relative;display:block;width:100%;aspect-ratio:5/7;padding:0;container-type:inline-size;background:var(--tc);text-align:left;color:#fff;}
-.tc-in{position:absolute;inset:4px;display:block;overflow:hidden;background:#08070C;}
-.tc-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
-.tc-ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding-bottom:30cqw;font-family:'Orbitron','Russo One',sans-serif;font-weight:900;font-size:42cqw;line-height:1;}
-.tc-no{position:absolute;top:0;left:0;padding:1.5cqw 7cqw 1.5cqw 4cqw;background:var(--tc);color:var(--tci);font-family:'Share Tech Mono',monospace;font-size:5.6cqw;line-height:1.2;clip-path:polygon(0 0,100% 0,calc(100% - 4cqw) 100%,0 100%);}
-.tc-foot{position:absolute;left:0;right:0;bottom:0;display:block;}
-.tc-plate{display:block;padding:6cqw 4cqw 3.5cqw;background:var(--tc);color:var(--tci);clip-path:polygon(0 3cqw,34cqw 3cqw,37cqw 0,100% 0,100% 100%,0 100%);}
-.tc-name{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;font-size:10cqw;font-weight:800;line-height:1.02;letter-spacing:.02em;text-transform:uppercase;}
-.tc-hero{display:block;margin-top:1cqw;font-family:'Share Tech Mono',monospace;font-size:5.4cqw;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.tc-line{display:grid;grid-template-columns:repeat(7,1fr);gap:1.3cqw;margin-top:2.6cqw;padding:1.6cqw 2cqw;background:rgba(0,0,0,.78);}
-.tc-line i{display:block;height:3cqw;background:rgba(255,255,255,.16);transform:skewX(-24deg);}
-.tc-line i.on{background:var(--tcl);box-shadow:0 0 1.6cqw var(--tcl);}
-.tc-line i.wait{background:transparent;box-shadow:inset 0 0 0 1px var(--tcl);}
-.tc-line i.none{height:1cqw;align-self:center;background:rgba(255,255,255,.1);}
-.tc-em{position:absolute;right:3cqw;top:-16cqw;display:flex;align-items:center;justify-content:center;width:21cqw;height:21cqw;border-radius:50%;background:#0A0A0F;box-shadow:0 0 0 1.2cqw var(--tc);color:#fff;font-family:'Orbitron','Russo One',sans-serif;font-weight:900;font-size:6.2cqw;font-variant-numeric:tabular-nums;}
-.tc.mini .tc-in{inset:2px;}
-.tc.mini .tc-em,.tc.mini .tc-line,.tc.mini .tc-no{display:none;}
-.tc.mini .tc-hero{font-size:9.5cqw;}
-.tc.mini .tc-plate{padding-top:5cqw;}
-.tc-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
-.cj-wide .tc-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));}
+/* лента персоны: вид «Отсчёта». Размеры внутри .pf в cqw, поэтому лицо карточки масштабируется целиком */
+.pf{position:relative;width:100%;height:100%;overflow:hidden;container-type:size;background:#08070C;text-align:left;color:#fff;}
+.pf-prev{width:168px;height:auto;aspect-ratio:9/16;--cut:12px;}
+.pf-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 22%;}
+.pf-vig{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 85% 70% at 50% 40%,transparent 45%,rgba(0,0,0,.6) 100%),linear-gradient(180deg,rgba(0,0,0,.5) 0%,transparent 24%,transparent 44%,rgba(0,0,0,.72) 76%,rgba(0,0,0,.92) 100%);}
+.pf-body{position:absolute;left:min(5.5cqw,32px);right:min(5.5cqw,32px);bottom:min(5.5cqw,28px);max-width:760px;}
+.pf-hero{font-family:'Share Tech Mono',monospace;font-size:min(3.5cqw,15px);letter-spacing:.24em;line-height:1.2;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pf-name{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;margin-top:min(1.6cqw,8px);font-family:'Oswald',sans-serif;font-weight:700;line-height:1.14;letter-spacing:.005em;text-transform:uppercase;text-shadow:0 4px 30px rgba(0,0,0,.6);}
+.pf-maxim{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;margin-top:min(2.6cqw,12px);font-size:min(4cqw,16px);line-height:1.32;color:rgba(255,255,255,.82);text-shadow:0 1px 8px rgba(0,0,0,.7);}
+.pf-links{display:flex;flex-wrap:wrap;gap:6px;margin-top:min(2.6cqw,12px);}
+.pf-meta{display:flex;align-items:flex-end;justify-content:space-between;margin-top:min(4.5cqw,20px);font-family:'Share Tech Mono',monospace;font-size:min(2.8cqw,11px);letter-spacing:.14em;color:rgba(255,255,255,.75);}
+.pf-count{font-size:min(4.6cqw,18px);line-height:1;letter-spacing:.06em;}
+.pf-line{display:grid;grid-template-columns:repeat(7,1fr);gap:min(1.2cqw,6px);margin-top:min(1.8cqw,8px);}
+.pf-line i{display:block;height:min(2.2cqw,9px);background:rgba(255,255,255,.16);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);transform:skewX(-24deg);}
+.pf-line i.on{background:var(--pc);box-shadow:0 0 12px var(--pc),0 0 26px var(--pc);}
+.pf-line i.wait{background:transparent;box-shadow:inset 0 0 0 1px var(--pc);}
+.pf-line i.none{background:rgba(255,255,255,.06);box-shadow:none;}
+.pf-no{position:absolute;left:16px;top:70px;color:rgba(255,255,255,.65);}
+.pf-rail{position:absolute;right:12px;top:82px;z-index:10;}
+.pf-tabs{position:absolute;left:12px;right:12px;top:10px;z-index:20;max-width:560px;}
+.pf-tabs .seg{background:rgba(0,0,0,.4);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);}
+.cj-wide .pf-tabs{left:50%;right:auto;width:min(560px,calc(100% - 24px));transform:translateX(-50%);}
+.pf-mini{height:auto;aspect-ratio:5/7;--cut:7px;}
+.pf-mini .pf-body{left:6cqw;right:6cqw;bottom:6cqw;}
+.pf-mini .pf-hero{font-size:8.5cqw;letter-spacing:.04em;}
+.pf-mini .pf-name{margin-top:1cqw;line-height:1.05;}
 .tc-pick{position:relative;flex:0 0 92px;opacity:.55;transition:opacity .15s,transform .15s;}
 .tc-pick.on{opacity:1;transform:translateY(-2px);}
 .tc-pick-mark{position:absolute;top:5px;right:5px;z-index:1;display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--alt);color:#05080A;}
@@ -2573,17 +2577,17 @@ const MONO_CSS = `
 .ui-mono .wd-chip.on{background:var(--alt);color:#000;}
 .ui-mono .thumb{border-radius:12px;box-shadow:none;opacity:.45;}
 .ui-mono .thumb.on{box-shadow:0 0 0 2px var(--alt);opacity:1;}
-.ui-mono .tc{border-radius:calc(var(--cut) * 1.4);}
-.ui-mono .tc-in{border-radius:calc(var(--cut) * 1.4 - 3px);}
-.ui-mono .tc-no{clip-path:none;padding-right:4cqw;border-radius:0 0 3cqw 0;font-family:'Inter',sans-serif;font-weight:600;font-size:5cqw;}
-.ui-mono .tc-plate{clip-path:none;padding-top:4cqw;}
-.ui-mono .tc-name{font-family:'Inter',sans-serif;font-weight:700;letter-spacing:-.01em;text-transform:none;line-height:1.1;}
-.ui-mono .tc-hero{font-family:'Inter',sans-serif;font-weight:500;}
-.ui-mono .tc-line{padding:1.6cqw;border-radius:99px;}
-.ui-mono .tc-line i{transform:none;border-radius:99px;}
-.ui-mono .tc-line i.on{box-shadow:none;}
-.ui-mono .tc-em{font-family:'Unbounded','Inter',sans-serif;font-weight:700;font-size:5.6cqw;}
-.ui-mono .tc-none{border-radius:12px;box-shadow:none;background:#1C1C1E;}
+.ui-mono .pf-hero{font-family:'Inter',sans-serif;font-weight:600;letter-spacing:.02em;text-transform:none;}
+.ui-mono .pf-meta,.ui-mono .pf-count{font-family:'Inter',sans-serif;font-weight:600;letter-spacing:.02em;font-variant-numeric:tabular-nums;}
+.ui-mono .pf-line i{transform:none;border-radius:99px;box-shadow:none;}
+.ui-mono .pf-line i.on{box-shadow:none;}
+.ui-mono .pf-line i.wait{box-shadow:inset 0 0 0 1.5px var(--pc);}
+.ui-mono .pf-prev{border-radius:18px;}
+.ui-mono .pf-mini{border-radius:14px;}
+.ui-mono .pf-tabs .seg{background:rgba(0,0,0,.4);}
+.ui-mono .pf-tabs .seg-b{color:#D1D1D6;}
+.ui-mono .pf-tabs .seg-b.on{background:rgba(255,255,255,.2);color:#fff;}
+.ui-mono .tc-none{border-radius:14px;box-shadow:none;background:#1C1C1E;}
 .ui-mono .sw{border-radius:50%;}
 .ui-mono .tk-hms{border-radius:999px;box-shadow:none;background:rgba(0,0,0,.3);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);font-family:'Inter',sans-serif;font-weight:600;letter-spacing:.04em;font-size:22px;padding:6px 18px;font-variant-numeric:tabular-nums;}
 .ui-mono .tk-sub{font-family:'Inter',sans-serif;font-weight:600;letter-spacing:.08em;}
@@ -8291,20 +8295,24 @@ function CardEditor({
     }
   }, React.createElement(X, {
     size: 18
-  }), "\u0411\u0435\u0437 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438")), traits.map(t => React.createElement("div", {
+  }), "\u0411\u0435\u0437 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438")), traits.map((t, i) => React.createElement("div", {
     key: t.id,
     className: `tc-pick ${linked === t.id ? 'on' : ''}`
-  }, React.createElement(TraitCard, {
-    mini: true,
-    t: t,
-    hero: traitHero(t, data.persona),
+  }, React.createElement("button", {
+    type: "button",
+    className: "pf pf-mini cut block",
     onClick: () => {
       sfx();
       set({
         trait: t.id
       });
     }
-  }), linked === t.id && React.createElement("span", {
+  }, React.createElement(TraitFace, {
+    mini: true,
+    t: t,
+    i: i,
+    hero: traitHero(t, data.persona)
+  })), linked === t.id && React.createElement("span", {
     className: "tc-pick-mark"
   }, React.createElement(Check, {
     size: 14
@@ -8536,66 +8544,84 @@ const tcLum = hex => {
     };
   return 0.2126 * ch(v >> 16) + 0.7152 * ch(v >> 8 & 255) + 0.0722 * ch(v & 255);
 };
-function TraitCard({
+const traitBg = (t, i = 0) => t.bg || (t.img ? 'custom' : TIMER_BGS[i % (TIMER_BGS.length - 1)][0]);
+function TraitFace({
   t,
+  i,
   hero,
   week = TRAIT_EMPTY,
-  n,
-  mini,
-  onClick
+  links,
+  live,
+  mini
 }) {
   const col = t.color || '#FFFFFF',
-    lum = tcLum(col),
-    Tag = onClick ? 'button' : 'div';
-  const letter = (hero || t.name || '?').trim().charAt(0).toUpperCase();
+    ac = tcLum(col) > 0.1 ? col : '#FFFFFF',
+    bg = traitBg(t, i);
   const word = Math.max(1, ...(t.name || '').split(/\s+/).map(w => w.length));
-  return React.createElement(Tag, {
-    type: onClick ? 'button' : undefined,
-    onClick: onClick,
-    className: `tc cut ${mini ? 'mini' : ''}`,
-    style: {
-      '--tc': col,
-      '--tci': lum > 0.18 ? '#0A0A0F' : '#FFFFFF',
-      '--tcl': lum > 0.1 ? col : '#FFFFFF',
-      '--cut': mini ? '7px' : '12px'
-    }
-  }, React.createElement("span", {
-    className: "tc-in cut"
-  }, t.img ? React.createElement(Img, {
+  const size = mini ? Math.min(13, 140 / word) : Math.min(20, 145 / word);
+  return React.createElement(React.Fragment, null, bg === 'custom' && t.img ? React.createElement(Img, {
     src: t.img,
     thumb: !!mini,
-    className: "tc-img"
-  }) : React.createElement("span", {
-    className: "tc-ph",
+    className: "pf-img"
+  }) : React.createElement(TimerBg, {
+    t: {
+      bg: bg === 'custom' ? 'smoke' : bg
+    },
+    live: live
+  }), React.createElement("div", {
+    className: "pf-vig"
+  }), React.createElement("div", {
+    className: "pf-vig",
     style: {
-      background: `radial-gradient(circle at 50% 34%, ${alpha(col, 0.5)}, #08070C 72%)`,
-      color: alpha(col, 0.85)
+      background: `linear-gradient(180deg,transparent 42%,${alpha(col, 0.2)} 74%,rgba(0,0,0,.4) 100%)`
     }
-  }, letter), n != null && React.createElement("span", {
-    className: "tc-no"
-  }, "\u2116 ", pad(n)), React.createElement("span", {
-    className: "tc-foot"
-  }, React.createElement("span", {
-    className: "tc-plate"
-  }, React.createElement("span", {
-    className: "tc-name",
+  }), React.createElement("div", {
+    className: "pf-body"
+  }, React.createElement("div", {
+    className: "pf-hero",
     style: {
-      fontSize: `${Math.min(mini ? 12.5 : 10, 130 / word)}cqw`
+      color: ac,
+      textShadow: UI.mono ? 'none' : `0 0 12px ${alpha(ac, 0.7)}`
     }
-  }, t.name || 'Характеристика'), React.createElement("span", {
-    className: "tc-hero"
-  }, hero || 'Персонаж'), React.createElement("span", {
-    className: "tc-line"
-  }, week.days.map((s, i) => React.createElement("i", {
-    key: i,
+  }, hero || 'Персонаж'), React.createElement("div", {
+    className: "pf-name",
+    style: {
+      fontSize: `min(${size}cqw, ${size * 8.5}px, 17cqh, 128px)`
+    }
+  }, t.name || 'Характеристика'), !mini && t.maxim && React.createElement("div", {
+    className: "pf-maxim"
+  }, t.maxim), !mini && !!links && (links.length ? React.createElement("div", {
+    className: "pf-links"
+  }, links.map(c => React.createElement(Sticker, {
+    key: c.id,
+    icon: c.icon,
+    color: c.iconColor,
+    frame: c.iconFrame,
+    size: 26
+  }))) : React.createElement("div", {
+    className: "pf-maxim"
+  }, "\u041F\u0440\u0438\u0432\u044F\u0436\u0438 \u043A \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0435 \u0432 \u043A\u0430\u0442\u0430\u043B\u043E\u0433\u0435, \u0438 \u043B\u0438\u043D\u0438\u044F \u043D\u0430\u0447\u043D\u0451\u0442 \u0437\u0430\u043F\u043E\u043B\u043D\u044F\u0442\u044C\u0441\u044F")), !mini && React.createElement(React.Fragment, null, React.createElement("div", {
+    className: "pf-meta"
+  }, React.createElement("span", null, nice('7 ДНЕЙ')), React.createElement("span", {
+    className: "pf-count",
+    style: {
+      color: ac,
+      textShadow: UI.mono ? 'none' : `0 0 10px ${ac}`
+    }
+  }, week.plan ? `${week.done}/${week.plan}` : '—'), React.createElement("span", null, nice('СЕГОДНЯ'))), React.createElement("div", {
+    className: "pf-line",
+    style: {
+      '--pc': ac
+    }
+  }, week.days.map((s, d) => React.createElement("i", {
+    key: d,
     className: s
-  })))), React.createElement("span", {
-    className: "tc-em"
-  }, week.plan ? `${week.done}/${week.plan}` : '—'))));
+  }))))));
 }
 function TraitEditor({
   initial,
   week,
+  onSaved,
   onClose
 }) {
   const {
@@ -8605,7 +8631,8 @@ function TraitEditor({
   } = useApp();
   const [t, setT] = useState(() => ({
     ...initial,
-    hero: traitHero(initial, data.persona)
+    hero: traitHero(initial, data.persona),
+    bg: traitBg(initial, data.persona.traits.findIndex(x => x.id === initial.id))
   }));
   const set = p => setT(x => ({
     ...x,
@@ -8631,7 +8658,7 @@ function TraitEditor({
     }));
     sfx('save');
     toast('Карточка персоны сохранена');
-    onClose();
+    onSaved(nt.id);
   };
   return React.createElement(Modal, {
     full: true,
@@ -8649,14 +8676,12 @@ function TraitEditor({
       onClick: save
     }, "\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C"))
   }, React.createElement("div", {
-    className: "mx-auto mb-5",
-    style: {
-      width: 176
-    }
-  }, React.createElement(TraitCard, {
+    className: "pf pf-prev cut mx-auto mb-5"
+  }, React.createElement(TraitFace, {
     t: t,
     hero: t.hero,
-    week: week
+    week: week,
+    live: true
   })), React.createElement(Field, {
     label: "\u041F\u0435\u0440\u0441\u043E\u043D\u0430\u0436"
   }, React.createElement("input", {
@@ -8682,23 +8707,40 @@ function TraitEditor({
     }),
     placeholder: "\u041D\u0430\u043F\u0440\u0438\u043C\u0435\u0440: \u0423\u043F\u043E\u0440\u0441\u0442\u0432\u043E"
   })), React.createElement(Field, {
-    label: "\u0418\u0437\u043E\u0431\u0440\u0430\u0436\u0435\u043D\u0438\u0435"
+    label: "\u0424\u043E\u043D \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438"
+  }, React.createElement("div", {
+    className: "grid grid-cols-3 gap-2"
+  }, TIMER_BGS.map(([k, name, css]) => React.createElement("button", {
+    key: k,
+    type: "button",
+    onClick: () => {
+      sfx();
+      set({
+        bg: k
+      });
+    },
+    className: "cut h-20 flex items-end p-2 text-left",
+    style: {
+      '--cut': '8px',
+      background: UI.mono ? MONO_TBG[k][2] : css,
+      boxShadow: t.bg === k ? 'inset 0 0 0 2px var(--alt)' : 'inset 0 0 0 1px rgba(255,255,255,.15)'
+    }
+  }, React.createElement("span", {
+    className: "text-[12px] font-semibold leading-tight text-white",
+    style: {
+      textShadow: '0 1px 3px #000'
+    }
+  }, UI.mono ? MONO_TBG[k][0] : name))))), t.bg === 'custom' && React.createElement(Field, {
+    label: "\u0421\u0432\u043E\u0451 \u0444\u043E\u0442\u043E \u0444\u043E\u043D\u0430"
   }, React.createElement(ImageInput, {
-    noPreview: true,
     value: t.img || '',
     onChange: v => set({
       img: v
-    })
-  }), t.img && React.createElement(Btn, {
-    small: true,
-    variant: "dark",
-    className: "mt-2 w-full",
-    icon: X,
-    onClick: () => set({
-      img: ''
-    })
-  }, "\u0423\u0431\u0440\u0430\u0442\u044C \u0438\u0437\u043E\u0431\u0440\u0430\u0436\u0435\u043D\u0438\u0435")), React.createElement(Field, {
-    label: "\u0426\u0432\u0435\u0442 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438"
+    }),
+    maxDim: 2560,
+    quality: 0.92
+  })), React.createElement(Field, {
+    label: "\u0426\u0432\u0435\u0442 \u0430\u043A\u0446\u0435\u043D\u0442\u0430 \u0438 \u043B\u0438\u043D\u0438\u0438"
   }, React.createElement(ColorRow, {
     value: t.color,
     onChange: v => set({
@@ -8715,104 +8757,55 @@ function TraitEditor({
       maxim: e.target.value
     }),
     placeholder: "\u0427\u0442\u043E \u0431\u044B \u0441\u0434\u0435\u043B\u0430\u043B \u043F\u0435\u0440\u0441\u043E\u043D\u0430\u0436"
-  })));
-}
-function TraitView({
-  t,
-  n,
-  week,
-  onEdit,
-  onDelete,
-  onClose
-}) {
-  const {
-    data
-  } = useApp();
-  const hero = traitHero(t, data.persona),
-    linked = data.cards.filter(c => c.trait === t.id);
-  return React.createElement(Modal, {
-    full: true,
-    title: t.name,
-    code: "PERSONA // CARD",
-    onClose: onClose,
-    footer: React.createElement(React.Fragment, null, React.createElement(IconBtn, {
-      red: true,
-      icon: Trash2,
-      title: "\u0423\u0434\u0430\u043B\u0438\u0442\u044C",
-      onClick: onDelete
-    }), React.createElement(Btn, {
-      className: "flex-1",
-      icon: Pencil,
-      onClick: onEdit
-    }, "\u0418\u0437\u043C\u0435\u043D\u0438\u0442\u044C"))
-  }, React.createElement("div", {
-    className: "mx-auto mb-5",
-    style: {
-      width: 'min(100%, 300px)'
-    }
-  }, React.createElement(TraitCard, {
-    t: t,
-    hero: hero,
-    week: week,
-    n: n
-  })), t.maxim && React.createElement(Field, {
-    label: `Что бы сделал ${hero}`
-  }, React.createElement("div", {
-    className: "text-[15px] text-white/80 f-read leading-snug whitespace-pre-line"
-  }, t.maxim)), React.createElement(Field, {
-    label: `Привязанные карточки · ${linked.length}`
-  }, linked.length ? linked.map(c => React.createElement("div", {
-    key: c.id,
-    className: "flex items-center gap-3 py-1.5"
-  }, React.createElement("span", {
-    className: "shrink-0"
-  }, React.createElement(Sticker, {
-    icon: c.icon,
-    color: c.iconColor,
-    frame: c.iconFrame,
-    size: 30
-  })), React.createElement("span", {
-    className: "min-w-0"
-  }, React.createElement("span", {
-    className: "block text-[15px] font-semibold truncate"
-  }, c.name), React.createElement("span", {
-    className: "block f-mono text-[10px] text-white/40 truncate"
-  }, schedText(c, false))))) : React.createElement("div", {
-    className: "text-[13px] text-white/50 f-read leading-snug"
-  }, "\u041E\u0442\u043A\u0440\u043E\u0439 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0443 \u0432 \u043A\u0430\u0442\u0430\u043B\u043E\u0433\u0435 \u0438 \u0432\u044B\u0431\u0435\u0440\u0438 \u044D\u0442\u0443 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0443 \u043F\u0435\u0440\u0441\u043E\u043D\u044B. \u0422\u043E\u0433\u0434\u0430 \u043B\u0438\u043D\u0438\u044F \u043D\u0430\u0447\u043D\u0451\u0442 \u0437\u0430\u043F\u043E\u043B\u043D\u044F\u0442\u044C\u0441\u044F.")), React.createElement("div", {
+  })), React.createElement("div", {
     className: "text-[12px] text-white/50 f-read leading-snug"
   }, "\u0414\u0435\u043D\u044C \u0437\u0430\u0441\u0447\u0438\u0442\u0430\u043D, \u0435\u0441\u043B\u0438 \u0441\u0440\u0435\u0434\u043D\u0438\u0439 \u0431\u0430\u043B\u043B \u043F\u0440\u0438\u0432\u044F\u0437\u0430\u043D\u043D\u044B\u0445 \u043A\u0430\u0440\u0442\u043E\u0447\u0435\u043A \u043D\u0435 \u043D\u0438\u0436\u0435 ", TRAIT_DONE, ". \u0414\u043D\u0438 \u0431\u0435\u0437 \u044D\u0442\u0438\u0445 \u043A\u0430\u0440\u0442\u043E\u0447\u0435\u043A \u0432 \u0440\u0430\u0441\u043F\u0438\u0441\u0430\u043D\u0438\u0438 \u0438 \u043F\u0440\u043E\u043F\u0443\u0441\u043A\u0438 \u043B\u0438\u043D\u0438\u044E \u043D\u0435 \u043F\u043E\u0440\u0442\u044F\u0442."));
 }
-function PersonaView() {
+function PersonaFeed() {
   const {
     data,
     up,
     ask,
     undoable
   } = useApp();
-  const [view, setView] = useState(null);
   const [edit, setEdit] = useState(null);
-  const pr = data.persona;
+  const [page, setPage] = useState(0);
+  const [jump, setJump] = useState(null);
+  const feedRef = useRef(null);
+  const pr = data.persona,
+    list = pr.traits;
   const weeks = useMemo(() => traitWeeks(data), [data.cards, data.ratings, data.persona]);
-  const cur = pr.traits.find(t => t.id === view);
+  const onScroll = () => {
+    const el = feedRef.current;
+    if (el) setPage(Math.round(el.scrollTop / Math.max(1, el.clientHeight)));
+  };
+  useEffect(() => {
+    if (!jump) return;
+    const el = feedRef.current,
+      i = list.findIndex(x => x.id === jump);
+    if (el && i >= 0) el.scrollTo({
+      top: i * el.clientHeight
+    });
+    setJump(null);
+  }, [list, jump]);
   const blank = () => ({
     id: uid('tr'),
     hero: '',
     name: '',
-    color: TRAIT_COLORS[pr.traits.length % TRAIT_COLORS.length],
+    color: TRAIT_COLORS[list.length % TRAIT_COLORS.length],
     maxim: '',
-    img: ''
+    img: '',
+    bg: traitBg({}, list.length)
   });
   const del = async t => {
     const ok = await ask({
       title: 'Удалить карточку персоны?',
       code: 'PERSONA // DELETE',
-      text: `«${t.name}» исчезнет из коллекции и отвяжется от карточек каталога. Оценки в календаре останутся.`,
+      text: `«${t.name}» исчезнет из ленты и отвяжется от карточек каталога. Оценки в календаре останутся.`,
       ok: 'Удалить',
       danger: true
     });
     if (ok !== true) return;
-    setView(null);
     undoable('Карточка персоны удалена', ['persona', 'cards'], () => {
       up('persona', p => ({
         ...p,
@@ -8825,53 +8818,119 @@ function PersonaView() {
     });
   };
   return React.createElement("div", {
-    className: "px-4 pt-4"
-  }, pr.traits.length ? React.createElement(React.Fragment, null, React.createElement("div", {
-    className: "flex items-center justify-between gap-3"
+    className: "relative h-full"
   }, React.createElement("div", {
-    className: "min-w-0"
-  }, React.createElement("div", {
-    className: "sec-title text-[18px]"
-  }, "\u041A\u043E\u043B\u043B\u0435\u043A\u0446\u0438\u044F"), React.createElement("div", {
-    className: "micro mt-1",
-    style: {
-      color: UI.mono ? '#8E8E93' : 'rgba(var(--alt-rgb),.7)'
-    }
-  }, pr.traits.length, " ", plural(pr.traits.length, 'КАРТОЧКА', 'КАРТОЧКИ', 'КАРТОЧЕК'), " \xB7 \u041B\u0418\u041D\u0418\u042F \u0417\u0410 ", TRAIT_DAYS, " \u0414\u041D\u0415\u0419")), React.createElement(Btn, {
-    small: true,
-    icon: Plus,
-    snd: "open",
-    onClick: () => setEdit(blank())
-  }, "\u041D\u043E\u0432\u0430\u044F")), React.createElement("div", {
-    className: "tc-grid mt-4"
-  }, pr.traits.map((t, i) => React.createElement(TraitCard, {
+    ref: feedRef,
+    onScroll: onScroll,
+    className: "feed noscb"
+  }, list.length ? list.map((t, i) => React.createElement("section", {
     key: t.id,
+    className: "tk"
+  }, React.createElement("div", {
+    className: "pf"
+  }, React.createElement(TraitFace, {
     t: t,
+    i: i,
     hero: traitHero(t, pr),
     week: weeks[t.id],
-    n: i + 1,
+    links: data.cards.filter(c => c.trait === t.id),
+    live: Math.abs(i - page) <= 1
+  }), React.createElement("div", {
+    className: "pf-no micro deco"
+  }, "PERSONA.FEED // ", pad(i + 1), "/", pad(list.length)), UI.mono ? React.createElement("div", {
+    className: "pf-rail flex flex-col items-center gap-3"
+  }, React.createElement("button", {
+    type: "button",
+    "aria-label": "\u0418\u0437\u043C\u0435\u043D\u0438\u0442\u044C",
+    className: "mono-rail",
     onClick: () => {
       sfx('open');
-      setView(t.id);
+      setEdit(t);
     }
-  })))) : React.createElement(Empty, {
+  }, React.createElement(Pencil, {
+    size: 19
+  })), React.createElement("button", {
+    type: "button",
+    "aria-label": "\u041D\u043E\u0432\u0430\u044F \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0430",
+    className: "mono-rail",
+    onClick: () => {
+      sfx('open');
+      setEdit(blank());
+    }
+  }, React.createElement(Plus, {
+    size: 22
+  })), React.createElement("button", {
+    type: "button",
+    "aria-label": "\u0423\u0434\u0430\u043B\u0438\u0442\u044C",
+    className: "mono-rail",
+    onClick: () => {
+      sfx();
+      del(t);
+    }
+  }, React.createElement(Trash2, {
+    size: 18
+  }))) : React.createElement("div", {
+    className: "pf-rail flex flex-col items-center gap-6"
+  }, React.createElement("button", {
+    type: "button",
+    className: "rail-b",
+    onClick: () => {
+      sfx('open');
+      setEdit(t);
+    }
+  }, React.createElement(Pencil, {
+    size: 22
+  }), React.createElement("span", null, "EDIT")), React.createElement("button", {
+    type: "button",
+    className: "rail-b",
+    onClick: () => {
+      sfx('open');
+      setEdit(blank());
+    }
+  }, React.createElement(Plus, {
+    size: 24
+  }), React.createElement("span", null, "NEW")), React.createElement("button", {
+    type: "button",
+    className: "rail-b",
+    onClick: () => {
+      sfx();
+      del(t);
+    }
+  }, React.createElement(Trash2, {
+    size: 20
+  }), React.createElement("span", null, "DEL")))))) : React.createElement("section", {
+    className: "tk flex items-center justify-center"
+  }, UI.mono ? React.createElement(MonoTimerBg, {
+    k: "smoke",
+    live: true
+  }) : React.createElement(SmokeBG, null), React.createElement("div", {
+    className: "relative"
+  }, React.createElement(Empty, {
     icon: Layers,
     title: "\u041A\u043E\u043B\u043B\u0435\u043A\u0446\u0438\u044F \u043F\u0443\u0441\u0442\u0430",
-    text: "\u0421\u043E\u0437\u0434\u0430\u0439 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0443: \u043E\u0434\u0438\u043D \u043F\u0435\u0440\u0441\u043E\u043D\u0430\u0436 \u0438 \u043E\u0434\u043D\u0430 \u0435\u0433\u043E \u0445\u0430\u0440\u0430\u043A\u0442\u0435\u0440\u0438\u0441\u0442\u0438\u043A\u0430. \u041F\u0440\u0438\u0432\u044F\u0436\u0438 \u0435\u0451 \u043A \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0430\u043C \u043A\u0430\u0442\u0430\u043B\u043E\u0433\u0430, \u0438 \u043B\u0438\u043D\u0438\u044F \u043F\u043E\u043A\u0430\u0436\u0435\u0442, \u043A\u0430\u043A \u0442\u044B \u0434\u0435\u0440\u0436\u0438\u0448\u044C\u0441\u044F 7 \u0434\u043D\u0435\u0439."
+    text: "\u0421\u043E\u0437\u0434\u0430\u0439 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0443: \u043E\u0434\u0438\u043D \u043F\u0435\u0440\u0441\u043E\u043D\u0430\u0436 \u0438 \u043E\u0434\u043D\u0430 \u0435\u0433\u043E \u0445\u0430\u0440\u0430\u043A\u0442\u0435\u0440\u0438\u0441\u0442\u0438\u043A\u0430. \u041F\u0440\u0438\u0432\u044F\u0436\u0438 \u0435\u0451 \u043A \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0435 \u043A\u0430\u0442\u0430\u043B\u043E\u0433\u0430, \u0438 \u043B\u0438\u043D\u0438\u044F \u043F\u043E\u043A\u0430\u0436\u0435\u0442, \u043A\u0430\u043A \u0442\u044B \u0434\u0435\u0440\u0436\u0438\u0448\u044C\u0441\u044F 7 \u0434\u043D\u0435\u0439."
   }, React.createElement(Btn, {
     icon: Plus,
     snd: "open",
     onClick: () => setEdit(blank())
-  }, "\u0421\u043E\u0437\u0434\u0430\u0442\u044C \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0443")), cur && React.createElement(TraitView, {
-    t: cur,
-    n: pr.traits.indexOf(cur) + 1,
-    week: weeks[cur.id],
-    onEdit: () => setEdit(cur),
-    onDelete: () => del(cur),
-    onClose: () => setView(null)
-  }), edit && React.createElement(TraitEditor, {
+  }, "\u0421\u043E\u0437\u0434\u0430\u0442\u044C \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0443"))))), list.length > 1 && React.createElement("div", {
+    className: "absolute left-2 top-1/2 -translate-y-1/2 flex flex-col gap-1.5 pointer-events-none"
+  }, list.map((t, i) => React.createElement("i", {
+    key: t.id,
+    className: "block w-[3px]",
+    style: {
+      height: i === page ? 22 : 8,
+      background: i === page ? '#fff' : 'rgba(255,255,255,.35)',
+      transition: 'height .2s',
+      boxShadow: i === page ? '0 0 8px #fff' : 'none'
+    }
+  }))), edit && React.createElement(TraitEditor, {
     initial: edit,
     week: weeks[edit.id],
+    onSaved: id => {
+      setEdit(null);
+      setJump(id);
+    },
     onClose: () => setEdit(null)
   }));
 }
@@ -8892,6 +8951,27 @@ function StatsScreen({
       sessionStorage.setItem('cj.stab', v);
     } catch (e) {}
   };
+  if (tab === 'persona') return React.createElement("div", {
+    className: "absolute inset-0"
+  }, React.createElement(PersonaFeed, null), React.createElement("div", {
+    className: "pf-tabs"
+  }, React.createElement(Segmented, {
+    value: tab,
+    onChange: pick,
+    options: [{
+      v: 'cal',
+      l: UI.wide ? 'Выбранный день' : 'Календарь',
+      i: CalendarDays
+    }, {
+      v: 'cards',
+      l: 'Каталог',
+      i: Layers
+    }, {
+      v: 'persona',
+      l: 'Персона',
+      i: Brain
+    }]
+  })));
   if (UI.wide) return React.createElement("div", {
     className: "pb-8"
   }, React.createElement(ScreenHeader, {
@@ -8926,7 +9006,7 @@ function StatsScreen({
   })), tab === 'cal' ? React.createElement(DayDetail, {
     k: sel,
     openRate: openRate
-  }) : tab === 'persona' ? React.createElement(PersonaView, null) : React.createElement(CardCatalog, {
+  }) : React.createElement(CardCatalog, {
     sel: sel
   }))));
   return React.createElement("div", {
@@ -8957,7 +9037,7 @@ function StatsScreen({
     sel: sel,
     setSel: setSel,
     openRate: openRate
-  }) : tab === 'persona' ? React.createElement(PersonaView, null) : React.createElement(CardCatalog, {
+  }) : React.createElement(CardCatalog, {
     sel: sel
   }));
 }

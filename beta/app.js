@@ -1,4 +1,4 @@
-/* CJ_BUILD BETA-20261022-180350 */
+/* CJ_BUILD BETA-20261031-214535 */
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
 const {
   useState,
@@ -65,7 +65,9 @@ const {
   Share2,
   RefreshCw,
   LogOut,
-  KeyRound
+  KeyRound,
+  Eye,
+  ArrowUpDown
 } = LucideReact;
 const BETA = typeof window !== 'undefined' && !!window.CJ_BETA;
 const MAIN_KEY = 'cyberjournal2077.v1';
@@ -315,7 +317,8 @@ const DEFAULT_SETTINGS = {
   haptics: true,
   avatar: 'preset:m',
   avatarHolo: false,
-  backupDays: 7
+  backupDays: 7,
+  timerOrder: 'near'
 };
 const SFX = {
   on: true,
@@ -332,12 +335,13 @@ const VIBES = {
   uncheck: 12,
   score: 18,
   save: [18, 50, 28],
-  error: [70, 50, 70]
+  error: [70, 50, 70],
+  ping: [90, 70, 90, 70, 90]
 };
 function sfx(kind = 'click') {
   if (kind === 'none') return;
   const ua = navigator.userActivation;
-  if (SFX.vib && (!ua || ua.isActive)) {
+  if (SFX.vib && (!ua || ua.isActive || kind === 'ping' && ua.hasBeenActive)) {
     try {
       if (navigator.vibrate) navigator.vibrate(VIBES[kind] || VIBES.click);
     } catch (e) {}
@@ -392,6 +396,10 @@ function sfx(kind = 'click') {
         case 'score':
           tone(740, 1000, 0.06, 'sine', 0.06);
           break;
+        case 'ping':
+          tone(880, 880, 0.12, 'sine', 0.07);
+          tone(1175, 1175, 0.16, 'sine', 0.07, 0.14);
+          break;
         default:
           tone(1180, 1180, 0.03, 'sine', 0.045);
       }
@@ -425,6 +433,11 @@ function sfx(kind = 'click') {
       case 'score':
         tone(1100, 1650, 0.05, 'triangle', 0.05);
         break;
+      case 'ping':
+        tone(1400, 1400, 0.09, 'square', 0.04);
+        tone(1400, 1400, 0.09, 'square', 0.04, 0.16);
+        tone(2100, 2100, 0.12, 'triangle', 0.05, 0.32);
+        break;
       default:
         tone(2500, 1400, 0.03, 'square', 0.026);
     }
@@ -443,33 +456,31 @@ const imgNotify = () => {
   IMG.gen++;
   IMG.subs.forEach(f => f());
 };
-function idbOpen() {
-  if (!IMG.p) {
-    IMG.p = new Promise((res, rej) => {
-      if (!window.indexedDB) {
-        rej(new Error('no-idb'));
-        return;
-      }
-      const r = indexedDB.open(IDB_NAME, 1);
-      r.onupgradeneeded = () => r.result.createObjectStore('img');
-      r.onsuccess = () => res(r.result);
-      r.onerror = () => rej(r.error);
-    }).catch(e => {
-      IMG.p = null;
-      throw e;
-    });
+const dbOpen = (name, store) => new Promise((res, rej) => {
+  if (!window.indexedDB) {
+    rej(new Error('no-idb'));
+    return;
   }
+  const r = indexedDB.open(name, 1);
+  r.onupgradeneeded = () => r.result.createObjectStore(store);
+  r.onsuccess = () => res(r.result);
+  r.onerror = () => rej(r.error);
+});
+function idbOpen() {
+  if (!IMG.p) IMG.p = dbOpen(IDB_NAME, 'img').catch(e => {
+    IMG.p = null;
+    throw e;
+  });
   return IMG.p;
 }
-function idbTx(mode, fn) {
-  return idbOpen().then(db => new Promise((res, rej) => {
-    const tx = db.transaction('img', mode),
-      out = {};
-    fn(tx.objectStore('img'), out);
-    tx.oncomplete = () => res(out.v);
-    tx.onerror = tx.onabort = () => rej(tx.error);
-  }));
-}
+const dbTx = (db, store, mode, fn) => new Promise((res, rej) => {
+  const tx = db.transaction(store, mode),
+    out = {};
+  fn(tx.objectStore(store), out);
+  tx.oncomplete = () => res(out.v);
+  tx.onerror = tx.onabort = () => rej(tx.error);
+});
+const idbTx = (mode, fn) => idbOpen().then(db => dbTx(db, 'img', mode, fn));
 const imgPut = entries => idbTx('readwrite', st => {
   const at = Date.now();
   entries.forEach(([id, blob]) => blob && st.put({
@@ -659,6 +670,13 @@ function mapImages(d, fn) {
       ...d.focus,
       bg: m(d.focus.bg)
     } : d.focus,
+    persona: {
+      ...d.persona,
+      traits: d.persona.traits.map(x => x.img ? {
+        ...x,
+        img: m(x.img)
+      } : x)
+    },
     settings: avatar && !String(avatar).startsWith('preset:') ? {
       ...d.settings,
       avatar: m(avatar)
@@ -685,6 +703,82 @@ async function collectImages(d) {
     }
   }
   return out;
+}
+const SNAP_DB = 'cyberjournal2077-snap';
+const SNAP_KEEP = {
+  day: 7,
+  before: 3,
+  broken: 3
+};
+const SNAP = {
+  p: null,
+  day: ''
+};
+function snapTx(mode, fn) {
+  if (!SNAP.p) SNAP.p = dbOpen(SNAP_DB, 'snap').catch(e => {
+    SNAP.p = null;
+    throw e;
+  });
+  return SNAP.p.then(db => dbTx(db, 'snap', mode, fn));
+}
+const snapList = () => snapTx('readonly', (st, out) => {
+  const r = st.getAll();
+  r.onsuccess = () => {
+    out.v = r.result;
+  };
+});
+const snapRows = async () => (await snapList()).filter(r => r.app === LS_KEY).sort((a, b) => b.at - a.at);
+const snapStats = raw => {
+  try {
+    const d = JSON.parse(raw);
+    return {
+      missions: (d.missions || []).length,
+      shards: (d.shards || []).length,
+      days: Object.keys(d.ratings || {}).length
+    };
+  } catch (e) {
+    return null;
+  }
+};
+const snapInfo = r => r.label || (r.stats ? `Миссий ${r.stats.missions} · записей ${r.stats.shards} · дней ${r.stats.days}` : 'Копия данных');
+async function snapPut(kind, raw, label = '') {
+  const at = Date.now(),
+    id = `${LS_KEY}|${kind}|${kind === 'day' ? dKey(new Date(at)) : at}`;
+  const rec = {
+    app: LS_KEY,
+    kind,
+    at,
+    label,
+    stats: snapStats(raw),
+    imgs: [...new Set(raw.match(/idb:[\w.-]+/g) || [])],
+    body: new Blob([raw], {
+      type: 'application/json'
+    })
+  };
+  const old = (await snapRows()).filter(r => r.kind === kind && r.id !== id).slice(SNAP_KEEP[kind] - 1);
+  await snapTx('readwrite', st => {
+    st.put({
+      ...rec,
+      id
+    }, id);
+    old.forEach(r => st.delete(r.id));
+  });
+}
+async function snapBefore(label, raw) {
+  try {
+    await snapPut('before', raw, label);
+  } catch (e) {}
+}
+async function snapDaily() {
+  const day = dKey(new Date());
+  if (SNAP.day === day) return;
+  SNAP.day = day;
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw && !(await snapRows()).some(r => r.id === `${LS_KEY}|day|${day}`)) await snapPut('day', raw);
+  } catch (e) {
+    SNAP.day = '';
+  }
 }
 function demoMapImage() {
   const R = rng(2077);
@@ -733,6 +827,12 @@ const DEFAULT_TAGS = () => [{
   color: '#59FF00'
 }];
 const FOCUS_GOAL = 25;
+const CHECK_EVERY = {
+  '3-5': [3, 5],
+  '5-7': [5, 7],
+  '8-12': [8, 12]
+};
+const CHECK_WINS = [10, 20, 30];
 const emptyFocus = () => ({
   sessions: [],
   inbox: [],
@@ -743,32 +843,17 @@ const emptyFocus = () => ({
   lastMin: 25,
   bg: '',
   bgDim: 'mid',
-  active: null
+  active: null,
+  lastMode: 'timer',
+  checkEvery: '5-7',
+  checkWin: 20
 });
 const emptyPersona = () => ({
   name: '',
   traits: []
 });
 const TRAIT_COLORS = ['#FF4655', '#00F0FF', '#FCEE0A', '#59FF00', '#FF7A00', '#B98CF0', '#FF2E8C', '#FFFFFF'];
-const MCCLANE = () => ({
-  name: 'Джон Макклейн',
-  traits: [{
-    id: uid('tr'),
-    name: 'Упорство',
-    color: '#FF4655',
-    maxim: 'Не жду идеальных условий. Делаю следующий шаг, даже когда больно и не хочется.'
-  }, {
-    id: uid('tr'),
-    name: 'Чувство юмора',
-    color: '#FCEE0A',
-    maxim: 'Когда всё идёт наперекосяк — улыбнись. Шутка снимает напряжение и возвращает ясную голову.'
-  }, {
-    id: uid('tr'),
-    name: 'Преданность семье',
-    color: '#59FF00',
-    maxim: 'Всё это ради них. Сначала позвоню близким, потом разберусь с остальным.'
-  }]
-});
+const traitHero = (t, pr) => (typeof t.hero === 'string' ? t.hero : pr.name) || '';
 const emptyState = () => ({
   v: 1,
   sections: DEFAULT_SECTIONS(),
@@ -802,6 +887,9 @@ function normalizeFocus(f) {
   if (!Array.isArray(out.inbox)) out.inbox = [];
   if (!Array.isArray(out.goals) || !out.goals.length) out.goals = emptyFocus().goals;
   if (typeof out.bg !== 'string') out.bg = '';
+  if (out.lastMode !== 'active') out.lastMode = 'timer';
+  if (!CHECK_EVERY[out.checkEvery]) out.checkEvery = '5-7';
+  if (!CHECK_WINS.includes(out.checkWin)) out.checkWin = 20;
   delete out.level;
   const a = out.active;
   out.active = a && typeof a === 'object' && a.startAt && a.endAt ? {
@@ -1272,23 +1360,39 @@ function makeDemo() {
   };
   return st;
 }
-function loadState() {
+function readBoot() {
+  let raw = null;
   try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (raw) return normalize(JSON.parse(raw));
+    raw = localStorage.getItem(LS_KEY);
+    if (raw) {
+      const j = JSON.parse(raw);
+      if (!j || typeof j !== 'object' || Array.isArray(j)) throw new Error('данные не являются объектом');
+      return {
+        data: normalize(j)
+      };
+    }
     if (BETA) {
       const main = localStorage.getItem(MAIN_KEY);
       const d = main ? normalize(JSON.parse(main)) : makeDemo();
       return {
-        ...d,
-        settings: {
-          ...d.settings,
-          ui: 'mono'
+        data: {
+          ...d,
+          settings: {
+            ...d.settings,
+            ui: 'mono'
+          }
         }
       };
     }
-  } catch (e) {}
-  return makeDemo();
+  } catch (e) {
+    if (raw) return {
+      broken: raw,
+      err: e
+    };
+  }
+  return {
+    data: makeDemo()
+  };
 }
 const AT_KEY = `${LS_KEY}.at`;
 const getLocalAt = () => {
@@ -1435,11 +1539,13 @@ const SYNC_KEY = `${LS_KEY}.sync`;
 const SYNC_OK = !BETA && typeof window !== 'undefined' && !window.claude && !!(window.crypto && window.crypto.subtle);
 const SYNC_LISTS = [['sections'], ['missions'], ['shards'], ['tags'], ['cards'], ['timers'], ['focus', 'sessions'], ['focus', 'inbox'], ['persona', 'traits']];
 const SYNC_FIELDS = {
-  focus: ['goals', 'lastMin', 'bg', 'bgDim'],
+  focus: ['goals', 'lastMin', 'bg', 'bgDim', 'lastMode', 'checkEvery', 'checkWin'],
   persona: ['name'],
   meta: ['retroIgnored', 'since', 'lastBackupAt']
 };
 const SYNC_CHECK = 'cj2077-ok';
+const SYNC_HOLD_MIN = 20,
+  SYNC_HOLD_SHARE = 0.3;
 function hash53(str, seed = 0) {
   let h1 = 0xdeadbeef ^ seed,
     h2 = 0x41c6ce57 ^ seed;
@@ -1754,6 +1860,12 @@ async function syncPush() {
   if (!keys.length) return;
   const key = await syncKey(st.key),
     recs = syncRecords(SYNC.app.get());
+  const del = keys.filter(k => !recs.has(k)).length;
+  if (!SYNC.okDel && del >= SYNC_HOLD_MIN && del / (recs.size + del) >= SYNC_HOLD_SHARE) {
+    const e = new Error('hold');
+    e.hold = del;
+    throw e;
+  }
   for (let i = 0; i < keys.length; i += 50) {
     const sent = keys.slice(i, i + 50).map(k => ({
       k,
@@ -1792,6 +1904,7 @@ async function syncPush() {
     } of sent) if (st.dirty[k] === t) delete st.dirty[k];
     syncSave();
   }
+  SYNC.okDel = false;
 }
 async function syncFiles() {
   if (SYNC.filesBusy || !syncOn()) return;
@@ -1898,6 +2011,10 @@ async function syncRun() {
       syncSave();
       syncStop();
       syncEmit('auth', 'Вход истёк — войди заново');
+    } else if (e && e.hold) {
+      SYNC.hold = e.hold;
+      syncEmit('hold', `Отправка остановлена: устройство удаляет ${e.hold} ${plural(e.hold, 'запись', 'записи', 'записей')} сразу`);
+      SYNC.app.hold();
     } else {
       SYNC.fail++;
       syncEmit('error', navigator.onLine === false ? 'Нет сети' : 'Сервер недоступен');
@@ -2046,6 +2163,7 @@ async function syncStart(st, mode) {
     st.cursor = 0;
   }
   const got = mode === 'replace' ? await syncFetch(st, 0) : null;
+  if (got) await snapBefore('Перед загрузкой с сервера', JSON.stringify(SYNC.app.get()));
   syncStop();
   SYNC.st = st;
   if (mode === 'push') syncTrack(SYNC.app.get());
@@ -2058,6 +2176,18 @@ async function syncStart(st, mode) {
   syncEmit('idle', '');
   syncLive();
   syncRun();
+}
+function syncRebase(d) {
+  const st = SYNC.st;
+  if (!st) return;
+  st.local = {};
+  st.dirty = {};
+  st.cursor = 0;
+  for (const [k, v] of syncRecords(d)) {
+    st.local[k] = hstr(v);
+    st.dirty[k] = 1;
+  }
+  syncSave();
 }
 function syncLogout() {
   syncStop();
@@ -2234,6 +2364,32 @@ body.cj-dragging,body.cj-dragging *{cursor:grabbing !important;}
 .wd-chip.on{background:var(--alt);color:#06080a;box-shadow:none;}
 .thumb{--cut:7px;width:40px;height:54px;display:flex;align-items:flex-start;justify-content:center;padding-top:7px;opacity:.5;transition:opacity .15s,transform .15s;box-shadow:inset 0 0 0 1px rgba(var(--main-rgb),.35);flex-shrink:0;}
 .thumb.on{opacity:1;transform:translateY(-3px);box-shadow:inset 0 0 0 1.5px var(--alt);}
+/* коллекционная карточка персоны: размеры внутри в cqw, поэтому карточка масштабируется целиком */
+.tc{position:relative;display:block;width:100%;aspect-ratio:5/7;padding:0;container-type:inline-size;background:var(--tc);text-align:left;color:#fff;}
+.tc-in{position:absolute;inset:4px;display:block;overflow:hidden;background:#08070C;}
+.tc-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.tc-ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding-bottom:30cqw;font-family:'Orbitron','Russo One',sans-serif;font-weight:900;font-size:42cqw;line-height:1;}
+.tc-no{position:absolute;top:0;left:0;padding:1.5cqw 7cqw 1.5cqw 4cqw;background:var(--tc);color:var(--tci);font-family:'Share Tech Mono',monospace;font-size:5.6cqw;line-height:1.2;clip-path:polygon(0 0,100% 0,calc(100% - 4cqw) 100%,0 100%);}
+.tc-foot{position:absolute;left:0;right:0;bottom:0;display:block;}
+.tc-plate{display:block;padding:6cqw 4cqw 3.5cqw;background:var(--tc);color:var(--tci);clip-path:polygon(0 3cqw,34cqw 3cqw,37cqw 0,100% 0,100% 100%,0 100%);}
+.tc-name{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;font-size:10cqw;font-weight:800;line-height:1.02;letter-spacing:.02em;text-transform:uppercase;}
+.tc-hero{display:block;margin-top:1cqw;font-family:'Share Tech Mono',monospace;font-size:5.4cqw;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tc-line{display:grid;grid-template-columns:repeat(7,1fr);gap:1.3cqw;margin-top:2.6cqw;padding:1.6cqw 2cqw;background:rgba(0,0,0,.78);}
+.tc-line i{display:block;height:3cqw;background:rgba(255,255,255,.16);transform:skewX(-24deg);}
+.tc-line i.on{background:var(--tcl);box-shadow:0 0 1.6cqw var(--tcl);}
+.tc-line i.wait{background:transparent;box-shadow:inset 0 0 0 1px var(--tcl);}
+.tc-line i.none{height:1cqw;align-self:center;background:rgba(255,255,255,.1);}
+.tc-em{position:absolute;right:3cqw;top:-16cqw;display:flex;align-items:center;justify-content:center;width:21cqw;height:21cqw;border-radius:50%;background:#0A0A0F;box-shadow:0 0 0 1.2cqw var(--tc);color:#fff;font-family:'Orbitron','Russo One',sans-serif;font-weight:900;font-size:6.2cqw;font-variant-numeric:tabular-nums;}
+.tc.mini .tc-in{inset:2px;}
+.tc.mini .tc-em,.tc.mini .tc-line,.tc.mini .tc-no{display:none;}
+.tc.mini .tc-hero{font-size:9.5cqw;}
+.tc.mini .tc-plate{padding-top:5cqw;}
+.tc-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+.cj-wide .tc-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));}
+.tc-pick{position:relative;flex:0 0 92px;opacity:.55;transition:opacity .15s,transform .15s;}
+.tc-pick.on{opacity:1;transform:translateY(-2px);}
+.tc-pick-mark{position:absolute;top:5px;right:5px;z-index:1;display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--alt);color:#05080A;}
+.tc-none{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;width:100%;aspect-ratio:5/7;padding:6px;text-align:center;font-size:12px;line-height:1.15;color:rgba(255,255,255,.6);box-shadow:inset 0 0 0 1px rgba(255,255,255,.22);}
 /* лента отсчёта */
 .feed{height:100%;overflow-y:auto;scroll-snap-type:y mandatory;overscroll-behavior-y:contain;}
 .tk{position:relative;height:100%;scroll-snap-align:start;scroll-snap-stop:always;overflow:hidden;}
@@ -2310,6 +2466,13 @@ body.cj-dragging,body.cj-dragging *{cursor:grabbing !important;}
 .f-alert{--cut:10px;background:rgba(255,42,42,.14);box-shadow:inset 0 0 0 1px #FF2A2A,0 0 24px rgba(255,42,42,.35);color:#FF5A5A;animation:dlgin .25s ease-out;}
 .f-chip{--cut:7px;padding:8px 12px;font-weight:700;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--alt);box-shadow:inset 0 0 0 1px rgba(var(--alt-rgb),.55);background:rgba(var(--alt-rgb),.06);}
 .f-chip:active{filter:brightness(1.4);}
+/* значок проверки внимания: кольцо убывает за время на ответ */
+.f-check{width:100px;height:100px;margin:-50px 0 0 -50px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--warn);background:linear-gradient(rgba(var(--warn-rgb),.16),rgba(var(--warn-rgb),.16)),var(--bg2);box-shadow:0 0 0 1px rgba(var(--warn-rgb),.6),0 0 30px rgba(var(--warn-rgb),.45);animation:fchkin .3s ease-out,fchkp 1.2s ease-in-out .3s infinite;touch-action:manipulation;}
+.f-check:active{filter:brightness(1.4);}
+.f-check-t{stroke-dashoffset:0;animation-name:fchkt;animation-timing-function:linear;animation-fill-mode:both;}
+@keyframes fchkt{to{stroke-dashoffset:289;}}
+@keyframes fchkin{from{transform:scale(.4);opacity:0;}to{transform:scale(1);opacity:1;}}
+@keyframes fchkp{50%{box-shadow:0 0 0 1px rgba(var(--warn-rgb),.9),0 0 46px rgba(var(--warn-rgb),.7);}}
 .f-range{-webkit-appearance:none;appearance:none;height:30px;background:transparent;cursor:pointer;touch-action:pan-y;}
 .f-range:focus{outline:none;}
 .f-range::-webkit-slider-runnable-track{height:4px;background:linear-gradient(90deg,var(--alt) 0 var(--p),rgba(255,255,255,.12) var(--p) 100%);box-shadow:0 0 8px rgba(var(--alt-rgb),.35);}
@@ -2410,6 +2573,17 @@ const MONO_CSS = `
 .ui-mono .wd-chip.on{background:var(--alt);color:#000;}
 .ui-mono .thumb{border-radius:12px;box-shadow:none;opacity:.45;}
 .ui-mono .thumb.on{box-shadow:0 0 0 2px var(--alt);opacity:1;}
+.ui-mono .tc{border-radius:calc(var(--cut) * 1.4);}
+.ui-mono .tc-in{border-radius:calc(var(--cut) * 1.4 - 3px);}
+.ui-mono .tc-no{clip-path:none;padding-right:4cqw;border-radius:0 0 3cqw 0;font-family:'Inter',sans-serif;font-weight:600;font-size:5cqw;}
+.ui-mono .tc-plate{clip-path:none;padding-top:4cqw;}
+.ui-mono .tc-name{font-family:'Inter',sans-serif;font-weight:700;letter-spacing:-.01em;text-transform:none;line-height:1.1;}
+.ui-mono .tc-hero{font-family:'Inter',sans-serif;font-weight:500;}
+.ui-mono .tc-line{padding:1.6cqw;border-radius:99px;}
+.ui-mono .tc-line i{transform:none;border-radius:99px;}
+.ui-mono .tc-line i.on{box-shadow:none;}
+.ui-mono .tc-em{font-family:'Unbounded','Inter',sans-serif;font-weight:700;font-size:5.6cqw;}
+.ui-mono .tc-none{border-radius:12px;box-shadow:none;background:#1C1C1E;}
 .ui-mono .sw{border-radius:50%;}
 .ui-mono .tk-hms{border-radius:999px;box-shadow:none;background:rgba(0,0,0,.3);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);font-family:'Inter',sans-serif;font-weight:600;letter-spacing:.04em;font-size:22px;padding:6px 18px;font-variant-numeric:tabular-nums;}
 .ui-mono .tk-sub{font-family:'Inter',sans-serif;font-weight:600;letter-spacing:.08em;}
@@ -2443,6 +2617,7 @@ const MONO_CSS = `
 .ui-mono .f-range::-webkit-slider-runnable-track{height:6px;border-radius:3px;box-shadow:none;background:linear-gradient(90deg,var(--alt) 0 var(--p),#2C2C2E var(--p) 100%);}
 .ui-mono .f-range::-webkit-slider-thumb{width:26px;height:26px;margin-top:-10px;border:0;border-radius:50%;transform:none;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.5);}
 .ui-mono .f-range::-moz-range-thumb{width:26px;height:26px;border:0;border-radius:50%;transform:none;background:#fff;}
+.ui-mono .f-check{background:var(--warn);color:#000;box-shadow:0 8px 30px rgba(var(--warn-rgb),.45);animation:fchkin .3s ease-out;}
 .ui-mono .f-chip{border-radius:999px;box-shadow:none;background:#1C1C1E;color:#F2F2F7;text-transform:none;letter-spacing:0;font-weight:600;font-size:14px;}
 `;
 const AppCtx = createContext(null);
@@ -2861,6 +3036,65 @@ function Sheet({
     }
   }, "\u041E\u0442\u043C\u0435\u043D\u0430")))));
 }
+function ReorderModal({
+  title,
+  code,
+  list,
+  setList,
+  row,
+  onMove,
+  onSave,
+  onClose,
+  children
+}) {
+  const move = (i, d) => {
+    const j = i + d;
+    if (j < 0 || j >= list.length) return;
+    const n = [...list];
+    [n[i], n[j]] = [n[j], n[i]];
+    setList(n);
+    if (onMove) onMove();
+  };
+  return React.createElement(Modal, {
+    title: title,
+    code: code,
+    onClose: onClose,
+    footer: React.createElement(React.Fragment, null, React.createElement(Btn, {
+      variant: "ghost",
+      className: "flex-1",
+      onClick: onClose
+    }, "\u041E\u0442\u043C\u0435\u043D\u0430"), React.createElement(Btn, {
+      className: "flex-[2]",
+      icon: Save,
+      snd: "none",
+      onClick: onSave
+    }, "\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C"))
+  }, children, list.map((x, i) => React.createElement("div", {
+    key: x.id,
+    className: "flex items-center gap-2 py-2",
+    style: {
+      borderBottom: '1px solid rgba(255,255,255,.06)'
+    }
+  }, React.createElement("span", {
+    className: "f-mono text-[11px] text-white/35 w-5 shrink-0"
+  }, pad(i + 1)), React.createElement("div", {
+    className: "flex-1 min-w-0 flex items-center gap-2.5"
+  }, row(x)), React.createElement(IconBtn, {
+    sm: true,
+    icon: ArrowUp,
+    title: "\u0412\u044B\u0448\u0435",
+    onClick: () => move(i, -1)
+  }), React.createElement(IconBtn, {
+    sm: true,
+    icon: ArrowDown,
+    title: "\u041D\u0438\u0436\u0435",
+    onClick: () => move(i, 1)
+  }))));
+}
+const byOrder = (arr, order) => {
+  const pos = Object.fromEntries(order.map((x, i) => [x.id, i]));
+  return [...arr].sort((a, b) => (a.id in pos ? pos[a.id] : 1e9) - (b.id in pos ? pos[b.id] : 1e9));
+};
 function NeonScroll({
   children,
   maxH = 230,
@@ -7603,6 +7837,11 @@ function HabitCardView({
   onEdit,
   onDelete
 }) {
+  const {
+    data
+  } = useApp();
+  const tr = data.persona.traits.find(t => t.id === card.trait);
+  const trText = tr ? `${tr.name}${traitHero(tr, data.persona) ? ` · ${traitHero(tr, data.persona)}` : ''}` : '';
   if (UI.mono) {
     const has = typeof score === 'number';
     return React.createElement("div", {
@@ -7634,7 +7873,12 @@ function HabitCardView({
       className: "text-[30px] font-bold text-center mt-6 leading-tight px-4 text-white tracking-[-.02em]"
     }, card.name), React.createElement("div", {
       className: "text-center text-[12.5px] text-white/45 mt-1 px-4"
-    }, cap(schedText(card))), React.createElement("div", {
+    }, cap(schedText(card))), tr && React.createElement("div", {
+      className: "text-center text-[12.5px] font-semibold mt-1 px-4 truncate",
+      style: {
+        color: tr.color || '#fff'
+      }
+    }, trText), React.createElement("div", {
       className: "mono-score mx-auto mt-4"
     }, React.createElement("span", {
       className: "st-score text-[44px] leading-none",
@@ -7711,7 +7955,12 @@ function HabitCardView({
     style: {
       color: 'rgba(var(--alt-rgb),.75)'
     }
-  }, schedText(card)), React.createElement("div", {
+  }, schedText(card)), tr && React.createElement("div", {
+    className: "text-center micro mt-1 px-4 truncate",
+    style: {
+      color: tr.color || '#fff'
+    }
+  }, trText), React.createElement("div", {
     className: "flex justify-center mt-4"
   }, React.createElement("div", {
     className: "cut flex items-baseline justify-center gap-1.5 px-8 py-3",
@@ -7787,6 +8036,7 @@ function CardEditor({
   }));
   const isNew = !data.cards.some(x => x.id === c.id);
   const traits = data.persona.traits;
+  const linked = traits.some(t => t.id === c.trait) ? c.trait : '';
   const order = data.settings.weekStart === 1 ? [0, 1, 2, 3, 4, 5, 6] : [6, 0, 1, 2, 3, 4, 5];
   const toggleDay = d => set({
     days: c.days.includes(d) ? c.days.filter(x => x !== d) : [...c.days, d].sort((a, b) => a - b)
@@ -8022,9 +8272,11 @@ function CardEditor({
   }), React.createElement("div", {
     className: "text-[12px] text-white/50 f-read leading-snug mt-2"
   }, WEIGHT_HINT[cardW(c)])), traits.length > 0 && React.createElement(Field, {
-    label: `Черта персоны${data.persona.name ? ` · ${data.persona.name}` : ''}`
+    label: "\u041A\u0430\u0440\u0442\u043E\u0447\u043A\u0430 \u043F\u0435\u0440\u0441\u043E\u043D\u044B"
   }, React.createElement("div", {
-    className: "flex flex-wrap gap-2"
+    className: "flex gap-2 overflow-x-auto noscb pt-1 pb-1"
+  }, React.createElement("div", {
+    className: `tc-pick ${!linked ? 'on' : ''}`
   }, React.createElement("button", {
     type: "button",
     onClick: () => {
@@ -8033,28 +8285,32 @@ function CardEditor({
         trait: ''
       });
     },
-    className: `tag cut ${!c.trait ? 'on' : ''}`,
+    className: "tc-none cut",
     style: {
-      '--tc': '#8E8E93',
-      '--cut': '6px'
+      '--cut': '7px'
     }
-  }, "\u0411\u0415\u0417 \u0427\u0415\u0420\u0422\u042B"), traits.map(t => React.createElement("button", {
+  }, React.createElement(X, {
+    size: 18
+  }), "\u0411\u0435\u0437 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438")), traits.map(t => React.createElement("div", {
     key: t.id,
-    type: "button",
+    className: `tc-pick ${linked === t.id ? 'on' : ''}`
+  }, React.createElement(TraitCard, {
+    mini: true,
+    t: t,
+    hero: traitHero(t, data.persona),
     onClick: () => {
       sfx();
       set({
         trait: t.id
       });
-    },
-    className: `tag cut ${c.trait === t.id ? 'on' : ''}`,
-    style: {
-      '--tc': t.color || '#fff',
-      '--cut': '6px'
     }
-  }, nice(t.name.toUpperCase())))), React.createElement("div", {
+  }), linked === t.id && React.createElement("span", {
+    className: "tc-pick-mark"
+  }, React.createElement(Check, {
+    size: 14
+  }))))), React.createElement("div", {
     className: "text-[12px] text-white/50 f-read leading-snug mt-2"
-  }, "\u041E\u0446\u0435\u043D\u043A\u0438 \u044D\u0442\u043E\u0439 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438 \u0438\u0434\u0443\u0442 \u0432 \u043F\u0440\u043E\u0433\u0440\u0435\u0441\u0441 \u0432\u044B\u0431\u0440\u0430\u043D\u043D\u043E\u0439 \u0447\u0435\u0440\u0442\u044B \u043D\u0430 \u044D\u043A\u0440\u0430\u043D\u0435 \xAB\u041F\u0435\u0440\u0441\u043E\u043D\u0430\xBB.")), React.createElement(Field, {
+  }, "\u041E\u0446\u0435\u043D\u043A\u0438 \u044D\u0442\u043E\u0439 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438 \u0437\u0430\u043F\u043E\u043B\u043D\u044F\u044E\u0442 \u043B\u0438\u043D\u0438\u044E \u0432\u044B\u0431\u0440\u0430\u043D\u043D\u043E\u0439 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438 \u043F\u0435\u0440\u0441\u043E\u043D\u044B \u0437\u0430 7 \u0434\u043D\u0435\u0439.")), React.createElement(Field, {
     label: "\u0422\u0430\u0431\u043B\u0438\u0446\u0430 \u043A\u0440\u0438\u0442\u0435\u0440\u0438\u0435\u0432 (5 \u2192 1)"
   }, [5, 4, 3, 2, 1].map(n => React.createElement("div", {
     key: n,
@@ -8092,6 +8348,7 @@ function CardCatalog({
     undoable
   } = useApp();
   const [edit, setEdit] = useState(null);
+  const [order, setOrder] = useState(null);
   const [idx, setIdx] = useState(0);
   const sc = useRef(null);
   const cards = data.cards;
@@ -8139,12 +8396,18 @@ function CardCatalog({
     style: {
       color: UI.mono ? '#8E8E93' : 'rgba(var(--alt-rgb),.7)'
     }
-  }, cards.length, " ", plural(cards.length, 'КАРТОЧКА', 'КАРТОЧКИ', 'КАРТОЧЕК'), " \xB7 \u0411\u0410\u041B\u041B\u042B \u0417\u0410 ", fmtShort(sel))), React.createElement(Btn, {
+  }, cards.length, " ", plural(cards.length, 'КАРТОЧКА', 'КАРТОЧКИ', 'КАРТОЧЕК'), " \xB7 \u0411\u0410\u041B\u041B\u042B \u0417\u0410 ", fmtShort(sel))), React.createElement("div", {
+    className: "flex items-center gap-2 shrink-0"
+  }, cards.length > 1 && React.createElement(IconBtn, {
+    icon: ArrowUpDown,
+    title: "\u041F\u043E\u0440\u044F\u0434\u043E\u043A \u043A\u0430\u0440\u0442\u043E\u0447\u0435\u043A",
+    onClick: () => setOrder(cards)
+  }), React.createElement(Btn, {
     small: true,
     icon: Plus,
     snd: "open",
     onClick: () => setEdit(blankCard())
-  }, "\u041D\u043E\u0432\u0430\u044F")), cards.length ? React.createElement(React.Fragment, null, React.createElement("div", {
+  }, "\u041D\u043E\u0432\u0430\u044F"))), cards.length ? React.createElement(React.Fragment, null, React.createElement("div", {
     ref: sc,
     onScroll: onScroll,
     className: "flex overflow-x-auto noscb mt-4",
@@ -8189,44 +8452,150 @@ function CardCatalog({
     initial: edit,
     onSave: saveCard,
     onClose: () => setEdit(null)
-  }));
+  }), order && React.createElement(ReorderModal, {
+    title: "\u041F\u043E\u0440\u044F\u0434\u043E\u043A \u043A\u0430\u0440\u0442\u043E\u0447\u0435\u043A",
+    code: "CATALOG // ORDER",
+    list: order,
+    setList: setOrder,
+    onClose: () => setOrder(null),
+    onSave: () => {
+      up('cards', cs => byOrder(cs, order));
+      sfx('save');
+      toast('Порядок сохранён');
+      setOrder(null);
+      go(0);
+    },
+    row: c => React.createElement(React.Fragment, null, React.createElement("span", {
+      className: "shrink-0"
+    }, React.createElement(Sticker, {
+      icon: c.icon,
+      color: c.iconColor,
+      frame: c.iconFrame,
+      size: 30
+    })), React.createElement("span", {
+      className: "min-w-0"
+    }, React.createElement("span", {
+      className: "block text-[15px] font-semibold truncate"
+    }, c.name || 'Без названия'), React.createElement("span", {
+      className: "block f-mono text-[10px] text-white/40 truncate"
+    }, schedText(c))))
+  }, React.createElement("div", {
+    className: "text-[12px] text-white/45 f-read mb-2"
+  }, "\u0412 \u044D\u0442\u043E\u043C \u043F\u043E\u0440\u044F\u0434\u043A\u0435 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438 \u0438\u0434\u0443\u0442 \u0432 \u043A\u0430\u0442\u0430\u043B\u043E\u0433\u0435 \u0438 \u0432 \u0432\u0435\u0447\u0435\u0440\u043D\u0435\u0439 \u043E\u0446\u0435\u043D\u043A\u0435 \u0434\u043D\u044F.")));
 }
-const TRAIT_WEEKS = 4;
-function traitStats(data, endKey) {
-  const byCard = {};
-  data.cards.forEach(c => {
-    if (c.trait) byCard[c.id] = c.trait;
-  });
-  const end = parseKey(endKey),
-    acc = {};
+const TRAIT_DAYS = 7;
+const TRAIT_DONE = 3;
+const TRAIT_EMPTY = {
+  days: Array(TRAIT_DAYS).fill('off'),
+  done: 0,
+  plan: 0
+};
+function traitWeeks(data) {
+  const now = new Date(),
+    today = dKey(now),
+    out = {},
+    bound = {};
   data.persona.traits.forEach(t => {
-    acc[t.id] = Array.from({
-      length: TRAIT_WEEKS
-    }, () => []);
-  });
-  for (const [k, r] of Object.entries(data.ratings)) {
-    const diff = Math.round((end - parseKey(k)) / 86400000);
-    if (diff < 0 || diff >= TRAIT_WEEKS * 7) continue;
-    for (const [id, s] of Object.entries(r.scores || {})) {
-      const tid = byCard[id];
-      if (tid && acc[tid]) acc[tid][Math.floor(diff / 7)].push({
-        score: s.score,
-        w: s.w
-      });
-    }
-  }
-  return data.persona.traits.map(t => {
-    const weeks = acc[t.id].map(calcAvgW);
-    return {
-      t,
-      weeks,
-      cur: weeks[0],
-      cards: data.cards.filter(c => c.trait === t.id).length
+    out[t.id] = {
+      days: [],
+      done: 0,
+      plan: 0
     };
   });
+  data.cards.forEach(c => {
+    if (c.trait) bound[c.id] = c.trait;
+  });
+  for (let i = TRAIT_DAYS - 1; i >= 0; i--) {
+    const k = dKey(addDays(now, -i)),
+      by = {},
+      sched = {};
+    for (const [id, s] of Object.entries((data.ratings[k] || {}).scores || {})) {
+      const tid = s.tr || bound[id];
+      if (tid) (by[tid] = by[tid] || []).push(s);
+    }
+    activeCards(data.cards, k).forEach(c => {
+      if (c.trait) sched[c.trait] = true;
+    });
+    for (const [tid, w] of Object.entries(out)) {
+      const avg = by[tid] ? calcAvgW(by[tid]) : null;
+      const st = avg != null ? avg >= TRAIT_DONE ? 'on' : 'off' : by[tid] || !sched[tid] ? 'none' : k === today ? 'wait' : 'off';
+      w.days.push(st);
+      if (st === 'on') w.done++;
+      if (st !== 'none') w.plan++;
+    }
+  }
+  return out;
 }
-const pct5 = v => Math.round(v / 5 * 100);
-function PersonaEditor({
+const tcLum = hex => {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex || '');
+  if (!m) return 1;
+  const v = parseInt(m[1], 16),
+    ch = x => {
+      const c = x / 255;
+      return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+    };
+  return 0.2126 * ch(v >> 16) + 0.7152 * ch(v >> 8 & 255) + 0.0722 * ch(v & 255);
+};
+function TraitCard({
+  t,
+  hero,
+  week = TRAIT_EMPTY,
+  n,
+  mini,
+  onClick
+}) {
+  const col = t.color || '#FFFFFF',
+    lum = tcLum(col),
+    Tag = onClick ? 'button' : 'div';
+  const letter = (hero || t.name || '?').trim().charAt(0).toUpperCase();
+  const word = Math.max(1, ...(t.name || '').split(/\s+/).map(w => w.length));
+  return React.createElement(Tag, {
+    type: onClick ? 'button' : undefined,
+    onClick: onClick,
+    className: `tc cut ${mini ? 'mini' : ''}`,
+    style: {
+      '--tc': col,
+      '--tci': lum > 0.18 ? '#0A0A0F' : '#FFFFFF',
+      '--tcl': lum > 0.1 ? col : '#FFFFFF',
+      '--cut': mini ? '7px' : '12px'
+    }
+  }, React.createElement("span", {
+    className: "tc-in cut"
+  }, t.img ? React.createElement(Img, {
+    src: t.img,
+    thumb: !!mini,
+    className: "tc-img"
+  }) : React.createElement("span", {
+    className: "tc-ph",
+    style: {
+      background: `radial-gradient(circle at 50% 34%, ${alpha(col, 0.5)}, #08070C 72%)`,
+      color: alpha(col, 0.85)
+    }
+  }, letter), n != null && React.createElement("span", {
+    className: "tc-no"
+  }, "\u2116 ", pad(n)), React.createElement("span", {
+    className: "tc-foot"
+  }, React.createElement("span", {
+    className: "tc-plate"
+  }, React.createElement("span", {
+    className: "tc-name",
+    style: {
+      fontSize: `${Math.min(mini ? 12.5 : 10, 130 / word)}cqw`
+    }
+  }, t.name || 'Характеристика'), React.createElement("span", {
+    className: "tc-hero"
+  }, hero || 'Персонаж'), React.createElement("span", {
+    className: "tc-line"
+  }, week.days.map((s, i) => React.createElement("i", {
+    key: i,
+    className: s
+  })))), React.createElement("span", {
+    className: "tc-em"
+  }, week.plan ? `${week.done}/${week.plan}` : '—'))));
+}
+function TraitEditor({
+  initial,
+  week,
   onClose
 }) {
   const {
@@ -8234,32 +8603,40 @@ function PersonaEditor({
     up,
     toast
   } = useApp();
-  const [p, setP] = useState(() => JSON.parse(JSON.stringify(data.persona)));
-  const setTrait = (id, patch) => setP(x => ({
-    ...x,
-    traits: x.traits.map(t => t.id === id ? {
-      ...t,
-      ...patch
-    } : t)
+  const [t, setT] = useState(() => ({
+    ...initial,
+    hero: traitHero(initial, data.persona)
   }));
+  const set = p => setT(x => ({
+    ...x,
+    ...p
+  }));
+  const exists = data.persona.traits.some(x => x.id === t.id);
+  const heroes = [...new Set(data.persona.traits.map(x => traitHero(x, data.persona)).filter(Boolean))];
   const save = () => {
-    const traits = p.traits.map(t => ({
+    const nt = {
       ...t,
+      hero: t.hero.trim(),
       name: t.name.trim(),
       maxim: (t.maxim || '').trim()
-    })).filter(t => t.name);
-    up('persona', {
-      name: p.name.trim(),
-      traits
-    });
+    };
+    if (!nt.hero || !nt.name) {
+      sfx('error');
+      toast('Укажи персонажа и характеристику');
+      return;
+    }
+    up('persona', p => ({
+      ...p,
+      traits: exists ? p.traits.map(x => x.id === nt.id ? nt : x) : [...p.traits, nt]
+    }));
     sfx('save');
-    toast('Персона сохранена');
+    toast('Карточка персоны сохранена');
     onClose();
   };
   return React.createElement(Modal, {
     full: true,
-    title: "\u041F\u0435\u0440\u0441\u043E\u043D\u0430",
-    code: "PERSONA // EDIT",
+    title: exists ? 'Карточка персоны' : 'Новая карточка персоны',
+    code: "PERSONA // CARD.EDIT",
     onClose: onClose,
     footer: React.createElement(React.Fragment, null, React.createElement(Btn, {
       variant: "ghost",
@@ -8271,229 +8648,231 @@ function PersonaEditor({
       snd: "none",
       onClick: save
     }, "\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C"))
-  }, React.createElement(Field, {
-    label: "\u041E\u0431\u0440\u0430\u0437\u0435\u0446 (\u043D\u0430 \u043A\u043E\u0433\u043E \u0440\u0430\u0432\u043D\u044F\u044E\u0441\u044C)"
+  }, React.createElement("div", {
+    className: "mx-auto mb-5",
+    style: {
+      width: 176
+    }
+  }, React.createElement(TraitCard, {
+    t: t,
+    hero: t.hero,
+    week: week
+  })), React.createElement(Field, {
+    label: "\u041F\u0435\u0440\u0441\u043E\u043D\u0430\u0436"
   }, React.createElement("input", {
     className: "inp",
-    value: p.name,
-    onChange: e => setP({
-      ...p,
-      name: e.target.value
+    list: "cj-heroes",
+    value: t.hero,
+    onChange: e => set({
+      hero: e.target.value
     }),
     placeholder: "\u041D\u0430\u043F\u0440\u0438\u043C\u0435\u0440: \u0414\u0436\u043E\u043D \u041C\u0430\u043A\u043A\u043B\u0435\u0439\u043D"
-  })), !p.traits.length && React.createElement(Btn, {
-    small: true,
-    variant: "dark",
-    className: "mb-4",
-    onClick: () => setP(MCCLANE())
-  }, "\u0417\u0430\u043F\u043E\u043B\u043D\u0438\u0442\u044C: \u0414\u0436\u043E\u043D \u041C\u0430\u043A\u043A\u043B\u0435\u0439\u043D"), p.traits.map((t, i) => React.createElement(Frame, {
-    key: t.id,
-    cut: 12,
-    className: "mb-4",
-    color: alpha(t.color || '#ffffff', 0.5)
-  }, React.createElement("div", {
-    className: "p-3"
-  }, React.createElement("div", {
-    className: "flex items-center gap-2"
+  }), React.createElement("datalist", {
+    id: "cj-heroes"
+  }, heroes.map(h => React.createElement("option", {
+    key: h,
+    value: h
+  })))), React.createElement(Field, {
+    label: "\u0425\u0430\u0440\u0430\u043A\u0442\u0435\u0440\u0438\u0441\u0442\u0438\u043A\u0430"
   }, React.createElement("input", {
-    className: "inp flex-1 min-w-0",
+    className: "inp",
     value: t.name,
-    onChange: e => setTrait(t.id, {
+    onChange: e => set({
       name: e.target.value
     }),
-    placeholder: "\u041D\u0430\u0437\u0432\u0430\u043D\u0438\u0435 \u0447\u0435\u0440\u0442\u044B"
-  }), React.createElement(IconBtn, {
-    icon: Trash2,
-    title: "\u0423\u0434\u0430\u043B\u0438\u0442\u044C \u0447\u0435\u0440\u0442\u0443",
-    onClick: () => setP(x => ({
-      ...x,
-      traits: x.traits.filter(y => y.id !== t.id)
-    }))
-  })), React.createElement("div", {
-    className: "mt-3"
+    placeholder: "\u041D\u0430\u043F\u0440\u0438\u043C\u0435\u0440: \u0423\u043F\u043E\u0440\u0441\u0442\u0432\u043E"
+  })), React.createElement(Field, {
+    label: "\u0418\u0437\u043E\u0431\u0440\u0430\u0436\u0435\u043D\u0438\u0435"
+  }, React.createElement(ImageInput, {
+    noPreview: true,
+    value: t.img || '',
+    onChange: v => set({
+      img: v
+    })
+  }), t.img && React.createElement(Btn, {
+    small: true,
+    variant: "dark",
+    className: "mt-2 w-full",
+    icon: X,
+    onClick: () => set({
+      img: ''
+    })
+  }, "\u0423\u0431\u0440\u0430\u0442\u044C \u0438\u0437\u043E\u0431\u0440\u0430\u0436\u0435\u043D\u0438\u0435")), React.createElement(Field, {
+    label: "\u0426\u0432\u0435\u0442 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438"
   }, React.createElement(ColorRow, {
     value: t.color,
-    onChange: v => setTrait(t.id, {
+    onChange: v => set({
       color: v
     }),
     presets: TRAIT_COLORS
-  })), React.createElement("textarea", {
-    className: "inp f-read mt-3",
+  })), React.createElement(Field, {
+    label: "\u0423\u0441\u0442\u0430\u043D\u043E\u0432\u043A\u0430"
+  }, React.createElement("textarea", {
+    className: "inp f-read",
     rows: 3,
     value: t.maxim || '',
-    onChange: e => setTrait(t.id, {
+    onChange: e => set({
       maxim: e.target.value
     }),
-    placeholder: "\u0423\u0441\u0442\u0430\u043D\u043E\u0432\u043A\u0430: \u0447\u0442\u043E \u0434\u0435\u043B\u0430\u043B \u0431\u044B \u043E\u0431\u0440\u0430\u0437\u0435\u0446"
-  }), React.createElement("div", {
-    className: "micro mt-2"
-  }, "\u0427\u0415\u0420\u0422\u0410 ", i + 1, " \u0418\u0417 ", p.traits.length)))), React.createElement(Btn, {
-    small: true,
-    variant: "dark",
-    icon: Plus,
-    onClick: () => setP(x => ({
-      ...x,
-      traits: [...x.traits, {
-        id: uid('tr'),
-        name: '',
-        color: TRAIT_COLORS[x.traits.length % TRAIT_COLORS.length],
-        maxim: ''
-      }]
-    }))
-  }, "\u0414\u043E\u0431\u0430\u0432\u0438\u0442\u044C \u0447\u0435\u0440\u0442\u0443"), React.createElement("div", {
-    className: "text-[12px] text-white/50 f-read leading-snug mt-3"
-  }, "\u041B\u0443\u0447\u0448\u0435 3\u20135 \u0447\u0435\u0440\u0442. \u041F\u0440\u0438\u0432\u044B\u0447\u043A\u0438 \u043F\u0440\u0438\u0432\u044F\u0437\u044B\u0432\u0430\u044E\u0442\u0441\u044F \u043A \u0447\u0435\u0440\u0442\u0430\u043C \u0432 \u0440\u0435\u0434\u0430\u043A\u0442\u043E\u0440\u0435 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438 (\u043F\u043E\u043B\u0435 \xAB\u0427\u0435\u0440\u0442\u0430 \u043F\u0435\u0440\u0441\u043E\u043D\u044B\xBB)."));
+    placeholder: "\u0427\u0442\u043E \u0431\u044B \u0441\u0434\u0435\u043B\u0430\u043B \u043F\u0435\u0440\u0441\u043E\u043D\u0430\u0436"
+  })));
+}
+function TraitView({
+  t,
+  n,
+  week,
+  onEdit,
+  onDelete,
+  onClose
+}) {
+  const {
+    data
+  } = useApp();
+  const hero = traitHero(t, data.persona),
+    linked = data.cards.filter(c => c.trait === t.id);
+  return React.createElement(Modal, {
+    full: true,
+    title: t.name,
+    code: "PERSONA // CARD",
+    onClose: onClose,
+    footer: React.createElement(React.Fragment, null, React.createElement(IconBtn, {
+      red: true,
+      icon: Trash2,
+      title: "\u0423\u0434\u0430\u043B\u0438\u0442\u044C",
+      onClick: onDelete
+    }), React.createElement(Btn, {
+      className: "flex-1",
+      icon: Pencil,
+      onClick: onEdit
+    }, "\u0418\u0437\u043C\u0435\u043D\u0438\u0442\u044C"))
+  }, React.createElement("div", {
+    className: "mx-auto mb-5",
+    style: {
+      width: 'min(100%, 300px)'
+    }
+  }, React.createElement(TraitCard, {
+    t: t,
+    hero: hero,
+    week: week,
+    n: n
+  })), t.maxim && React.createElement(Field, {
+    label: `Что бы сделал ${hero}`
+  }, React.createElement("div", {
+    className: "text-[15px] text-white/80 f-read leading-snug whitespace-pre-line"
+  }, t.maxim)), React.createElement(Field, {
+    label: `Привязанные карточки · ${linked.length}`
+  }, linked.length ? linked.map(c => React.createElement("div", {
+    key: c.id,
+    className: "flex items-center gap-3 py-1.5"
+  }, React.createElement("span", {
+    className: "shrink-0"
+  }, React.createElement(Sticker, {
+    icon: c.icon,
+    color: c.iconColor,
+    frame: c.iconFrame,
+    size: 30
+  })), React.createElement("span", {
+    className: "min-w-0"
+  }, React.createElement("span", {
+    className: "block text-[15px] font-semibold truncate"
+  }, c.name), React.createElement("span", {
+    className: "block f-mono text-[10px] text-white/40 truncate"
+  }, schedText(c, false))))) : React.createElement("div", {
+    className: "text-[13px] text-white/50 f-read leading-snug"
+  }, "\u041E\u0442\u043A\u0440\u043E\u0439 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0443 \u0432 \u043A\u0430\u0442\u0430\u043B\u043E\u0433\u0435 \u0438 \u0432\u044B\u0431\u0435\u0440\u0438 \u044D\u0442\u0443 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0443 \u043F\u0435\u0440\u0441\u043E\u043D\u044B. \u0422\u043E\u0433\u0434\u0430 \u043B\u0438\u043D\u0438\u044F \u043D\u0430\u0447\u043D\u0451\u0442 \u0437\u0430\u043F\u043E\u043B\u043D\u044F\u0442\u044C\u0441\u044F.")), React.createElement("div", {
+    className: "text-[12px] text-white/50 f-read leading-snug"
+  }, "\u0414\u0435\u043D\u044C \u0437\u0430\u0441\u0447\u0438\u0442\u0430\u043D, \u0435\u0441\u043B\u0438 \u0441\u0440\u0435\u0434\u043D\u0438\u0439 \u0431\u0430\u043B\u043B \u043F\u0440\u0438\u0432\u044F\u0437\u0430\u043D\u043D\u044B\u0445 \u043A\u0430\u0440\u0442\u043E\u0447\u0435\u043A \u043D\u0435 \u043D\u0438\u0436\u0435 ", TRAIT_DONE, ". \u0414\u043D\u0438 \u0431\u0435\u0437 \u044D\u0442\u0438\u0445 \u043A\u0430\u0440\u0442\u043E\u0447\u0435\u043A \u0432 \u0440\u0430\u0441\u043F\u0438\u0441\u0430\u043D\u0438\u0438 \u0438 \u043F\u0440\u043E\u043F\u0443\u0441\u043A\u0438 \u043B\u0438\u043D\u0438\u044E \u043D\u0435 \u043F\u043E\u0440\u0442\u044F\u0442."));
 }
 function PersonaView() {
   const {
     data,
-    ask
+    up,
+    ask,
+    undoable
   } = useApp();
-  const [edit, setEdit] = useState(false);
-  const pr = data.persona,
-    name = pr.name || 'Образец';
-  const st = useMemo(() => traitStats(data, dKey(new Date())), [data.cards, data.ratings, data.persona]);
-  const vals = st.map(s => s.cur).filter(v => v != null);
-  const prevVals = st.map(s => s.weeks[1]).filter(v => v != null);
-  const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
-  const prevAvg = prevVals.length ? prevVals.reduce((a, b) => a + b, 0) / prevVals.length : null;
-  const delta = avg != null && prevAvg != null ? pct5(avg) - pct5(prevAvg) : null;
-  const spin = async () => {
-    const list = pr.traits.filter(t => t.maxim);
-    if (!list.length) return;
-    let i = Math.floor(Math.random() * list.length);
-    for (;;) {
-      const t = list[i];
-      const ok = await ask({
-        title: `${name}: ${t.name}`,
-        code: 'PERSONA // WWJD',
-        text: t.maxim,
-        ok: 'Понял',
-        cancel: list.length > 1 ? 'Другая' : false
-      });
-      if (ok === true || list.length < 2) return;
-      i = (i + 1) % list.length;
-    }
+  const [view, setView] = useState(null);
+  const [edit, setEdit] = useState(null);
+  const pr = data.persona;
+  const weeks = useMemo(() => traitWeeks(data), [data.cards, data.ratings, data.persona]);
+  const cur = pr.traits.find(t => t.id === view);
+  const blank = () => ({
+    id: uid('tr'),
+    hero: '',
+    name: '',
+    color: TRAIT_COLORS[pr.traits.length % TRAIT_COLORS.length],
+    maxim: '',
+    img: ''
+  });
+  const del = async t => {
+    const ok = await ask({
+      title: 'Удалить карточку персоны?',
+      code: 'PERSONA // DELETE',
+      text: `«${t.name}» исчезнет из коллекции и отвяжется от карточек каталога. Оценки в календаре останутся.`,
+      ok: 'Удалить',
+      danger: true
+    });
+    if (ok !== true) return;
+    setView(null);
+    undoable('Карточка персоны удалена', ['persona', 'cards'], () => {
+      up('persona', p => ({
+        ...p,
+        traits: p.traits.filter(x => x.id !== t.id)
+      }));
+      up('cards', cs => cs.map(c => c.trait === t.id ? {
+        ...c,
+        trait: ''
+      } : c));
+    });
   };
-  if (!pr.traits.length) return React.createElement("div", {
-    className: "px-4 pt-4"
-  }, React.createElement(Empty, {
-    icon: Brain,
-    title: "\u041F\u0435\u0440\u0441\u043E\u043D\u0430 \u043D\u0435 \u0437\u0430\u0434\u0430\u043D\u0430",
-    text: "\u0412\u044B\u0431\u0435\u0440\u0438 \u043E\u0431\u0440\u0430\u0437\u0435\u0446 \u0438 3\u20135 \u0435\u0433\u043E \u043A\u0430\u0447\u0435\u0441\u0442\u0432, \u043A\u043E\u0442\u043E\u0440\u044B\u0435 \u0445\u043E\u0447\u0435\u0448\u044C \u0440\u0430\u0437\u0432\u0438\u0442\u044C. \u041F\u0440\u0438\u0432\u044B\u0447\u043A\u0438 \u043F\u0440\u0438\u0432\u044F\u0436\u0443\u0442\u0441\u044F \u043A \u043D\u0438\u043C, \u0430 \u043F\u0440\u043E\u0433\u0440\u0435\u0441\u0441 \u043F\u043E\u043A\u0430\u0436\u0435\u0442, \u043A\u0430\u043A\u0430\u044F \u0447\u0435\u0440\u0442\u0430 \u0440\u0430\u0441\u0442\u0451\u0442."
-  }, React.createElement(Btn, {
-    icon: Plus,
-    snd: "open",
-    onClick: () => setEdit(true)
-  }, "\u0421\u043E\u0437\u0434\u0430\u0442\u044C \u043F\u0435\u0440\u0441\u043E\u043D\u0443")), edit && React.createElement(PersonaEditor, {
-    onClose: () => setEdit(false)
-  }));
   return React.createElement("div", {
     className: "px-4 pt-4"
-  }, React.createElement("div", {
+  }, pr.traits.length ? React.createElement(React.Fragment, null, React.createElement("div", {
     className: "flex items-center justify-between gap-3"
   }, React.createElement("div", {
     className: "min-w-0"
   }, React.createElement("div", {
-    className: "sec-title text-[18px] truncate"
-  }, name), React.createElement("div", {
+    className: "sec-title text-[18px]"
+  }, "\u041A\u043E\u043B\u043B\u0435\u043A\u0446\u0438\u044F"), React.createElement("div", {
     className: "micro mt-1",
     style: {
       color: UI.mono ? '#8E8E93' : 'rgba(var(--alt-rgb),.7)'
     }
-  }, "\u041F\u0420\u041E\u0413\u0420\u0415\u0421\u0421 \u0427\u0415\u0420\u0422 \xB7 7 \u0414\u041D\u0415\u0419")), React.createElement(Btn, {
+  }, pr.traits.length, " ", plural(pr.traits.length, 'КАРТОЧКА', 'КАРТОЧКИ', 'КАРТОЧЕК'), " \xB7 \u041B\u0418\u041D\u0418\u042F \u0417\u0410 ", TRAIT_DAYS, " \u0414\u041D\u0415\u0419")), React.createElement(Btn, {
     small: true,
-    variant: "dark",
-    icon: Pencil,
-    onClick: () => setEdit(true)
-  }, "\u0418\u0437\u043C\u0435\u043D\u0438\u0442\u044C")), React.createElement(Frame, {
-    cut: 14,
-    className: "mt-4",
-    color: "rgba(var(--main-rgb),.5)"
-  }, React.createElement("div", {
-    className: "flex items-center gap-4 p-4"
-  }, React.createElement("div", {
-    className: "relative w-16 h-16 shrink-0"
-  }, React.createElement(Ring, {
-    avg: avg,
-    color: avg != null ? ringColor(avg, data.settings.thr) : '#6a6a72',
-    size: 64,
-    stroke: 4
-  }), React.createElement("span", {
-    className: "absolute inset-0 flex items-center justify-center st-score text-[15px]",
-    style: {
-      color: avg != null ? ringColor(avg, data.settings.thr) : '#6a6a72'
-    }
-  }, avg != null ? `${pct5(avg)}%` : '—')), React.createElement("div", {
-    className: "min-w-0"
-  }, React.createElement("div", {
-    className: "sec-title text-[16px]"
-  }, "\u041F\u043E\u0445\u043E\u0436\u0435\u0441\u0442\u044C \u043D\u0430 \u043E\u0431\u0440\u0430\u0437\u0435\u0446"), React.createElement("div", {
-    className: "micro mt-1"
-  }, delta == null ? 'ПОКА НЕТ ДАННЫХ ЗА ПРОШЛУЮ НЕДЕЛЮ' : delta === 0 ? 'КАК И НЕДЕЛЮ НАЗАД' : `${delta > 0 ? '+' : ''}${delta}% К ПРОШЛОЙ НЕДЕЛЕ`)))), st.map(({
-    t,
-    weeks,
-    cur,
-    cards
-  }) => {
-    const col = t.color || '#fff',
-      hist = weeks.slice().reverse();
-    return React.createElement(Frame, {
-      key: t.id,
-      cut: 12,
-      className: "mt-3",
-      color: alpha(col, 0.5)
-    }, React.createElement("div", {
-      className: "p-3"
-    }, React.createElement("div", {
-      className: "flex items-center justify-between gap-2"
-    }, React.createElement("div", {
-      className: "m-title text-[18px] truncate",
-      style: {
-        color: col
-      }
-    }, t.name), React.createElement("div", {
-      className: "st-score text-[18px] shrink-0",
-      style: {
-        color: col
-      }
-    }, cur != null ? `${pct5(cur)}%` : '—')), React.createElement("div", {
-      className: "mt-2 h-2",
-      style: {
-        background: 'rgba(255,255,255,.1)',
-        borderRadius: UI.mono ? 99 : 0
-      }
-    }, React.createElement("div", {
-      className: "h-full",
-      style: {
-        width: `${cur != null ? pct5(cur) : 0}%`,
-        background: col,
-        borderRadius: UI.mono ? 99 : 0,
-        boxShadow: UI.mono ? 'none' : `0 0 8px ${col}`
-      }
-    })), React.createElement("div", {
-      className: "flex items-end gap-1.5 mt-3 h-8"
-    }, hist.map((v, i) => React.createElement("div", {
-      key: i,
-      className: "flex-1 flex items-end h-full",
-      title: v != null ? `${pct5(v)}%` : 'нет данных'
-    }, React.createElement("div", {
-      className: "w-full",
-      style: {
-        height: v != null ? `${Math.max(8, pct5(v))}%` : '4px',
-        background: v != null ? alpha(col, i === hist.length - 1 ? 1 : 0.45) : 'rgba(255,255,255,.12)',
-        borderRadius: UI.mono ? 4 : 0
-      }
-    })))), React.createElement("div", {
-      className: "micro mt-2"
-    }, cards ? `${cards} ${plural(cards, 'КАРТОЧКА', 'КАРТОЧКИ', 'КАРТОЧЕК')} · 4 НЕДЕЛИ, СТАРЫЕ СЛЕВА` : 'НЕТ КАРТОЧЕК · ПРИВЯЖИ В КАТАЛОГЕ')));
-  }), React.createElement(Btn, {
-    className: "w-full mt-4",
-    icon: Brain,
+    icon: Plus,
     snd: "open",
-    onClick: spin
-  }, "\u0427\u0442\u043E \u0431\u044B \u0441\u0434\u0435\u043B\u0430\u043B ", name, "?"), edit && React.createElement(PersonaEditor, {
-    onClose: () => setEdit(false)
+    onClick: () => setEdit(blank())
+  }, "\u041D\u043E\u0432\u0430\u044F")), React.createElement("div", {
+    className: "tc-grid mt-4"
+  }, pr.traits.map((t, i) => React.createElement(TraitCard, {
+    key: t.id,
+    t: t,
+    hero: traitHero(t, pr),
+    week: weeks[t.id],
+    n: i + 1,
+    onClick: () => {
+      sfx('open');
+      setView(t.id);
+    }
+  })))) : React.createElement(Empty, {
+    icon: Layers,
+    title: "\u041A\u043E\u043B\u043B\u0435\u043A\u0446\u0438\u044F \u043F\u0443\u0441\u0442\u0430",
+    text: "\u0421\u043E\u0437\u0434\u0430\u0439 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0443: \u043E\u0434\u0438\u043D \u043F\u0435\u0440\u0441\u043E\u043D\u0430\u0436 \u0438 \u043E\u0434\u043D\u0430 \u0435\u0433\u043E \u0445\u0430\u0440\u0430\u043A\u0442\u0435\u0440\u0438\u0441\u0442\u0438\u043A\u0430. \u041F\u0440\u0438\u0432\u044F\u0436\u0438 \u0435\u0451 \u043A \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0430\u043C \u043A\u0430\u0442\u0430\u043B\u043E\u0433\u0430, \u0438 \u043B\u0438\u043D\u0438\u044F \u043F\u043E\u043A\u0430\u0436\u0435\u0442, \u043A\u0430\u043A \u0442\u044B \u0434\u0435\u0440\u0436\u0438\u0448\u044C\u0441\u044F 7 \u0434\u043D\u0435\u0439."
+  }, React.createElement(Btn, {
+    icon: Plus,
+    snd: "open",
+    onClick: () => setEdit(blank())
+  }, "\u0421\u043E\u0437\u0434\u0430\u0442\u044C \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0443")), cur && React.createElement(TraitView, {
+    t: cur,
+    n: pr.traits.indexOf(cur) + 1,
+    week: weeks[cur.id],
+    onEdit: () => setEdit(cur),
+    onDelete: () => del(cur),
+    onClose: () => setView(null)
+  }), edit && React.createElement(TraitEditor, {
+    initial: edit,
+    week: weeks[edit.id],
+    onClose: () => setEdit(null)
   }));
 }
 function StatsScreen({
@@ -8639,7 +9018,10 @@ function RateModal({
       if (v !== undefined) sc[c.id] = {
         score: v === 'skip' ? null : v,
         name: c.name,
-        w: cardW(c)
+        w: cardW(c),
+        ...(c.trait ? {
+          tr: c.trait
+        } : {})
       };
     });
     const rec = {
@@ -9518,7 +9900,9 @@ function TimerCard({
   total,
   onEdit,
   onAdd,
-  onDelete
+  onDelete,
+  onOrder,
+  onReset
 }) {
   const st = timerState(t, now);
   const font = (TIMER_FONTS[t.font] || TIMER_FONTS.bebas)[0];
@@ -9559,6 +9943,16 @@ function TimerCard({
     }
   }, React.createElement(Pencil, {
     size: 19
+  })), t.mode === 'since' && React.createElement("button", {
+    type: "button",
+    "aria-label": "\u0421\u0431\u0440\u043E\u0441\u0438\u0442\u044C \u043E\u0442\u0441\u0447\u0451\u0442",
+    className: "mono-rail",
+    onClick: () => {
+      sfx();
+      onReset();
+    }
+  }, React.createElement(RotateCcw, {
+    size: 19
   })), React.createElement("button", {
     type: "button",
     "aria-label": "\u041D\u043E\u0432\u044B\u0439 \u0442\u0430\u0439\u043C\u0435\u0440",
@@ -9569,6 +9963,16 @@ function TimerCard({
     }
   }, React.createElement(Plus, {
     size: 22
+  })), total > 1 && React.createElement("button", {
+    type: "button",
+    "aria-label": "\u041F\u043E\u0440\u044F\u0434\u043E\u043A \u0442\u0430\u0439\u043C\u0435\u0440\u043E\u0432",
+    className: "mono-rail",
+    onClick: () => {
+      sfx('open');
+      onOrder();
+    }
+  }, React.createElement(ArrowUpDown, {
+    size: 19
   })), React.createElement("button", {
     type: "button",
     "aria-label": "\u0423\u0434\u0430\u043B\u0438\u0442\u044C",
@@ -9590,7 +9994,17 @@ function TimerCard({
     }
   }, React.createElement(Pencil, {
     size: 22
-  }), React.createElement("span", null, "EDIT")), React.createElement("button", {
+  }), React.createElement("span", null, "EDIT")), t.mode === 'since' && React.createElement("button", {
+    type: "button",
+    "aria-label": "\u0421\u0431\u0440\u043E\u0441\u0438\u0442\u044C \u043E\u0442\u0441\u0447\u0451\u0442",
+    className: "rail-b",
+    onClick: () => {
+      sfx();
+      onReset();
+    }
+  }, React.createElement(RotateCcw, {
+    size: 21
+  }), React.createElement("span", null, "RESET")), React.createElement("button", {
     type: "button",
     className: "rail-b",
     onClick: () => {
@@ -9599,7 +10013,17 @@ function TimerCard({
     }
   }, React.createElement(Plus, {
     size: 24
-  }), React.createElement("span", null, "NEW")), React.createElement("button", {
+  }), React.createElement("span", null, "NEW")), total > 1 && React.createElement("button", {
+    type: "button",
+    "aria-label": "\u041F\u043E\u0440\u044F\u0434\u043E\u043A \u0442\u0430\u0439\u043C\u0435\u0440\u043E\u0432",
+    className: "rail-b",
+    onClick: () => {
+      sfx('open');
+      onOrder();
+    }
+  }, React.createElement(ArrowUpDown, {
+    size: 21
+  }), React.createElement("span", null, "SORT")), React.createElement("button", {
     type: "button",
     className: "rail-b",
     onClick: () => {
@@ -9920,19 +10344,65 @@ function CountdownScreen() {
   const now = useNow(1000);
   const [edit, setEdit] = useState(null);
   const [page, setPage] = useState(0);
+  const [order, setOrder] = useState(null);
+  const [jump, setJump] = useState(null);
   const feedRef = useRef(null);
   const minute = Math.floor(now / 60000);
-  const list = useMemo(() => {
+  const manual = data.settings.timerOrder === 'manual';
+  const nearList = () => {
     const n = Date.now();
     const dist = t => {
       const d = parseLocal(t.target);
       return d ? Math.abs(d - n) : Infinity;
     };
     return [...data.timers].sort((a, b) => dist(a) - dist(b));
-  }, [data.timers, minute]);
+  };
+  const list = useMemo(() => manual ? data.timers : nearList(), [data.timers, manual, minute]);
   const onScroll = () => {
     const el = feedRef.current;
     if (el) setPage(Math.round(el.scrollTop / Math.max(1, el.clientHeight)));
+  };
+  useEffect(() => {
+    if (!jump) return;
+    const el = feedRef.current,
+      i = list.findIndex(x => x.id === jump);
+    if (el && i >= 0) el.scrollTo({
+      top: i * el.clientHeight
+    });
+    setJump(null);
+  }, [list, jump]);
+  const openOrder = () => setOrder({
+    mode: manual ? 'manual' : 'near',
+    list
+  });
+  const saveOrder = () => {
+    up('settings', s => ({
+      ...s,
+      timerOrder: order.mode
+    }));
+    if (order.mode === 'manual') up('timers', ts => byOrder(ts, order.list));
+    sfx('save');
+    toast('Порядок сохранён');
+    setOrder(null);
+    if (feedRef.current) feedRef.current.scrollTo({
+      top: 0
+    });
+  };
+  const resetTimer = async t => {
+    const days = timerState(t, Date.now()).days;
+    const ok = await ask({
+      title: 'Сбросить отсчёт?',
+      code: 'COUNTDOWN // RESET',
+      text: `«${t.title}» начнёт считать с нуля. Сейчас: ${days} ${dayWord(days)}.`,
+      ok: 'Сбросить',
+      danger: true
+    });
+    if (ok !== true) return;
+    undoable('Отсчёт сброшен', ['timers'], () => up('timers', ts => ts.map(x => x.id === t.id ? {
+      ...x,
+      target: toLocalInput(new Date())
+    } : x)));
+    setJump(t.id);
   };
   const saveTimer = t => {
     const exists = data.timers.some(x => x.id === t.id);
@@ -9979,7 +10449,9 @@ function CountdownScreen() {
     total: list.length,
     onEdit: () => setEdit(t),
     onAdd: () => setEdit(blankTimer()),
-    onDelete: () => delTimer(t)
+    onDelete: () => delTimer(t),
+    onOrder: openOrder,
+    onReset: () => resetTimer(t)
   })) : React.createElement("section", {
     className: "tk flex items-center justify-center"
   }, UI.mono ? React.createElement(MonoTimerBg, {
@@ -10010,7 +10482,55 @@ function CountdownScreen() {
     onSave: saveTimer,
     onClose: () => setEdit(null),
     onDelete: () => delTimer(edit)
-  }));
+  }), order && React.createElement(ReorderModal, {
+    title: "\u041F\u043E\u0440\u044F\u0434\u043E\u043A \u0442\u0430\u0439\u043C\u0435\u0440\u043E\u0432",
+    code: "COUNTDOWN // ORDER",
+    list: order.list,
+    setList: l => setOrder(o => ({
+      ...o,
+      list: l
+    })),
+    onMove: () => setOrder(o => ({
+      ...o,
+      mode: 'manual'
+    })),
+    onSave: saveOrder,
+    onClose: () => setOrder(null),
+    row: t => {
+      const st = timerState(t, now);
+      return React.createElement(React.Fragment, null, React.createElement("span", {
+        className: "w-1.5 h-9 shrink-0",
+        style: {
+          background: t.accent || '#FF4655',
+          borderRadius: UI.mono ? 3 : 0
+        }
+      }), React.createElement("span", {
+        className: "min-w-0"
+      }, React.createElement("span", {
+        className: "block text-[15px] font-semibold truncate uppercase tracking-wide"
+      }, nice(t.title)), React.createElement("span", {
+        className: "block f-mono text-[10px] text-white/40 truncate"
+      }, t.mode === 'since' ? 'ПРОШЛО' : st.done ? 'ЗАВЕРШЕНО' : 'ОСТАЛОСЬ', " \xB7 ", st.days, " \u0414\u041D.")));
+    }
+  }, React.createElement(Field, {
+    label: "\u041F\u043E\u0440\u044F\u0434\u043E\u043A \u0432 \u043B\u0435\u043D\u0442\u0435"
+  }, React.createElement(Segmented, {
+    value: order.mode,
+    accent: "var(--alt)",
+    options: [{
+      v: 'near',
+      l: 'По близости'
+    }, {
+      v: 'manual',
+      l: 'Вручную'
+    }],
+    onChange: v => setOrder({
+      mode: v,
+      list: v === 'near' ? nearList() : data.timers
+    })
+  })), React.createElement("div", {
+    className: "text-[12px] text-white/45 f-read -mt-2 mb-2"
+  }, order.mode === 'near' ? 'Первыми идут события, чья дата ближе к сегодня. Сдвинь любой таймер стрелкой — порядок станет ручным.' : 'Лента идёт в этом порядке, пока не выберешь «По близости».')));
 }
 const FOCUS_REASONS = [['phone', 'Телефон'], ['mind', 'Мысли'], ['noise', 'Шум'], ['tired', 'Усталость'], ['other', 'Другое']];
 const REASON_NAME = Object.fromEntries(FOCUS_REASONS);
@@ -10033,6 +10553,23 @@ const BG_DIM = {
   high: 0.75
 };
 const FOCUS_LEFT_KEY = `${LS_KEY}.focusLeft`;
+const ACTIVE_CAP = 12 * 3600e3;
+const nextCheckOf = ([lo, hi], from) => ({
+  nextCheck: from + Math.round((lo + Math.random() * (hi - lo)) * 60e3),
+  checkPos: {
+    x: 0.18 + Math.random() * 0.64,
+    y: 0.12 + Math.random() * 0.76
+  }
+});
+const lapseOf = (x, t) => {
+  if (x.mode !== 'active' || x.stoppedAt) return null;
+  const dead = x.nextCheck + x.win * 1e3;
+  return t >= dead ? {
+    stoppedAt: x.okAt,
+    lapsed: true,
+    lostMs: dead - x.okAt
+  } : null;
+};
 const readLeft = () => {
   try {
     const v = Number(localStorage.getItem(FOCUS_LEFT_KEY)) || 0;
@@ -10204,6 +10741,9 @@ function FocusSetup({
   const [mid, setMid] = useState(missions.some(m => m.id === missionId) ? missionId : '');
   const [goal, setGoal] = useState(() => stepOf(missionId));
   const [dur, setDur] = useState(data.focus.lastMin || 25);
+  const [mode, setMode] = useState(data.focus.lastMode);
+  const [every, setEvery] = useState(data.focus.checkEvery);
+  const [win, setWin] = useState(data.focus.checkWin);
   const durs = [...new Set([...FOCUS_DURS, dur])].sort((a, b) => a - b);
   const pickMission = id => {
     if (!goal.trim() || goal === stepOf(mid)) setGoal(stepOf(id));
@@ -10212,25 +10752,47 @@ function FocusSetup({
   const start = () => {
     const m = data.missions.find(x => x.id === mid),
       n = Date.now();
+    const base = {
+      id: uid('fs'),
+      missionId: mid,
+      title: m ? m.title : '',
+      goal: goal.trim(),
+      startAt: n,
+      distractions: 0,
+      reasons: {},
+      leaves: 0,
+      away: 0,
+      parked: [],
+      stoppedAt: 0
+    };
+    const act = mode === 'active' ? {
+      ...base,
+      mode: 'active',
+      planMin: 0,
+      endAt: n + ACTIVE_CAP,
+      every: CHECK_EVERY[every],
+      win,
+      okAt: n,
+      checks: 0,
+      lapsed: false,
+      lostMs: 0,
+      ...nextCheckOf(CHECK_EVERY[every], n)
+    } : {
+      ...base,
+      planMin: dur,
+      endAt: n + dur * 60e3
+    };
     readLeft();
     up('focus', f => ({
       ...f,
-      lastMin: dur,
-      active: {
-        id: uid('fs'),
-        missionId: mid,
-        title: m ? m.title : '',
-        goal: goal.trim(),
-        planMin: dur,
-        startAt: n,
-        endAt: n + dur * 60e3,
-        distractions: 0,
-        reasons: {},
-        leaves: 0,
-        away: 0,
-        parked: [],
-        stoppedAt: 0
-      }
+      lastMode: mode,
+      ...(mode === 'active' ? {
+        checkEvery: every,
+        checkWin: win
+      } : {
+        lastMin: dur
+      }),
+      active: act
     }));
     onClose();
   };
@@ -10240,11 +10802,28 @@ function FocusSetup({
     code: "NEURAL LINK // CALIBRATE",
     footer: React.createElement(Btn, {
       className: "flex-1",
-      icon: Play,
+      icon: mode === 'active' ? Eye : Play,
       snd: "open",
       onClick: start
-    }, UI.mono ? 'Начать' : 'Подключиться', " \xB7 ", dur, " \u043C\u0438\u043D")
+    }, UI.mono ? 'Начать' : 'Подключиться', " \xB7 ", mode === 'active' ? 'без лимита' : `${dur} мин`)
   }, React.createElement(Field, {
+    label: "\u0420\u0435\u0436\u0438\u043C"
+  }, React.createElement(Segmented, {
+    value: mode,
+    onChange: setMode,
+    accent: "var(--alt)",
+    options: [{
+      v: 'timer',
+      l: 'Таймер',
+      i: Timer
+    }, {
+      v: 'active',
+      l: 'Активная',
+      i: Eye
+    }]
+  }), React.createElement("div", {
+    className: "text-[12px] text-white/40 f-read mt-1.5 leading-snug"
+  }, mode === 'active' ? 'Время идёт вверх без лимита. Время от времени всплывает значок: не нажал вовремя — сессия остановится, а время с последней отметки не засчитается.' : 'Отсчёт заданного числа минут.')), React.createElement(Field, {
     label: "\u041C\u0438\u0441\u0441\u0438\u044F"
   }, React.createElement("select", {
     className: "inp",
@@ -10265,7 +10844,41 @@ function FocusSetup({
     placeholder: "\u041D\u0430\u043F\u0440\u0438\u043C\u0435\u0440: \u0447\u0435\u0440\u043D\u043E\u0432\u0438\u043A \u043F\u0435\u0440\u0432\u043E\u0439 \u0433\u043B\u0430\u0432\u044B"
   }), React.createElement("div", {
     className: "text-[12px] text-white/40 f-read mt-1.5 leading-snug"
-  }, "\u041E\u0434\u043D\u0430 \u043A\u043E\u043D\u043A\u0440\u0435\u0442\u043D\u0430\u044F \u0446\u0435\u043B\u044C. \u0421 \u043D\u0435\u0439 \u043B\u0435\u0433\u0447\u0435 \u0437\u0430\u043C\u0435\u0442\u0438\u0442\u044C, \u0447\u0442\u043E \u0432\u043D\u0438\u043C\u0430\u043D\u0438\u0435 \u0443\u0448\u043B\u043E \u0432 \u0441\u0442\u043E\u0440\u043E\u043D\u0443.")), React.createElement(Field, {
+  }, "\u041E\u0434\u043D\u0430 \u043A\u043E\u043D\u043A\u0440\u0435\u0442\u043D\u0430\u044F \u0446\u0435\u043B\u044C. \u0421 \u043D\u0435\u0439 \u043B\u0435\u0433\u0447\u0435 \u0437\u0430\u043C\u0435\u0442\u0438\u0442\u044C, \u0447\u0442\u043E \u0432\u043D\u0438\u043C\u0430\u043D\u0438\u0435 \u0443\u0448\u043B\u043E \u0432 \u0441\u0442\u043E\u0440\u043E\u043D\u0443.")), mode === 'active' ? React.createElement(React.Fragment, null, React.createElement(Field, {
+    label: "\u041F\u0440\u043E\u0432\u0435\u0440\u043A\u0430 \u0432\u043D\u0438\u043C\u0430\u043D\u0438\u044F, \u0440\u0430\u0437 \u0432 \u2026 \u043C\u0438\u043D"
+  }, React.createElement("div", {
+    className: "flex flex-wrap gap-2"
+  }, Object.keys(CHECK_EVERY).map(k => React.createElement("button", {
+    key: k,
+    type: "button",
+    onClick: () => {
+      sfx('tab');
+      setEvery(k);
+    },
+    className: `wd-chip cut ${every === k ? 'on' : ''}`,
+    style: {
+      minWidth: 64
+    }
+  }, k.replace('-', '–')))), React.createElement("div", {
+    className: "text-[12px] text-white/40 f-read mt-2 leading-snug"
+  }, "\u041C\u043E\u043C\u0435\u043D\u0442 \u0432\u044B\u0431\u0438\u0440\u0430\u0435\u0442\u0441\u044F \u0441\u043B\u0443\u0447\u0430\u0439\u043D\u043E, \u043F\u043E\u044D\u0442\u043E\u043C\u0443 \u0437\u0430\u0440\u0430\u043D\u0435\u0435 \u043D\u0435 \u0443\u0433\u0430\u0434\u0430\u0442\u044C.")), React.createElement(Field, {
+    label: "\u0412\u0440\u0435\u043C\u044F \u043D\u0430 \u043E\u0442\u0432\u0435\u0442, \u0441\u0435\u043A"
+  }, React.createElement("div", {
+    className: "flex flex-wrap gap-2"
+  }, CHECK_WINS.map(v => React.createElement("button", {
+    key: v,
+    type: "button",
+    onClick: () => {
+      sfx('tab');
+      setWin(v);
+    },
+    className: `wd-chip cut ${win === v ? 'on' : ''}`,
+    style: {
+      minWidth: 52
+    }
+  }, v))), React.createElement("div", {
+    className: "text-[12px] text-white/40 f-read mt-2 leading-snug"
+  }, st.todayDone ? `Цель дня (${st.goal} мин) уже выполнена.` : `До цели дня осталось ${left} мин.`, " \u0412\u044B\u0445\u043E\u0434 \u0438\u0437 \u043F\u0440\u0438\u043B\u043E\u0436\u0435\u043D\u0438\u044F \u0432\u043E \u0432\u0440\u0435\u043C\u044F \u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0438 \u0442\u043E\u0436\u0435 \u0441\u0447\u0438\u0442\u0430\u0435\u0442\u0441\u044F \u043F\u0440\u043E\u043F\u0443\u0441\u043A\u043E\u043C."))) : React.createElement(Field, {
     label: "\u0414\u043B\u0438\u0442\u0435\u043B\u044C\u043D\u043E\u0441\u0442\u044C, \u043C\u0438\u043D"
   }, React.createElement("div", {
     className: "flex flex-wrap gap-2"
@@ -10368,22 +10981,26 @@ function FocusSession() {
       const left = readLeft(),
         x = aRef.current;
       if (!left || !x || x.stoppedAt || left < x.startAt || left >= x.endAt) return;
-      const away = Math.min(Date.now(), x.endAt) - left;
-      if (away < 3000) return;
+      const t = Date.now(),
+        lp = lapseOf(x, t);
+      const away = Math.min(t, x.endAt) - left;
+      if (away < 3000 && !lp) return;
+      const counted = Math.max(0, Math.min(t, x.endAt, lp ? lp.stoppedAt : Infinity) - left);
       up('focus', f => f.active && f.active.id === x.id ? {
         ...f,
         active: {
           ...f.active,
-          leaves: f.active.leaves + 1,
-          away: f.active.away + away
+          ...lp,
+          leaves: f.active.leaves + (away >= 3000 ? 1 : 0),
+          away: f.active.away + (away >= 3000 ? counted : 0)
         }
       } : f);
-      if (Date.now() < x.endAt) {
+      if (lp) sfx('error');else if (t < x.endAt) {
         sfx('error');
         setFlash({
           away,
           n: x.leaves + 1,
-          k: Date.now()
+          k: t
         });
       }
     };
@@ -10439,6 +11056,36 @@ function FocusSession() {
     ...f,
     active: fn(f.active)
   } : f);
+  const isActive = a.mode === 'active';
+  const checkOn = isActive && !over && now >= a.nextCheck;
+  const pinged = useRef(0);
+  const dayBase = useMemo(() => focusStreak(data.focus, dKey(new Date(a.startAt))), [data.focus.sessions, data.focus.goals, a.startAt]);
+  useEffect(() => {
+    if (!isActive || a.stoppedAt) return;
+    if (lapseOf(a, now)) {
+      sfx('error');
+      patch(x => ({
+        ...x,
+        ...(lapseOf(x, Date.now()) || {})
+      }));
+      return;
+    }
+    if (checkOn && pinged.current !== a.nextCheck && document.visibilityState === 'visible') {
+      pinged.current = a.nextCheck;
+      sfx('ping');
+    }
+  }, [now, isActive, checkOn, a.stoppedAt, a.nextCheck]);
+  const confirmCheck = () => {
+    const t = Date.now();
+    if (lapseOf(a, t)) return;
+    sfx('check');
+    patch(x => ({
+      ...x,
+      okAt: t,
+      checks: (x.checks || 0) + 1,
+      ...nextCheckOf(x.every, t)
+    }));
+  };
   const distract = () => {
     sfx('uncheck');
     patch(x => ({
@@ -10478,15 +11125,15 @@ function FocusSession() {
     const ans = await ask({
       title: 'Завершить сессию?',
       code: 'NEURAL LINK // DISCONNECT',
-      text: `Прошло ${done} из ${a.planMin} мин. Сессия будет записана как прерванная.`,
+      text: isActive ? `Прошло ${done} мин. Всё это время будет засчитано.` : `Прошло ${done} из ${a.planMin} мин. Сессия будет записана как прерванная.`,
       ok: 'Завершить',
       cancel: 'Продолжить',
       extra: 'Удалить без записи'
     });
-    if (ans === true) patch(x => ({
+    if (ans === true) patch(x => x.stoppedAt ? x : {
       ...x,
       stoppedAt: Date.now()
-    }));
+    });
     if (ans === 'extra') {
       readLeft();
       up('focus', f => ({
@@ -10511,8 +11158,14 @@ function FocusSession() {
       reasons: a.reasons,
       leaves: a.leaves,
       score,
-      completed: !a.stoppedAt,
-      goalDone
+      completed: isActive ? !a.lapsed : !a.stoppedAt,
+      goalDone,
+      ...(isActive ? {
+        mode: 'active',
+        checks: a.checks || 0,
+        lapsed: !!a.lapsed,
+        lostMs: a.lostMs || 0
+      } : {})
     };
   };
   const streakNow = () => {
@@ -10560,6 +11213,7 @@ function FocusSession() {
   const end = a.stoppedAt || a.endAt;
   const elapsed = Math.max(0, Math.min(now, end) - a.startAt);
   const plan = a.planMin * 60e3;
+  const counted = isActive ? Math.max(0, a.okAt - a.startAt - a.away) : 0;
   const reasonsSet = Object.values(a.reasons).reduce((x, y) => x + y, 0);
   const wrap = 'relative w-full max-w-[480px] h-full flex flex-col px-5';
   const pads = {
@@ -10584,13 +11238,19 @@ function FocusSession() {
       className: "micro deco"
     }, "NEURAL LINK // DEBRIEF"), React.createElement("div", {
       className: "h1 mt-1"
-    }, a.stoppedAt ? 'Сессия прервана' : 'Сессия завершена'), (title || a.goal) && React.createElement("div", {
+    }, isActive ? a.lapsed ? 'Внимание потеряно' : 'Сессия завершена' : a.stoppedAt ? 'Сессия прервана' : 'Сессия завершена'), a.lapsed && React.createElement("div", {
+      className: "f-alert cut mt-3 px-4 py-3"
+    }, React.createElement("div", {
+      className: "font-bold tracking-[.1em] uppercase text-[14px]"
+    }, UI.mono ? 'Отметка пропущена' : 'Сигнал не подтверждён'), React.createElement("div", {
+      className: "text-[12.5px] mt-0.5 opacity-85 f-read leading-snug"
+    }, "\u0417\u043D\u0430\u0447\u043E\u043A \u043D\u0435 \u043D\u0430\u0436\u0430\u0442 \u0437\u0430 ", a.win, " \u0441. \u0417\u0430\u0441\u0447\u0438\u0442\u0430\u043D\u043E \u0432\u0440\u0435\u043C\u044F \u0434\u043E \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0435\u0439 \u043E\u0442\u043C\u0435\u0442\u043A\u0438, \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u0435 ", fmtMin(a.lostMs / 60e3), " \u043D\u0435 \u0432 \u0441\u0447\u0451\u0442.")), (title || a.goal) && React.createElement("div", {
       className: "mt-2 text-[14px] text-white/60 f-read leading-snug"
     }, title && React.createElement("span", {
       className: "font-semibold text-white/80"
     }, nice(title)), title && a.goal ? ' · ' : '', a.goal), React.createElement("div", {
       className: "grid grid-cols-3 gap-2 mt-4"
-    }, [[fmtMin(mins), `Фокус из ${a.planMin}`], [a.distractions, plural(a.distractions, 'Отвлечение', 'Отвлечения', 'Отвлечений')], [a.leaves, plural(a.leaves, 'Выход', 'Выхода', 'Выходов')]].map(([v, l]) => React.createElement("div", {
+    }, [[fmtMin(mins), isActive ? 'Засчитано' : `Фокус из ${a.planMin}`], [a.distractions, plural(a.distractions, 'Отвлечение', 'Отвлечения', 'Отвлечений')], [a.leaves, plural(a.leaves, 'Выход', 'Выхода', 'Выходов')]].map(([v, l]) => React.createElement("div", {
       key: l,
       className: "stat-cell cut"
     }, React.createElement("div", {
@@ -10606,7 +11266,9 @@ function FocusSession() {
         '--tc': 'var(--warn)',
         '--cut': '5px'
       }
-    }, n, " \xD7 ", a.reasons[k]))), a.leaves > 0 && React.createElement("div", {
+    }, n, " \xD7 ", a.reasons[k]))), isActive && React.createElement("div", {
+      className: "text-[12.5px] text-white/45 f-read mt-2"
+    }, "\u041E\u0442\u043C\u0435\u0442\u043E\u043A \u0432\u043D\u0438\u043C\u0430\u043D\u0438\u044F: ", a.checks || 0), a.leaves > 0 && a.away >= 1000 && React.createElement("div", {
       className: "text-[12.5px] text-white/45 f-read mt-2"
     }, "\u0412\u043D\u0435 \u043F\u0440\u0438\u043B\u043E\u0436\u0435\u043D\u0438\u044F: ", fmtClock(a.away)), a.goal && React.createElement("div", {
       className: "mt-5"
@@ -10728,7 +11390,27 @@ function FocusSession() {
     className: "font-bold tracking-[.12em] uppercase text-[15px]"
   }, UI.mono ? 'Ты выходил из приложения' : 'Связь прервана'), React.createElement("div", {
     className: "text-[12.5px] mt-0.5 opacity-80"
-  }, "\u0412\u043D\u0435 \u0441\u0435\u0441\u0441\u0438\u0438 ", fmtClock(flash.away), " \xB7 \u0432\u044B\u0445\u043E\u0434 \u2116", flash.n)), React.createElement("div", {
+  }, "\u0412\u043D\u0435 \u0441\u0435\u0441\u0441\u0438\u0438 ", fmtClock(flash.away), " \xB7 \u0432\u044B\u0445\u043E\u0434 \u2116", flash.n)), isActive ? React.createElement("div", {
+    className: "relative",
+    style: {
+      width: 260,
+      height: 260
+    }
+  }, React.createElement(FocusRing, {
+    p: (dayBase.todayMin + counted / 60e3) / dayBase.goal
+  }), React.createElement("div", {
+    className: "absolute inset-0 flex flex-col items-center justify-center"
+  }, React.createElement("div", {
+    className: "f-time",
+    style: {
+      fontSize: elapsed >= 3600e3 ? 44 : 58
+    }
+  }, fmtClock(elapsed)), React.createElement("div", {
+    className: "micro mt-3",
+    style: {
+      color: 'rgba(255,255,255,.45)'
+    }
+  }, "\u0417\u0410\u0421\u0427\u0418\u0422\u0410\u041D\u041E ", Math.floor(counted / 60e3), " \u041C\u0418\u041D"))) : React.createElement("div", {
     className: "relative",
     style: {
       width: 260,
@@ -10748,7 +11430,43 @@ function FocusSession() {
     style: {
       color: 'rgba(255,255,255,.45)'
     }
-  }, "\u0418\u0417 ", a.planMin, " \u041C\u0418\u041D"))), React.createElement("div", {
+  }, "\u0418\u0417 ", a.planMin, " \u041C\u0418\u041D"))), checkOn && React.createElement("button", {
+    key: a.nextCheck,
+    type: "button",
+    className: "f-check absolute z-20",
+    onClick: confirmCheck,
+    title: "\u042F \u0437\u0434\u0435\u0441\u044C",
+    style: {
+      left: `${a.checkPos.x * 100}%`,
+      top: `${a.checkPos.y * 100}%`
+    }
+  }, React.createElement("svg", {
+    width: "100",
+    height: "100",
+    viewBox: "0 0 100 100",
+    className: "absolute inset-0",
+    style: {
+      transform: 'rotate(-90deg)'
+    }
+  }, React.createElement("circle", {
+    cx: "50",
+    cy: "50",
+    r: "46",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: "5",
+    strokeDasharray: "289",
+    className: "f-check-t",
+    style: {
+      animationDuration: `${a.win}s`,
+      animationDelay: `${-(Date.now() - a.nextCheck) / 1000}s`
+    }
+  })), React.createElement(Eye, {
+    size: 34,
+    strokeWidth: 2.4
+  }), React.createElement("span", {
+    className: "f-mono text-[13px] font-bold leading-none mt-1"
+  }, Math.max(0, Math.ceil((a.nextCheck + a.win * 1e3 - now) / 1000)))), React.createElement("div", {
     className: "flex gap-5 mt-5 f-mono text-[12px] tracking-wider text-white/55 uppercase"
   }, React.createElement("span", null, "\u041E\u0442\u0432\u043B\u0435\u0447\u0435\u043D\u0438\u0439: ", React.createElement("b", {
     className: "text-white/90"
@@ -10792,7 +11510,7 @@ function FocusSession() {
     onClick: () => pickReason(k)
   }, n)))) : React.createElement("div", {
     className: "w-full text-center text-[12.5px] text-white/35 f-read leading-snug pb-1"
-  }, "\u041F\u043E\u0439\u043C\u0430\u043B \u0441\u0435\u0431\u044F \u043D\u0430 \u043F\u043E\u0441\u0442\u043E\u0440\u043E\u043D\u043D\u0438\u0445 \u043C\u044B\u0441\u043B\u044F\u0445 \u2014 \u043D\u0430\u0436\u043C\u0438 \xAB\u041E\u0442\u0432\u043B\u0451\u043A\u0441\u044F\xBB \u0438 \u0432\u0435\u0440\u043D\u0438\u0441\u044C \u043A \u0446\u0435\u043B\u0438")), React.createElement("div", {
+  }, isActive ? `Всплывёт значок — нажми его за ${a.win} с, иначе сессия остановится на последней отметке` : 'Поймал себя на посторонних мыслях — нажми «Отвлёкся» и вернись к цели')), React.createElement("div", {
     className: "grid grid-cols-2 gap-2 mt-3"
   }, React.createElement(Btn, {
     variant: "ghost",
@@ -11270,9 +11988,9 @@ function FocusScreen() {
       }
     }, Math.round(focusMin(s)), React.createElement("span", {
       className: "text-white/40 text-[11px]"
-    }, "/", s.planMin)), React.createElement("div", {
+    }, s.mode === 'active' ? ' МИН' : `/${s.planMin}`)), React.createElement("div", {
       className: "f-mono text-[10px] text-white/45 mt-0.5"
-    }, s.completed ? `${s.distractions} ОТВЛ.` : 'ПРЕРВАНА', s.leaves ? ` · ${s.leaves} ВЫХ.` : '')))));
+    }, s.mode === 'active' ? s.lapsed ? 'ОТКАТ' : `${s.checks || 0} ОТМ.` : s.completed ? `${s.distractions} ОТВЛ.` : 'ПРЕРВАНА', s.leaves ? ` · ${s.leaves} ВЫХ.` : '')))));
   }), !f.sessions.length && React.createElement(Empty, {
     icon: Brain,
     title: "\u0421\u0435\u0441\u0441\u0438\u0439 \u043F\u043E\u043A\u0430 \u043D\u0435\u0442",
@@ -11457,9 +12175,9 @@ function SyncBlock({
   const [login, setLogin] = useState(false);
   if (!s.ok) return null;
   const st = s.st;
-  const bad = s.status === 'error' || s.status === 'auth' || st && !s.on;
+  const bad = s.status === 'error' || s.status === 'auth' || s.status === 'hold' || st && !s.on;
   const color = !st ? 'rgba(255,255,255,.5)' : bad ? 'var(--warn)' : '#59FF00';
-  const state = !st ? 'ВЫКЛЮЧЕНА' : !s.on ? 'НУЖЕН ВХОД' : s.status === 'busy' ? 'ОБМЕН ДАННЫМИ…' : s.status === 'error' ? 'ОШИБКА' : s.status === 'offline' ? 'ЖДЁТ СЕТИ' : 'ВКЛЮЧЕНА';
+  const state = !st ? 'ВЫКЛЮЧЕНА' : !s.on ? 'НУЖЕН ВХОД' : s.status === 'busy' ? 'ОБМЕН ДАННЫМИ…' : s.status === 'error' ? 'ОШИБКА' : s.status === 'hold' ? 'ОСТАНОВЛЕНА' : s.status === 'offline' ? 'ЖДЁТ СЕТИ' : 'ВКЛЮЧЕНА';
   const logout = async () => {
     const ok = await ask({
       title: 'Отключить синхронизацию?',
@@ -11495,7 +12213,13 @@ function SyncBlock({
     className: "text-[12px] text-white/45 f-read mt-2 mb-3 leading-snug"
   }, st ? 'Миссии, дневник, оценки, фокус, таймеры, настройки и фото одинаковые на всех подключённых устройствах. На сервере всё зашифровано твоей фразой. Без сети приложение работает как обычно и догонит изменения позже.' : 'Подключи свой сервер, чтобы данные были одинаковыми на телефоне и компьютере. Все записи шифруются фразой, которую знаешь только ты.'), React.createElement("div", {
     className: "grid gap-2"
-  }, s.on ? React.createElement(Btn, {
+  }, s.status === 'hold' && React.createElement(Btn, {
+    icon: AlertTriangle,
+    onClick: () => {
+      SYNC.holdAsked = false;
+      SYNC.app.hold();
+    }
+  }, "\u0420\u0435\u0448\u0438\u0442\u044C, \u0447\u0442\u043E \u0434\u0435\u043B\u0430\u0442\u044C"), s.on ? React.createElement(Btn, {
     icon: RefreshCw,
     onClick: () => syncSoon(0)
   }, "\u0421\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0438\u0440\u043E\u0432\u0430\u0442\u044C \u0441\u0435\u0439\u0447\u0430\u0441") : React.createElement(Btn, {
@@ -11508,6 +12232,80 @@ function SyncBlock({
   }, "\u041E\u0442\u043A\u043B\u044E\u0447\u0438\u0442\u044C \u043D\u0430 \u044D\u0442\u043E\u043C \u0443\u0441\u0442\u0440\u043E\u0439\u0441\u0442\u0432\u0435"))), login && React.createElement(SyncLoginModal, {
     onClose: () => setLogin(false)
   }));
+}
+function SnapList() {
+  const {
+    data,
+    ask,
+    toast,
+    replaceAll,
+    undoable
+  } = useApp();
+  const [rows, setRows] = useState(null);
+  useEffect(() => {
+    snapRows().then(setRows).catch(() => setRows(null));
+  }, [data]);
+  if (!rows) return null;
+  const file = async r => {
+    const res = await saveFile(`cyberjournal-snapshot-${dKey(new Date(r.at))}.json`, await r.body.text());
+    if (res === 'saved') {
+      sfx('save');
+      toast('Снимок сохранён в файл');
+    } else if (res !== 'declined') {
+      sfx('error');
+      toast('Не удалось сохранить файл');
+    }
+  };
+  const back = async r => {
+    let nd;
+    try {
+      nd = normalize(JSON.parse(await r.body.text()));
+    } catch (e) {
+      sfx('error');
+      toast('Снимок не читается');
+      return;
+    }
+    const ok = await ask({
+      title: 'Вернуть снимок?',
+      code: 'SYS // SNAPSHOT',
+      text: `Снимок от ${fmtDT(r.at)}\nМиссий: ${nd.missions.length} · записей: ${nd.shards.length} · оценённых дней: ${Object.keys(nd.ratings).length}\n\nТекущие данные будут заменены, копия останется в снимках.${syncOn() ? '\n\nСинхронизация включена: изменение дойдёт до всех устройств.' : ''}`,
+      ok: 'Вернуть',
+      danger: true
+    });
+    if (ok !== true) return;
+    await snapBefore('Перед возвратом снимка', JSON.stringify(data));
+    undoable('Снимок восстановлен', null, () => replaceAll(nd));
+    sfx('save');
+  };
+  return React.createElement(React.Fragment, null, React.createElement("span", {
+    className: "lbl mt-5"
+  }, "\u0410\u0432\u0442\u043E\u043C\u0430\u0442\u0438\u0447\u0435\u0441\u043A\u0438\u0435 \u0441\u043D\u0438\u043C\u043A\u0438"), React.createElement("div", {
+    className: "text-[12px] text-white/45 f-read mb-1 leading-snug"
+  }, "\u0420\u0430\u0437 \u0432 \u0434\u0435\u043D\u044C \u043F\u0440\u0438\u043B\u043E\u0436\u0435\u043D\u0438\u0435 \u0441\u0430\u043C\u043E \u0441\u043E\u0445\u0440\u0430\u043D\u044F\u0435\u0442 \u043A\u043E\u043F\u0438\u044E \u0434\u0430\u043D\u043D\u044B\u0445 \u043D\u0430 \u044D\u0442\u043E\u043C \u0443\u0441\u0442\u0440\u043E\u0439\u0441\u0442\u0432\u0435, \u0445\u0440\u0430\u043D\u0438\u0442 ", SNAP_KEEP.day, " \u0434\u043D\u0435\u0439. \u041F\u0435\u0440\u0435\u0434 \u0438\u043C\u043F\u043E\u0440\u0442\u043E\u043C, \u0441\u0431\u0440\u043E\u0441\u043E\u043C \u0438 \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u043E\u0439 \u0441 \u0441\u0435\u0440\u0432\u0435\u0440\u0430 \u0434\u0435\u043B\u0430\u0435\u0442\u0441\u044F \u043E\u0442\u0434\u0435\u043B\u044C\u043D\u0430\u044F \u043A\u043E\u043F\u0438\u044F. \u0427\u0438\u0441\u0442\u043A\u0430 \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0430 \u0443\u0434\u0430\u043B\u0438\u0442 \u0438 \u0441\u043D\u0438\u043C\u043A\u0438, \u043F\u043E\u044D\u0442\u043E\u043C\u0443 \u0431\u044D\u043A\u0430\u043F \u0432 \u0444\u0430\u0439\u043B \u0432\u0441\u0451 \u0440\u0430\u0432\u043D\u043E \u043D\u0443\u0436\u0435\u043D."), !rows.length && React.createElement("div", {
+    className: "text-[12.5px] text-white/40 f-read py-2"
+  }, "\u0421\u043D\u0438\u043C\u043A\u043E\u0432 \u043F\u043E\u043A\u0430 \u043D\u0435\u0442. \u041F\u0435\u0440\u0432\u044B\u0439 \u043F\u043E\u044F\u0432\u0438\u0442\u0441\u044F \u043F\u0440\u0438 \u0441\u043B\u0435\u0434\u0443\u044E\u0449\u0435\u043C \u0437\u0430\u043F\u0443\u0441\u043A\u0435."), rows.map(r => React.createElement("div", {
+    key: r.id,
+    className: "flex items-center gap-2 py-2",
+    style: {
+      borderBottom: '1px solid rgba(255,255,255,.06)'
+    }
+  }, React.createElement("div", {
+    className: "flex-1 min-w-0"
+  }, React.createElement("div", {
+    className: "text-[14.5px] font-semibold text-white/90"
+  }, fmtDT(r.at)), React.createElement("div", {
+    className: "f-mono text-[10px] text-white/40 truncate"
+  }, snapInfo(r))), React.createElement(IconBtn, {
+    sm: true,
+    icon: Download,
+    title: "\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C \u0432 \u0444\u0430\u0439\u043B",
+    onClick: () => file(r)
+  }), r.kind !== 'broken' && React.createElement(IconBtn, {
+    sm: true,
+    icon: RotateCcw,
+    title: "\u0412\u0435\u0440\u043D\u0443\u0442\u044C \u044D\u0442\u043E\u0442 \u0441\u043D\u0438\u043C\u043E\u043A",
+    onClick: () => back(r)
+  }))));
 }
 function SettingsScreen({
   forceEvening,
@@ -11594,6 +12392,7 @@ function SettingsScreen({
         danger: true
       });
       if (ok !== true) return;
+      await snapBefore('Перед импортом', JSON.stringify(data));
       if (imgs.length) {
         try {
           await imgPut(imgs.map(([k, v]) => [k, dataURLToBlob(v)]));
@@ -11618,6 +12417,7 @@ function SettingsScreen({
       danger: true
     });
     if (ok !== true) return;
+    await snapBefore('Перед сбросом до демо', JSON.stringify(data));
     const demo = makeDemo();
     undoable('Демо-данные восстановлены', null, () => replaceAll({
       ...demo,
@@ -11636,7 +12436,9 @@ function SettingsScreen({
       ok: 'Стереть всё',
       danger: true
     });
-    if (ok === true) undoable('Память очищена · чистый лист', null, () => replaceAll({
+    if (ok !== true) return;
+    await snapBefore('Перед очисткой данных', JSON.stringify(data));
+    undoable('Память очищена · чистый лист', null, () => replaceAll({
       ...emptyState(),
       settings: s,
       meta: {
@@ -11661,7 +12463,9 @@ function SettingsScreen({
       text: 'Данные тестовой версии заменятся текущими данными основного приложения. Основное приложение не изменится.',
       ok: 'Заменить'
     });
-    if (ok === true) undoable('Данные основной версии загружены', null, () => replaceAll({
+    if (ok !== true) return;
+    await snapBefore('Перед загрузкой из основной версии', JSON.stringify(data));
+    undoable('Данные основной версии загружены', null, () => replaceAll({
       ...normalize(d),
       settings: s
     }));
@@ -12197,7 +13001,7 @@ function SettingsScreen({
     variant: "dangerGhost",
     icon: Eraser,
     onClick: clearAll
-  }, "\u041E\u0447\u0438\u0441\u0442\u0438\u0442\u044C \u0432\u0441\u0435 \u0434\u0430\u043D\u043D\u044B\u0435"))), React.createElement(SyncBlock, {
+  }, "\u041E\u0447\u0438\u0441\u0442\u0438\u0442\u044C \u0432\u0441\u0435 \u0434\u0430\u043D\u043D\u044B\u0435")), React.createElement(SnapList, null)), React.createElement(SyncBlock, {
     n: "05"
   })), React.createElement("div", {
     className: "px-4"
@@ -12245,8 +13049,8 @@ function revealBlocks(main) {
 }
 function SideFoot() {
   const s = useSync();
-  const good = s.on && s.status !== 'error' && s.status !== 'auth';
-  const state = !s.on ? 'НУЖЕН ВХОД' : s.status === 'busy' ? 'ОБМЕН ДАННЫМИ…' : s.status === 'error' ? 'НЕТ СВЯЗИ С СЕРВЕРОМ' : s.status === 'offline' ? 'ЖДЁТ СЕТИ' : 'СИНХРОНИЗАЦИЯ ВКЛ.';
+  const good = s.on && s.status !== 'error' && s.status !== 'auth' && s.status !== 'hold';
+  const state = !s.on ? 'НУЖЕН ВХОД' : s.status === 'busy' ? 'ОБМЕН ДАННЫМИ…' : s.status === 'error' ? 'НЕТ СВЯЗИ С СЕРВЕРОМ' : s.status === 'hold' ? 'СИНХРОНИЗАЦИЯ ОСТАНОВЛЕНА' : s.status === 'offline' ? 'ЖДЁТ СЕТИ' : 'СИНХРОНИЗАЦИЯ ВКЛ.';
   return React.createElement("div", {
     className: "side-foot"
   }, s.ok && s.st && React.createElement("div", {
@@ -12292,8 +13096,246 @@ const TABS = [{
   mIcon: Settings
 }];
 const FONTS_URL = 'https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Exo+2:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Orbitron:wght@500;700;900&family=Oswald:wght@400;500;600;700&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Unbounded:wght@500;700&display=swap';
+const SAFE_BTN = {
+  display: 'block',
+  width: '100%',
+  marginTop: 10,
+  padding: '13px 14px',
+  font: '600 15px/1.3 system-ui, sans-serif',
+  color: '#fff',
+  background: '#1C1C1E',
+  border: '1px solid rgba(255,255,255,.2)',
+  borderRadius: 10,
+  textAlign: 'left',
+  cursor: 'pointer'
+};
+const SAFE_NOTE = {
+  margin: '8px 0 0',
+  fontSize: 13,
+  lineHeight: 1.45,
+  color: 'rgba(255,255,255,.55)'
+};
+const errText = e => String(e && e.message || e || 'неизвестная ошибка');
+function RescueScreen({
+  broken,
+  err
+}) {
+  const [rows, setRows] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const [sure, setSure] = useState(false);
+  const raw = useMemo(() => {
+    if (broken) return broken;
+    try {
+      return localStorage.getItem(LS_KEY) || '';
+    } catch (e) {
+      return '';
+    }
+  }, [broken]);
+  useEffect(() => {
+    (async () => {
+      if (broken) {
+        try {
+          const last = (await snapRows()).find(r => r.kind === 'broken');
+          if (!last || last.body.size !== new Blob([broken]).size) await snapPut('broken', broken, 'Данные, которые не удалось прочитать');
+        } catch (e) {}
+      }
+      try {
+        setRows((await snapRows()).filter(r => r.kind !== 'broken'));
+      } catch (e) {
+        setRows([]);
+      }
+    })();
+  }, [broken]);
+  const act = fn => async () => {
+    if (busy) return;
+    setBusy(true);
+    setMsg('');
+    try {
+      await fn();
+    } catch (e) {
+      setMsg(e && e.auth ? 'Вход на сервер истёк. Этот способ сейчас недоступен' : /[а-я]/i.test(errText(e)) ? errText(e) : 'Не получилось. Проверь интернет или выбери другой способ');
+    }
+    setBusy(false);
+  };
+  const restart = text => {
+    localStorage.setItem(LS_KEY, text);
+    setLocalAt('');
+    location.reload();
+  };
+  const saveAll = act(async () => {
+    let text = raw;
+    try {
+      text = await backupText(normalize(JSON.parse(raw)));
+    } catch (e) {}
+    const res = await saveFile(`cyberjournal-rescue-${dKey(new Date())}.json`, text);
+    setMsg(res === 'saved' ? 'Файл сохранён' : res === 'declined' ? 'Сохранение отменено' : 'Не удалось сохранить файл');
+  });
+  const back = r => act(async () => {
+    const text = await r.body.text(),
+      d = normalize(JSON.parse(text));
+    if (!broken) await snapBefore('Перед возвратом снимка', raw);
+    SYNC.app = null;
+    syncRebase(d);
+    restart(text);
+  });
+  const fromServer = act(async () => {
+    const st = SYNC.st,
+      got = await syncFetch(st, 0);
+    if (!got.changes.length) throw new Error('На сервере нет данных');
+    st.local = {};
+    st.dirty = {};
+    st.files = {};
+    const r = syncMerge(emptyState(), got.changes, true);
+    st.cursor = got.max;
+    syncSave();
+    restart(JSON.stringify(r.d));
+  });
+  const fresh = act(async () => {
+    if (!sure) {
+      setSure(true);
+      return;
+    }
+    const d = emptyState();
+    syncRebase(d);
+    restart(JSON.stringify(d));
+  });
+  return React.createElement("div", {
+    style: {
+      height: '100%',
+      overflowY: 'auto',
+      background: '#0A0A0F',
+      color: '#ECE6E9',
+      font: '400 15px/1.45 system-ui, sans-serif'
+    }
+  }, React.createElement("div", {
+    style: {
+      maxWidth: 480,
+      margin: '0 auto',
+      padding: '32px 16px'
+    }
+  }, React.createElement("div", {
+    style: {
+      font: '600 11px/1.4 ui-monospace, monospace',
+      letterSpacing: '.14em',
+      color: '#FF4655'
+    }
+  }, broken ? 'SYS // DATA.RECOVERY' : 'SYS // CRASH.RECOVERY'), React.createElement("h1", {
+    style: {
+      font: '700 24px/1.2 system-ui, sans-serif',
+      margin: '6px 0 10px',
+      color: '#fff'
+    }
+  }, broken ? 'Данные не читаются' : 'Приложение дало сбой'), React.createElement("p", {
+    style: {
+      margin: 0
+    }
+  }, broken ? 'Сохранённые данные повреждены. Они не удалены и ничего не отправлено на сервер. Выбери, что сделать.' : 'Данные на месте. Обычно хватает перезапуска. Если сбой повторяется, сохрани данные в файл.'), React.createElement("pre", {
+    style: {
+      margin: '10px 0 0',
+      whiteSpace: 'pre-wrap',
+      wordBreak: 'break-word',
+      font: '12px/1.4 ui-monospace, monospace',
+      color: '#FCEE0A'
+    }
+  }, errText(err)), !broken && React.createElement("button", {
+    type: "button",
+    style: SAFE_BTN,
+    disabled: busy,
+    onClick: () => location.reload()
+  }, "\u041F\u0435\u0440\u0435\u0437\u0430\u043F\u0443\u0441\u0442\u0438\u0442\u044C"), React.createElement("button", {
+    type: "button",
+    style: SAFE_BTN,
+    disabled: busy,
+    onClick: saveAll
+  }, "\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C \u0434\u0430\u043D\u043D\u044B\u0435 \u0432 \u0444\u0430\u0439\u043B"), broken && syncOn() && React.createElement("button", {
+    type: "button",
+    style: SAFE_BTN,
+    disabled: busy,
+    onClick: fromServer
+  }, "\u0412\u0437\u044F\u0442\u044C \u0434\u0430\u043D\u043D\u044B\u0435 \u0441 \u0441\u0435\u0440\u0432\u0435\u0440\u0430"), rows && rows.length > 0 && React.createElement(React.Fragment, null, React.createElement("div", {
+    style: {
+      ...SAFE_NOTE,
+      marginTop: 18
+    }
+  }, "\u0412\u0435\u0440\u043D\u0443\u0442\u044C \u0441\u043D\u0438\u043C\u043E\u043A", syncOn() ? ' (записи с сервера сольются с ним)' : '', ":"), rows.map(r => React.createElement("button", {
+    key: r.id,
+    type: "button",
+    style: SAFE_BTN,
+    disabled: busy,
+    onClick: back(r)
+  }, fmtDT(r.at), React.createElement("span", {
+    style: {
+      display: 'block',
+      fontSize: 12,
+      fontWeight: 400,
+      color: 'rgba(255,255,255,.55)'
+    }
+  }, snapInfo(r))))), broken && React.createElement(React.Fragment, null, React.createElement("button", {
+    type: "button",
+    style: {
+      ...SAFE_BTN,
+      marginTop: 18,
+      color: '#FF7A7A',
+      borderColor: 'rgba(255,90,90,.5)'
+    },
+    disabled: busy,
+    onClick: fresh
+  }, sure ? 'Точно начать с чистого листа?' : 'Начать с чистого листа'), React.createElement("div", {
+    style: SAFE_NOTE
+  }, "\u041F\u043E\u0432\u0440\u0435\u0436\u0434\u0451\u043D\u043D\u0430\u044F \u043A\u043E\u043F\u0438\u044F \u043E\u0441\u0442\u0430\u043D\u0435\u0442\u0441\u044F \u0432 \xAB\u0421\u0438\u0441\u0442\u0435\u043C\u0435\xBB, \u0432 \u0441\u043D\u0438\u043C\u043A\u0430\u0445. \u0424\u0430\u0439\u043B \u0431\u044D\u043A\u0430\u043F\u0430 \u043C\u043E\u0436\u043D\u043E \u0431\u0443\u0434\u0435\u0442 \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044C \u0442\u0430\u043C \u0436\u0435.")), msg && React.createElement("div", {
+    style: {
+      ...SAFE_NOTE,
+      color: '#FCEE0A'
+    }
+  }, busy ? '' : msg)));
+}
+class Guard extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      err: null
+    };
+  }
+  static getDerivedStateFromError(err) {
+    return {
+      err
+    };
+  }
+  render() {
+    const {
+      err
+    } = this.state;
+    if (!err) return this.props.children;
+    if (!this.props.inline) return React.createElement(RescueScreen, {
+      err: err
+    });
+    return React.createElement(Empty, {
+      icon: AlertTriangle,
+      title: "\u042D\u043A\u0440\u0430\u043D \u043D\u0435 \u043E\u0442\u043A\u0440\u044B\u043B\u0441\u044F",
+      text: `Данные не пострадали, другие вкладки работают. Ошибка: ${errText(err)}`
+    }, React.createElement(Btn, {
+      variant: "ghost",
+      icon: RotateCcw,
+      onClick: () => this.setState({
+        err: null
+      })
+    }, "\u041F\u043E\u0432\u0442\u043E\u0440\u0438\u0442\u044C"));
+  }
+}
 function App() {
-  const [data, setData] = useState(loadState);
+  const [boot] = useState(readBoot);
+  return React.createElement(Guard, null, boot.broken ? React.createElement(RescueScreen, {
+    broken: boot.broken,
+    err: boot.err
+  }) : React.createElement(MainApp, {
+    initial: boot.data
+  }));
+}
+function MainApp({
+  initial
+}) {
+  const [data, setData] = useState(initial);
   const [tab, setTabRaw] = useState(() => {
     try {
       return localStorage.getItem(`${LS_KEY}.tab`) || 'missions';
@@ -12370,6 +13412,7 @@ function App() {
     k: Date.now()
   })), []);
   const replaceAll = useCallback(d => {
+    SYNC.okDel = true;
     setRate(null);
     setData(normalize(d));
   }, []);
@@ -12523,6 +13566,37 @@ function App() {
           setData(r.d);
         }
         return r.n;
+      },
+      hold: async () => {
+        if (SYNC.holdAsked || uiRef.current.dialog || dataRef.current.focus.active) return;
+        SYNC.holdAsked = true;
+        const n = SYNC.hold;
+        const ans = await ask({
+          title: 'Синхронизация остановлена',
+          code: 'SYNC // GUARD',
+          text: `Это устройство собирается удалить на сервере ${n} ${plural(n, 'запись', 'записи', 'записей')} сразу. Так бывает после сбоя, поэтому на сервер пока ничего не ушло.\n\n«Взять с сервера» вернёт данные на это устройство.\n\n«Удалить на сервере» подтвердит удаление на всех устройствах.`,
+          ok: 'Взять с сервера',
+          extra: 'Удалить на сервере',
+          cancel: 'Решить позже'
+        });
+        if (ans === 'extra') {
+          SYNC.okDel = true;
+          SYNC.holdAsked = false;
+          syncSoon(0);
+        } else if (ans === true) {
+          try {
+            await syncStart({
+              ...SYNC.st
+            }, 'replace');
+            SYNC.holdAsked = false;
+            sfx('save');
+            toast('Данные загружены с сервера');
+          } catch (e) {
+            SYNC.holdAsked = false;
+            sfx('error');
+            toast('Сервер недоступен, данные не изменены');
+          }
+        }
       }
     };
     if (syncOn()) syncRefresh().then(() => {
@@ -12579,7 +13653,8 @@ function App() {
           const b = localStorage.getItem(BETA_KEY);
           if (b) beta = listImages(normalize(JSON.parse(b)));
         } catch (e) {}
-        const used = new Set([...listImages(bootData.current), ...listImages(dataRef.current), ...beta].filter(isIdb).map(v => v.slice(4)));
+        const kept = (await snapList()).flatMap(r => r.imgs || []);
+        const used = new Set([...listImages(bootData.current), ...listImages(dataRef.current), ...beta, ...kept].filter(isIdb).map(v => v.slice(4)));
         const old = Date.now() - 3 * 864e5;
         const dead = (await imgList()).filter(r => !used.has(String(r.id).replace(/\.t$/, '')) && r.at < old).map(r => r.id);
         if (dead.length) await imgDel(dead);
@@ -12672,12 +13747,17 @@ function App() {
   }, [askRetro, ask, up, toast, markBackup]);
   useEffect(() => {
     const t0 = setTimeout(runChecks, 900);
-    const iv = setInterval(runChecks, 60000);
+    snapDaily();
+    const iv = setInterval(() => {
+      snapDaily();
+      runChecks();
+    }, 60000);
     const onVis = () => {
       if (document.visibilityState === 'hidden') {
         session.current.hiddenAt = Date.now();
         return;
       }
+      snapDaily();
       const away = session.current.hiddenAt ? Date.now() - session.current.hiddenAt : 0;
       if (away > 30 * 60e3) {
         session.current.retroAsked = false;
@@ -12773,7 +13853,10 @@ function App() {
     cloudOn,
     openFocus
   }), [data, up, ask, toast, replaceAll, undoable, markBackup, cloudOn, openFocus]);
-  const screen = React.createElement(React.Fragment, null, tab === 'missions' && React.createElement(MissionsScreen, null), tab === 'stats' && React.createElement(StatsScreen, {
+  const screen = React.createElement(Guard, {
+    inline: true,
+    key: tab
+  }, tab === 'missions' && React.createElement(MissionsScreen, null), tab === 'stats' && React.createElement(StatsScreen, {
     openRate: (date, source) => setRate({
       date,
       source

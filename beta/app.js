@@ -1,4 +1,4 @@
-/* CJ_BUILD BETA-20261031-230145 */
+/* CJ_BUILD BETA-20261031-232019 */
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
 const {
   useState,
@@ -76,7 +76,7 @@ const BETA_KEY = 'cyberjournal2077.beta';
 const LS_KEY = BETA ? BETA_KEY : MAIN_KEY;
 const APP_VERSION = '1.0.0';
 const UI = {
-  mono: false,
+  mono: true,
   wide: false
 };
 const WIDE_MQ = '(min-width: 1000px)';
@@ -105,7 +105,22 @@ function useWide() {
   return w;
 }
 const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : s;
-const nice = s => UI.mono && s && s === s.toUpperCase() ? cap(s) : s;
+const PLAIN = {
+  'MAIN JOBS': 'Основные',
+  'SIDE JOBS': 'Побочные',
+  GIGS: 'Подработки',
+  'CYBERPSYCHO SIGHTING': 'Другое',
+  'DANGER: LOW': 'Сложность: низкая',
+  'DANGER: MODERATE': 'Сложность: средняя',
+  'DANGER: HIGH': 'Сложность: высокая',
+  'DANGER: VERY HIGH': 'Сложность: очень высокая'
+};
+const nice = s => {
+  if (!s) return s;
+  if (PLAIN[s]) return PLAIN[s];
+  if (s.startsWith('REWARD: ')) return `Награда: ${s.slice(8)}`;
+  return UI.mono && s === s.toUpperCase() ? cap(s) : s;
+};
 const uid = (p = 'id') => `${p}_${Math.random().toString(36).slice(2, 8)}${Date.now().toString(36).slice(-4)}`;
 const pad = n => String(n).padStart(2, '0');
 const dKey = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -289,15 +304,6 @@ const MONO_ACCENTS = [{
   name: 'Фиалка',
   c: '#A98BFF'
 }];
-const UI_STYLES = [{
-  id: 'cyber',
-  name: 'Cyberpunk',
-  sub: 'Неон, рамки, глитч'
-}, {
-  id: 'mono',
-  name: 'Моно',
-  sub: 'Чёрный, скругления, стикеры'
-}];
 const DEFAULT_SETTINGS = {
   winStart: '21:00',
   winEnd: '23:59',
@@ -308,7 +314,7 @@ const DEFAULT_SETTINGS = {
     l: 3.5,
     y: 2.5
   },
-  ui: 'cyber',
+  ui: 'mono',
   monoAccent: 'lime',
   theme: 'classic',
   scanlines: true,
@@ -1020,68 +1026,65 @@ function makeDemo() {
   };
   const st = emptyState();
   st.sections = [...DEFAULT_SECTIONS(), {
-    id: 'sec_psycho',
-    name: 'CYBERPSYCHO SIGHTING',
+    id: 'sec_ideas',
+    name: 'ИДЕИ',
     collapsed: true
   }];
   const corpoDeadline = toLocalInput(at(5, 9));
   st.missions = [{
     ...blankMission('sec_main'),
     id: 'm_space',
-    title: 'THE SPACE IN BETWEEN',
+    title: 'ПОДГОТОВИТЬСЯ К ЭКЗАМЕНУ',
     status: 'DANGER: MODERATE',
     alert: true,
     badge: {
       shape: 'diamond',
-      text: 'WB',
+      text: 'EDU',
       color: '#F5B83D'
     },
-    steps: [step('Встретиться с Мисти у «Эзотерики»', false, true), step('Поговорить с Виктором о биочипе'), step('Осмотреть квартиру Джеки', true)],
-    description: 'После провала в «Компеки Плаза» в голове тикает таймер. Нужно найти тех, кто разбирается в биочипах, и понять, сколько времени осталось.\n\nМисти знает, где искать Вика — начни с неё. Не торопись с выводами: в Найт-Сити каждый ответ стоит эдди, а каждая ошибка — дороже.',
+    steps: [step('Составить список тем', false, true), step('Решить пробный вариант'), step('Разобрать ошибки', true)],
+    description: 'До экзамена осталось немного. Сначала понять, какие темы проседают, потом закрывать их по одной.\n\nНе пытаться выучить всё сразу: лучше час каждый день, чем ночь перед экзаменом.',
     createdAt: at(-6, 10).toISOString()
   }, {
     ...blankMission('sec_main'),
     id: 'm_down',
-    title: 'DOWN ON THE STREET',
+    title: 'НАЙТИ НОВУЮ КВАРТИРУ',
     status: 'DANGER: HIGH',
     statusColor: '#FF8A3D',
     badge: {
       shape: 'diamond',
-      text: 'WB',
+      text: 'ДОМ',
       color: '#F5B83D'
     },
-    steps: [step('Дождаться звонка Такэмуры'), step('Прийти на встречу в Джапантаун'), step('Не привлекать внимания', true)],
-    description: 'Такэмура хочет выйти на связь. Встреча на рынке в Джапантауне — людно, шумно, удобно для тех, кто не любит лишних глаз. Держи оружие под рукой и не задавай лишних вопросов.',
+    steps: [step('Определиться с бюджетом и районом'), step('Посмотреть три варианта'), step('Проверить договор', true)],
+    description: 'Договор аренды заканчивается через два месяца. Смотреть заранее, чтобы не соглашаться на первый попавшийся вариант.',
     createdAt: at(-5, 12).toISOString()
   }, {
     ...blankMission('sec_main'),
     id: 'm_ghost',
-    title: 'GHOST TOWN',
+    title: 'СПЛАНИРОВАТЬ ОТПУСК',
     status: 'DANGER: MODERATE',
     badge: {
       shape: 'square',
-      text: 'WATSON',
+      text: 'ТУР',
       color: '#E0262E'
     },
-    steps: [step('Встретиться с Панам в пустошах'), step('Проверить машину и заправиться'), step('Захватить пару гранат', true)],
-    description: 'Панам ждёт за городом. Дорога долгая, а договор с кочевниками держится на честном слове. Подготовься заранее — в пустошах заправок нет.',
+    steps: [step('Выбрать даты'), step('Купить билеты'), step('Забронировать жильё', true)],
+    description: 'Хочется уехать хотя бы на неделю. Чем раньше купить билеты, тем дешевле.',
     createdAt: at(-4, 9).toISOString()
   }, {
     ...blankMission('sec_main'),
     id: 'm_corpo',
-    title: 'THE CORPO-RAT',
+    title: 'СДАТЬ ГОДОВОЙ ОТЧЁТ',
     status: 'DANGER: MODERATE',
     alert: true,
     badge: {
       shape: 'triangle',
-      text: 'N',
+      text: 'W',
       color: '#FFFFFF'
     },
-    steps: [step('Прочитать отчёт на личном терминале', true), step('Сесть в AV Дженкинса')],
-    image: demoMapImage(),
-    imageCaption: 'AV',
-    holo: true,
-    description: 'Утро начинается с отчёта на личном терминале — сводка по объекту ждёт с ночи. Дженкинс дал понять: работа грязная, но если сделать её чисто, повышение у тебя в кармане.\n\nAV уже на крыше, взлёт через пятнадцать минут. Корпорации не прощают опозданий, а Арасака не прощает ничего.\n\nПомни: в этой башне каждый играет за свою команду. Доверяй только данным, которые проверил сам. Записывай всё, что видишь, — однажды это может спасти тебе жизнь. Или карьеру. В Найт-Сити разница невелика.',
+    steps: [step('Собрать цифры за год', true), step('Отправить черновик руководителю')],
+    description: 'Отчёт ждут к концу недели. Цифры почти собраны, осталось свести их в один документ и проверить выводы.\n\nГлавное: начать с черновика, а не с оформления.',
     deadline: corpoDeadline,
     countdown: true,
     createdAt: at(-1, 8).toISOString()
@@ -1103,29 +1106,29 @@ function makeDemo() {
     ...blankMission('sec_gigs'),
     id: 'm_laptop',
     title: 'ПРОДАТЬ СТАРЫЙ НОУТБУК',
-    status: 'REWARD: 15 000 €$',
+    status: 'REWARD: 15 000 ₽',
     statusColor: '#59FF00',
     badge: {
       shape: 'circle',
-      text: '€$',
+      text: '₽',
       color: '#59FF00'
     },
     steps: [step('Сбросить систему и сделать фото'), step('Выставить объявление'), step('Встретиться с покупателем')],
-    description: 'Минимальная цена — 15 000 €$. Торг уместен, обмен на импланты не предлагать.',
+    description: 'Минимальная цена — 15 000 ₽. Торг уместен.',
     createdAt: at(-2, 14).toISOString()
   }, {
     ...blankMission('sec_main'),
     id: 'm_pickup',
-    title: 'THE PICKUP',
+    title: 'ОБНОВИТЬ РЕЗЮМЕ',
     status: 'DANGER: HIGH',
     statusColor: '#FF8A3D',
     badge: {
       shape: 'diamond',
-      text: 'WB',
+      text: 'CV',
       color: '#F5B83D'
     },
-    steps: [step('Встретиться с Декстером', false, true), step('Забрать бота у Мальстрёма', false, true), step('Воспользоваться чипом Militech', true, true)],
-    description: 'Контракт закрыт: робот у нас, Мальстрём остался без товара. Декстер доволен, а значит, следующий заказ не заставит себя ждать.',
+    steps: [step('Добавить последние проекты', false, true), step('Попросить друга вычитать', false, true), step('Сделать версию на английском', true, true)],
+    description: 'Резюме готово и лежит в профиле. Теперь обновлять его раз в полгода.',
     done: true,
     completedAt: at(-3, 21, 40).toISOString(),
     createdAt: at(-8, 11).toISOString()
@@ -1151,7 +1154,7 @@ function makeDemo() {
     id: 'sh_1',
     title: 'Первая запись в журнале',
     tags: ['tg_diary'],
-    body: 'Запускаю новый протокол: каждый день — миссии, вечером — честная оценка по карточкам.\n\nСмысл не в идеальных пятёрках, а в том, чтобы видеть картину целиком. Календарь не врёт: если кольца желтеют, значит, пора что-то менять.',
+    body: 'Запускаю новый режим: каждый день — миссии, вечером — честная оценка по карточкам.\n\nСмысл не в идеальных пятёрках, а в том, чтобы видеть картину целиком. Календарь не врёт: если кольца желтеют, значит, пора что-то менять.',
     createdAt: at(-12, 22, 14).toISOString(),
     updatedAt: at(-12, 22, 14).toISOString()
   }, {
@@ -1167,7 +1170,7 @@ function makeDemo() {
     id: 'sh_3',
     title: `Цели на ${MONTHS[now.getMonth()].toLowerCase()}`,
     tags: ['tg_goals', 'tg_diary'],
-    body: '1. Средний балл за месяц — не ниже 4.0.\n2. Ни одного дня с кольцом красного цвета.\n3. Закрыть миссию THE CORPO-RAT до дедлайна.\n4. Читать по 20 страниц в день.\n5. Спать не меньше восьми часов хотя бы пять дней в неделю.',
+    body: '1. Средний балл за месяц — не ниже 4.0.\n2. Ни одного дня с кольцом красного цвета.\n3. Сдать годовой отчёт до дедлайна.\n4. Читать по 20 страниц в день.\n5. Спать не меньше восьми часов хотя бы пять дней в неделю.',
     createdAt: at(-14, 10, 30).toISOString(),
     updatedAt: at(-3, 9, 12).toISOString()
   }];
@@ -1269,7 +1272,7 @@ function makeDemo() {
     id: 't_release',
     layout: 'poster',
     title: 'РЕЛИЗ АЛЬБОМА',
-    sub: 'NEON TEARS // ITUNES · SPOTIFY',
+    sub: 'ЛЮБИМАЯ ГРУППА',
     mode: 'to',
     start: toLocalInput(at(-12, 12)),
     target: toLocalInput(release),
@@ -1280,7 +1283,7 @@ function makeDemo() {
   }, {
     id: 't_corpo',
     layout: 'units',
-    title: 'THE CORPO-RAT',
+    title: 'ГОДОВОЙ ОТЧЁТ',
     sub: 'ДЕДЛАЙН МИССИИ',
     mode: 'to',
     start: toLocalInput(at(-1, 8)),
@@ -1306,7 +1309,7 @@ function makeDemo() {
     id: 't_ny',
     layout: 'flip',
     title: `НОВЫЙ ${now.getFullYear() + 1} ГОД`,
-    sub: 'NIGHT CITY // NEW YEAR',
+    sub: 'ПРАЗДНИК',
     mode: 'to',
     start: toLocalInput(new Date(now.getFullYear(), 0, 1)),
     target: toLocalInput(ny),
@@ -1335,16 +1338,16 @@ function makeDemo() {
     ...emptyFocus(),
     sessions: [fs(-6, 10, 'm_eng', 'ПРОКАЧАТЬ АНГЛИЙСКИЙ', 'Разобрать 20 новых слов', 15, 15, 2, {
       mind: 1
-    }, 0, 4), fs(-5, 19, 'm_corpo', 'THE CORPO-RAT', 'Черновик отчёта', 15, 15, 5, {
+    }, 0, 4), fs(-5, 19, 'm_corpo', 'СДАТЬ ГОДОВОЙ ОТЧЁТ', 'Черновик отчёта', 15, 15, 5, {
       phone: 3,
       noise: 1
     }, 2, 2), fs(-4, 11, 'm_eng', 'ПРОКАЧАТЬ АНГЛИЙСКИЙ', 'Подкаст + конспект', 15, 15, 1, {
       mind: 1
-    }, 0, 5), fs(-3, 18, 'm_corpo', 'THE CORPO-RAT', 'Собрать цифры для отчёта', 20, 20, 3, {
+    }, 0, 5), fs(-3, 18, 'm_corpo', 'СДАТЬ ГОДОВОЙ ОТЧЁТ', 'Собрать цифры для отчёта', 20, 20, 3, {
       phone: 2
     }, 0, 4), fs(-2, 10, '', '', 'Прочитать главу книги', 20, 20, 2, {
       mind: 2
-    }, 0, 4), fs(-1, 20, 'm_corpo', 'THE CORPO-RAT', 'Финальная правка отчёта', 20, 20, 4, {
+    }, 0, 4), fs(-1, 20, 'm_corpo', 'СДАТЬ ГОДОВОЙ ОТЧЁТ', 'Финальная правка отчёта', 20, 20, 4, {
       tired: 2,
       phone: 1
     }, 1, 3)],
@@ -2386,22 +2389,26 @@ body.cj-dragging,body.cj-dragging *{cursor:grabbing !important;}
 @media (hover:hover){.tc-t:hover{z-index:5;transform:translateY(-6px) scale(1.05);}}
 @keyframes deal{from{opacity:0;transform:translateY(-26px) rotate(calc(var(--a) * -2)) scale(1.14);}}
 .many .tc-t{filter:none;content-visibility:auto;contain-intrinsic-size:auto var(--w) calc(var(--w) * 1.4);}
-/* коллекционная карточка на столе: размеры внутри в cqw, поэтому она масштабируется целиком */
-.tc{--cut:9px;position:relative;display:block;width:100%;aspect-ratio:5/7;padding:0;container-type:inline-size;background:var(--tc);text-align:left;color:#fff;}
-.tc-in{position:absolute;inset:3px;display:block;overflow:hidden;background:#08070C;}
-.tc-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 22%;}
-.tc-ph{position:absolute;inset:0 0 30cqw;display:flex;align-items:center;justify-content:center;font-family:'Oswald',sans-serif;font-weight:700;font-size:44cqw;line-height:1;color:rgba(255,255,255,.22);}
-.tc-no{position:absolute;top:0;left:0;padding:1.5cqw 7cqw 1.5cqw 4cqw;background:var(--tc);color:var(--tci);font-family:'Share Tech Mono',monospace;font-size:6cqw;line-height:1.2;clip-path:polygon(0 0,100% 0,calc(100% - 4cqw) 100%,0 100%);}
-.tc-foot{position:absolute;left:0;right:0;bottom:0;display:block;}
-.tc-plate{display:block;padding:6.5cqw 4cqw 3.5cqw;background:var(--tc);color:var(--tci);clip-path:polygon(0 3cqw,34cqw 3cqw,37cqw 0,100% 0,100% 100%,0 100%);}
-.tc-name{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;font-family:'Oswald',sans-serif;font-weight:700;line-height:1.14;letter-spacing:.01em;text-transform:uppercase;}
-.tc-hero{display:block;font-size:6.2cqw;font-weight:600;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.tc-line{display:grid;grid-template-columns:repeat(7,1fr);gap:1.3cqw;margin-top:2.6cqw;padding:1.6cqw 2cqw;background:rgba(0,0,0,.78);}
-.tc-line i{display:block;height:3cqw;background:rgba(255,255,255,.16);transform:skewX(-24deg);}
-.tc-line i.on{background:var(--tcl);box-shadow:0 0 1.6cqw var(--tcl);}
-.tc-line i.wait{background:transparent;box-shadow:inset 0 0 0 1px var(--tcl);}
-.tc-line i.none{height:1cqw;align-self:center;background:rgba(255,255,255,.1);}
-.tc-em{position:absolute;right:3cqw;top:-16cqw;display:flex;align-items:center;justify-content:center;width:22cqw;height:22cqw;border-radius:50%;background:#0A0A0F;box-shadow:0 0 0 1.2cqw var(--tc);color:#fff;font-family:'Oswald',sans-serif;font-weight:700;font-size:9cqw;line-height:1;font-variant-numeric:tabular-nums;}
+/* коллекционная карточка на столе: тёмная, фото почти без цвета, тонкая голографическая рамка. Размеры внутри в cqw */
+.tc{position:relative;display:block;width:100%;aspect-ratio:5/7;padding:0;container-type:inline-size;background:none;text-align:left;color:#fff;}
+.tc-in{position:absolute;inset:0;display:block;overflow:hidden;border-radius:5cqw;background:#0C0C0E;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);}
+.tc-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 22%;filter:grayscale(1) contrast(1.08) brightness(.9);transition:filter .3s;}
+.tc-ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Oswald',sans-serif;font-weight:700;font-size:64cqw;line-height:1;color:transparent;-webkit-text-stroke:1px rgba(255,255,255,.1);background:radial-gradient(ellipse 90% 70% at 50% 36%,#2E2F34,#0C0C0E 76%);}
+.tc-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.74) 0,rgba(0,0,0,.28) 30%,transparent 46%,transparent 62%,rgba(0,0,0,.84) 100%);}
+.tc-sheen{position:absolute;inset:0;pointer-events:none;background:linear-gradient(115deg,transparent 36%,rgba(255,255,255,.1) 46%,rgba(170,200,255,.12) 52%,transparent 63%) 100% 0/260% 100% no-repeat;transition:background-position .7s ease;}
+.tc-foil{position:absolute;inset:3.2cqw;border-radius:3.2cqw;padding:max(1px,.45cqw);background:linear-gradient(135deg,#A6DCFF,#C9A8FF 22%,#FFBDE3 42%,#FFF3B5 60%,#A8FFDA 78%,#A6DCFF);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:.8;}
+.tc-top{position:absolute;left:8cqw;right:8cqw;top:8.5cqw;display:block;text-align:center;}
+.tc-hero{display:block;font-size:max(5cqw,8px);font-weight:600;letter-spacing:.14em;line-height:1.2;text-transform:uppercase;color:rgba(255,255,255,.74);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tc-name{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;margin-top:1.2cqw;font-family:'Oswald',sans-serif;font-weight:700;line-height:1.12;letter-spacing:.015em;text-transform:uppercase;color:transparent;background:linear-gradient(180deg,#FFF 18%,#C4C7CF 62%,#F1F2F5 100%);-webkit-background-clip:text;background-clip:text;filter:drop-shadow(0 1px 3px rgba(0,0,0,.6));}
+.tc-bot{position:absolute;left:8cqw;right:8cqw;bottom:7.5cqw;display:block;}
+.tc-line{display:grid;grid-template-columns:repeat(7,1fr);gap:1.4cqw;}
+.tc-line i{display:block;height:max(1.5cqw,2px);border-radius:99px;background:rgba(255,255,255,.2);}
+.tc-line i.on{background:var(--tcl);}
+.tc-line i.wait{background:none;box-shadow:inset 0 0 0 1px var(--tcl);}
+.tc-line i.none{background:rgba(255,255,255,.08);}
+.tc-meta{display:flex;justify-content:space-between;margin-top:2.6cqw;font-size:max(4.6cqw,8px);font-weight:600;line-height:1;letter-spacing:.04em;font-variant-numeric:tabular-nums;color:rgba(255,255,255,.6);}
+.tc-meta b{font-weight:600;color:#fff;}
+@media (hover:hover){.tc-t:hover .tc-sheen{background-position:0 0;}.tc-t:hover .tc-img{filter:grayscale(.2) brightness(.98);}}
 .crop-stage{position:relative;flex:1;min-height:0;overflow:hidden;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none;}
 .crop-stage:active{cursor:grabbing;}
 .crop-img{position:absolute;left:50%;top:50%;max-width:none;pointer-events:none;}
@@ -2629,13 +2636,6 @@ const MONO_CSS = `
 .ui-mono .tc-none{border-radius:14px;box-shadow:none;background:#1C1C1E;}
 .ui-mono .ptb{background:radial-gradient(ellipse 100% 70% at 50% 30%,#1E1E22,#060607 80%);}
 .ui-mono .pg-dots span{font-family:'Inter',sans-serif;font-weight:600;}
-.ui-mono .tc{border-radius:14px;}
-.ui-mono .tc-in{border-radius:11px;}
-.ui-mono .tc-no{clip-path:none;padding-right:4cqw;border-radius:0 0 3cqw 0;font-family:'Inter',sans-serif;font-weight:600;font-size:5.4cqw;}
-.ui-mono .tc-plate{clip-path:none;padding-top:5.5cqw;}
-.ui-mono .tc-line{padding:1.6cqw;border-radius:99px;}
-.ui-mono .tc-line i{transform:none;border-radius:99px;}
-.ui-mono .tc-line i.on{box-shadow:none;}
 .ui-mono .sw{border-radius:50%;}
 .ui-mono .tk-hms{border-radius:999px;box-shadow:none;background:rgba(0,0,0,.3);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);font-family:'Inter',sans-serif;font-weight:600;letter-spacing:.04em;font-size:22px;padding:6px 18px;font-variant-numeric:tabular-nums;}
 .ui-mono .tk-sub{font-family:'Inter',sans-serif;font-weight:600;letter-spacing:.08em;}
@@ -5904,7 +5904,7 @@ function useDirOps() {
       title: 'Переименовать раздел',
       code: 'DIR.SECTIONS // RENAME',
       input: true,
-      value: s.name,
+      value: nice(s.name),
       ok: 'Сохранить'
     });
     if (name && name.trim()) up('sections', ss => ss.map(x => x.id === id ? {
@@ -6166,7 +6166,7 @@ function ArchiveHeader({
     className: "min-w-0 flex-1"
   }, React.createElement("span", {
     className: "block text-[17px] font-bold tracking-[.06em] uppercase txt-alt glow-alt leading-tight"
-  }, "\u0410\u0440\u0445\u0438\u0432: \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u043D\u044B\u0435 \u043A\u043E\u043D\u0442\u0440\u0430\u043A\u0442\u044B"), React.createElement("span", {
+  }, "\u0410\u0440\u0445\u0438\u0432: \u0437\u0430\u0432\u0435\u0440\u0448\u0451\u043D\u043D\u044B\u0435 \u043C\u0438\u0441\u0441\u0438\u0438"), React.createElement("span", {
     className: "block micro mt-1",
     style: {
       color: 'rgba(var(--alt-rgb),.6)'
@@ -6594,7 +6594,7 @@ function MissionDetail({
     icon: RotateCcw,
     snd: "none",
     onClick: onResume
-  }, "\u0412\u043E\u0437\u043E\u0431\u043D\u043E\u0432\u0438\u0442\u044C \u043A\u043E\u043D\u0442\u0440\u0430\u043A\u0442"), React.createElement(Btn, {
+  }, "\u0412\u0435\u0440\u043D\u0443\u0442\u044C \u0432 \u0440\u0430\u0431\u043E\u0442\u0443"), React.createElement(Btn, {
     small: true,
     variant: "dangerGhost",
     icon: Trash2,
@@ -6759,7 +6759,7 @@ function MissionEditor({
   }, React.createElement("input", {
     className: "inp uppercase",
     value: m.title,
-    placeholder: "THE HEIST",
+    placeholder: "\u041D\u0430\u043F\u0440\u0438\u043C\u0435\u0440: \u0421\u0434\u0430\u0442\u044C \u043E\u0442\u0447\u0451\u0442",
     onChange: e => set({
       title: e.target.value
     })
@@ -6774,15 +6774,15 @@ function MissionEditor({
   }, data.sections.map(s => React.createElement("option", {
     key: s.id,
     value: s.id
-  }, s.name)))), React.createElement(Field, {
+  }, nice(s.name))))), React.createElement(Field, {
     label: "\u041F\u043E\u0434\u043F\u0438\u0441\u044C \u0441\u0442\u0430\u0442\u0443\u0441\u0430 / \u0432\u0430\u0436\u043D\u043E\u0441\u0442\u0438"
   }, React.createElement("input", {
-    className: "inp uppercase",
-    value: m.status,
+    className: "inp",
+    value: nice(m.status),
     onChange: e => set({
       status: e.target.value
     }),
-    placeholder: "DANGER: MODERATE"
+    placeholder: "\u0421\u043B\u043E\u0436\u043D\u043E\u0441\u0442\u044C: \u0441\u0440\u0435\u0434\u043D\u044F\u044F"
   }), React.createElement("div", {
     className: "flex gap-2 mt-2"
   }, DANGER_LEVELS.map((d, i) => {
@@ -6791,8 +6791,8 @@ function MissionEditor({
     return React.createElement("button", {
       key: d.status,
       type: "button",
-      title: d.status,
-      "aria-label": d.status,
+      title: nice(d.status),
+      "aria-label": nice(d.status),
       "aria-pressed": active,
       className: "cut flex-1 flex items-center justify-center py-2",
       style: {
@@ -6947,7 +6947,7 @@ function MissionEditor({
     onChange: e => set({
       imageCaption: e.target.value
     }),
-    placeholder: "AV"
+    placeholder: "\u041D\u0430\u043F\u0440\u0438\u043C\u0435\u0440: \u0421\u0445\u0435\u043C\u0430"
   })), React.createElement("div", {
     className: "mb-4 px-3 py-1",
     style: {
@@ -7321,7 +7321,7 @@ function MissionsScreen() {
       completedAt: new Date().toISOString()
     } : x));
     setOpenId(null);
-    toast('MISSION COMPLETE · контракт в архиве');
+    toast('Миссия завершена и перенесена в архив');
   };
   const resumeMission = m => {
     sfx('open');
@@ -7338,13 +7338,13 @@ function MissionsScreen() {
     } : x));
     setOpenId(m.id);
     const sec = data.sections.find(s => s.id === secId);
-    toast(`Контракт возобновлён${sec ? ` · ${sec.name}` : ''}`);
+    toast(`Миссия возвращена в работу${sec ? ` · ${nice(sec.name)}` : ''}`);
   };
   const purgeMission = async m => {
     const ok = await ask({
       title: 'Удалить навсегда?',
       code: 'ARCHIVE // PURGE',
-      text: `Запись о контракте «${m.title}» будет стёрта из архива.`,
+      text: `Запись о миссии «${nice(m.title)}» будет стёрта из архива.`,
       ok: 'Удалить навсегда',
       danger: true
     });
@@ -8791,7 +8791,7 @@ function traitWeeks(data) {
   data.cards.forEach(c => {
     if (c.trait) bound[c.id] = c.trait;
   });
-  for (let i = TRAIT_DAYS - 1; i >= 0; i--) {
+  for (let i = 0; i < TRAIT_DAYS; i++) {
     const k = dKey(addDays(now, -i)),
       by = {},
       sched = {};
@@ -8884,13 +8884,13 @@ function TraitFace({
     className: "pf-maxim"
   }, "\u041F\u0440\u0438\u0432\u044F\u0436\u0438 \u043A \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0435 \u0432 \u043A\u0430\u0442\u0430\u043B\u043E\u0433\u0435, \u0438 \u043B\u0438\u043D\u0438\u044F \u043D\u0430\u0447\u043D\u0451\u0442 \u0437\u0430\u043F\u043E\u043B\u043D\u044F\u0442\u044C\u0441\u044F")), !mini && React.createElement(React.Fragment, null, React.createElement("div", {
     className: "pf-meta"
-  }, React.createElement("span", null, nice('7 ДНЕЙ')), React.createElement("span", {
+  }, React.createElement("span", null, nice('СЕГОДНЯ')), React.createElement("span", {
     className: "pf-count",
     style: {
       color: ac,
       textShadow: UI.mono ? 'none' : `0 0 10px ${ac}`
     }
-  }, week.plan ? `${week.done}/${week.plan}` : '—'), React.createElement("span", null, nice('СЕГОДНЯ'))), React.createElement("div", {
+  }, week.plan ? `${week.done}/${week.plan}` : '—'), React.createElement("span", null, nice('7 ДНЕЙ'))), React.createElement("div", {
     className: "pf-line",
     style: {
       '--pc': ac
@@ -9180,53 +9180,49 @@ function TraitCard({
   onClick
 }) {
   const col = t.color || '#FFFFFF',
-    lum = tcLum(col),
-    bg = traitBg(t, i),
-    photo = bg === 'custom' && t.img;
+    photo = traitBg(t, i) === 'custom' && t.img;
   const word = Math.max(1, ...(t.name || '').split(/\s+/).map(w => w.length));
   return React.createElement("button", {
     type: "button",
     onClick: onClick,
     "aria-label": `${t.name}, ${hero}`,
-    className: "tc cut",
+    className: "tc",
     style: {
-      '--tc': col,
-      '--tci': lum > 0.18 ? '#0A0A0F' : '#FFFFFF',
-      '--tcl': lum > 0.1 ? col : '#FFFFFF'
+      '--tcl': tcLum(col) > 0.1 ? col : '#FFFFFF'
     }
   }, React.createElement("span", {
-    className: "tc-in cut"
+    className: "tc-in"
   }, photo ? React.createElement(Img, {
     src: t.img,
     thumb: thumb,
     className: "tc-img"
-  }) : React.createElement(TimerBg, {
-    t: {
-      bg: bg === 'custom' ? 'smoke' : bg
-    }
-  }), !photo && React.createElement("span", {
+  }) : React.createElement("span", {
     className: "tc-ph"
   }, (hero || t.name || '?').trim().charAt(0).toUpperCase()), React.createElement("span", {
-    className: "tc-no"
-  }, "\u2116 ", pad(n)), React.createElement("span", {
-    className: "tc-foot"
+    className: "tc-shade"
+  }), React.createElement("span", {
+    className: "tc-sheen"
+  }), React.createElement("span", {
+    className: "tc-foil"
+  }), React.createElement("span", {
+    className: "tc-top"
   }, React.createElement("span", {
-    className: "tc-plate"
-  }, React.createElement("span", {
-    className: "tc-name",
-    style: {
-      fontSize: `${Math.min(10, 112 / word)}cqw`
-    }
-  }, t.name), React.createElement("span", {
     className: "tc-hero"
   }, hero), React.createElement("span", {
+    className: "tc-name",
+    style: {
+      fontSize: `${Math.min(11.5, 120 / word)}cqw`
+    }
+  }, t.name)), React.createElement("span", {
+    className: "tc-bot"
+  }, React.createElement("span", {
     className: "tc-line"
   }, week.days.map((s, d) => React.createElement("i", {
     key: d,
     className: s
-  })))), React.createElement("span", {
-    className: "tc-em"
-  }, week.plan ? `${week.done}/${week.plan}` : '—'))));
+  }))), React.createElement("span", {
+    className: "tc-meta"
+  }, React.createElement("span", null, "\u2116 ", pad(n)), React.createElement("b", null, week.plan ? `${week.done}/${week.plan}` : '—')))));
 }
 function PersonaTable({
   list,
@@ -10893,7 +10889,7 @@ function TimerEditor({
     onChange: e => set({
       sub: e.target.value
     }),
-    placeholder: "NIGHT CITY RECORDS"
+    placeholder: "\u041D\u0430\u043F\u0440\u0438\u043C\u0435\u0440: \u041E\u0442\u043F\u0443\u0441\u043A"
   })), React.createElement(Field, {
     label: "\u0420\u0435\u0436\u0438\u043C"
   }, React.createElement(Segmented, {
@@ -13147,7 +13143,7 @@ function SettingsScreen({
     const ok = await ask({
       title: 'Очистить все данные?',
       code: 'SYS // WIPE',
-      text: `Будут удалены ВСЕ миссии, записи журнала, карточки, оценки и таймеры. Останутся пустые разделы MAIN JOBS / SIDE JOBS / GIGS, базовые теги и настройки.\n\nСовет: сначала сделай экспорт бэкапа.${syncNote}`,
+      text: `Будут удалены ВСЕ миссии, записи журнала, карточки, оценки и таймеры. Останутся пустые разделы, базовые теги и настройки.\n\nСовет: сначала сделай экспорт бэкапа.${syncNote}`,
       ok: 'Стереть всё',
       danger: true
     });
@@ -13190,12 +13186,12 @@ function SettingsScreen({
   }, React.createElement(ScreenHeader, {
     code: "SYS://ROOT/CONFIG \u2014 TERMINAL v1.0",
     title: "\u0421\u0438\u0441\u0442\u0435\u043C\u0430",
-    sub: "\u041F\u0440\u043E\u0442\u043E\u043A\u043E\u043B\u044B, \u043F\u0435\u0440\u0441\u043E\u043D\u0430\u043B\u0438\u0437\u0430\u0446\u0438\u044F, \u0441\u043F\u0440\u0430\u0432\u043E\u0447\u043D\u0438\u043A\u0438 \u0438 \u0440\u0435\u0437\u0435\u0440\u0432\u043D\u044B\u0435 \u043A\u043E\u043F\u0438\u0438"
+    sub: "\u041D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438, \u0441\u043F\u0440\u0430\u0432\u043E\u0447\u043D\u0438\u043A\u0438 \u0438 \u0440\u0435\u0437\u0435\u0440\u0432\u043D\u044B\u0435 \u043A\u043E\u043F\u0438\u0438"
   }), React.createElement("div", {
     className: `px-4 mt-4 ${UI.wide ? 'set-cols' : ''}`
   }, React.createElement(SetBlock, {
     n: "01",
-    title: "\u041F\u0440\u043E\u0442\u043E\u043A\u043E\u043B \u043E\u0446\u0435\u043D\u043A\u0438 \u0434\u043D\u044F",
+    title: "\u041E\u0446\u0435\u043D\u043A\u0430 \u0434\u043D\u044F",
     icon: Clock
   }, React.createElement("span", {
     className: "lbl"
@@ -13301,71 +13297,6 @@ function SettingsScreen({
     icon: Palette
   }, React.createElement("span", {
     className: "lbl"
-  }, "\u0421\u0442\u0438\u043B\u044C \u0438\u043D\u0442\u0435\u0440\u0444\u0435\u0439\u0441\u0430"), React.createElement("div", {
-    className: "grid grid-cols-2 gap-2 mb-4"
-  }, UI_STYLES.map(st => {
-    const on = (s.ui || 'cyber') === st.id,
-      mono = st.id === 'mono';
-    return React.createElement("button", {
-      key: st.id,
-      type: "button",
-      onClick: () => {
-        if (!on) {
-          sfx('save');
-          set({
-            ui: st.id
-          });
-        }
-      },
-      className: "cut relative flex flex-col items-center text-center px-2 pt-3 pb-2.5",
-      style: {
-        '--cut': '10px',
-        background: mono ? 'linear-gradient(180deg,#0F3B52,#000 75%)' : 'linear-gradient(135deg,#18080C,#0A0A0F)',
-        boxShadow: on ? 'inset 0 0 0 2px var(--alt)' : 'inset 0 0 0 1px rgba(255,255,255,.15)',
-        borderRadius: mono ? 18 : undefined
-      }
-    }, mono ? React.createElement(Sticker, {
-      icon: "st:sleep",
-      color: "#4DB6FF",
-      frame: "oct",
-      size: 46,
-      toon: true
-    }) : React.createElement(Sticker, {
-      icon: "st:bolt",
-      color: "#FF4655",
-      frame: "hex",
-      size: 46,
-      toon: false
-    }), React.createElement("div", {
-      className: "mt-2 leading-tight",
-      style: mono ? {
-        fontFamily: 'Inter, sans-serif',
-        fontWeight: 700,
-        fontSize: 16,
-        color: '#fff'
-      } : {
-        fontFamily: 'Rajdhani, sans-serif',
-        fontWeight: 700,
-        fontSize: 16,
-        letterSpacing: '.1em',
-        textTransform: 'uppercase',
-        color: '#FF4655',
-        textShadow: '0 0 8px rgba(255,70,85,.6)'
-      }
-    }, st.name), React.createElement("div", {
-      className: "text-[11px] text-white/50 mt-0.5 leading-tight",
-      style: {
-        fontFamily: mono ? 'Inter, sans-serif' : "'Exo 2', sans-serif"
-      }
-    }, st.sub), on && React.createElement(Check, {
-      size: 15,
-      className: "absolute top-2 right-2.5",
-      style: {
-        color: 'var(--alt)'
-      }
-    }));
-  })), React.createElement("span", {
-    className: "lbl"
   }, "\u0410\u0432\u0430\u0442\u0430\u0440 \u043D\u0430 \u044D\u043A\u0440\u0430\u043D\u0435 \u0441\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043A\u0438"), React.createElement("div", {
     className: "flex items-center gap-4 mb-4"
   }, React.createElement(AvatarSlot, {
@@ -13380,7 +13311,7 @@ function SettingsScreen({
     variant: "ghost",
     icon: Pencil,
     onClick: () => setAvEdit(true)
-  }, "\u0418\u0437\u043C\u0435\u043D\u0438\u0442\u044C \u0430\u0432\u0430\u0442\u0430\u0440"))), UI.mono ? React.createElement(React.Fragment, null, React.createElement("span", {
+  }, "\u0418\u0437\u043C\u0435\u043D\u0438\u0442\u044C \u0430\u0432\u0430\u0442\u0430\u0440"))), React.createElement("span", {
     className: "lbl"
   }, "\u0410\u043A\u0446\u0435\u043D\u0442\u043D\u044B\u0439 \u0446\u0432\u0435\u0442"), React.createElement("div", {
     className: "grid grid-cols-3 gap-2"
@@ -13405,74 +13336,7 @@ function SettingsScreen({
     }
   }), React.createElement("span", {
     className: "text-[13px] font-semibold text-white/90 truncate"
-  }, a.name))))) : React.createElement(React.Fragment, null, React.createElement("span", {
-    className: "lbl"
-  }, "\u0426\u0432\u0435\u0442\u043E\u0432\u0430\u044F \u043F\u0430\u043B\u0438\u0442\u0440\u0430 \u0438\u043D\u0442\u0435\u0440\u0444\u0435\u0439\u0441\u0430"), React.createElement("div", {
-    className: "grid grid-cols-2 gap-2"
-  }, Object.entries(THEMES).map(([k, th]) => React.createElement("button", {
-    key: k,
-    type: "button",
-    onClick: () => {
-      sfx('tab');
-      set({
-        theme: k
-      });
-    },
-    className: "cut text-left p-3 relative",
-    style: {
-      '--cut': '10px',
-      background: `linear-gradient(135deg, ${th.bg1}, ${th.bg2})`,
-      boxShadow: s.theme === k ? `inset 0 0 0 2px ${th.alt}` : 'inset 0 0 0 1px rgba(255,255,255,.15)'
-    }
-  }, React.createElement("div", {
-    className: "flex gap-1 mb-2"
-  }, [th.main, th.alt, th.warn].map((c, i) => React.createElement("i", {
-    key: i,
-    className: "w-5 h-2 block",
-    style: {
-      background: c,
-      boxShadow: `0 0 6px ${c}`
-    }
-  }))), React.createElement("div", {
-    className: "text-[14px] font-bold leading-tight",
-    style: {
-      color: th.main
-    }
-  }, th.name), React.createElement("div", {
-    className: "f-mono text-[9px] tracking-wider text-white/50 uppercase mt-0.5"
-  }, th.sub), s.theme === k && React.createElement(Check, {
-    size: 16,
-    className: "absolute top-2 right-3",
-    style: {
-      color: th.alt
-    }
-  })))), React.createElement("div", {
-    className: "mt-3",
-    style: {
-      borderTop: '1px solid rgba(255,255,255,.07)'
-    }
-  }, React.createElement(Toggle, {
-    on: s.scanlines,
-    onChange: v => set({
-      scanlines: v
-    }),
-    label: "\u0421\u043A\u0430\u043D\u043B\u0430\u0439\u043D\u044B",
-    hint: "\u0422\u043E\u043D\u043A\u0438\u0435 \u0433\u043E\u0440\u0438\u0437\u043E\u043D\u0442\u0430\u043B\u044C\u043D\u044B\u0435 \u043F\u043E\u043B\u043E\u0441\u044B \u043C\u043E\u043D\u0438\u0442\u043E\u0440\u0430 \u043F\u043E\u0432\u0435\u0440\u0445 \u044D\u043A\u0440\u0430\u043D\u0430"
-  }), React.createElement(Toggle, {
-    on: s.crt,
-    onChange: v => set({
-      crt: v
-    }),
-    label: "\u042D\u0444\u0444\u0435\u043A\u0442 \u042D\u041B\u0422-\u044D\u043A\u0440\u0430\u043D\u0430",
-    hint: "\u041C\u0435\u0440\u0446\u0430\u043D\u0438\u0435 \u0438 \u0437\u0430\u0442\u0435\u043C\u043D\u0435\u043D\u0438\u0435 \u043F\u043E \u043A\u0440\u0430\u044F\u043C. \u0412\u044B\u043A\u043B\u044E\u0447\u0438, \u0435\u0441\u043B\u0438 \u0443\u0441\u0442\u0430\u044E\u0442 \u0433\u043B\u0430\u0437\u0430"
-  }), React.createElement(Toggle, {
-    on: s.glitch,
-    onChange: v => set({
-      glitch: v
-    }),
-    label: "\u0410\u043D\u0438\u043C\u0430\u0446\u0438\u044F \u0433\u043B\u0438\u0442\u0447\u0430",
-    hint: "\u041F\u0435\u0440\u0438\u043E\u0434\u0438\u0447\u0435\u0441\u043A\u0438\u0435 \u0441\u0431\u043E\u0438 \u043D\u0430 \u0437\u0430\u0433\u043E\u043B\u043E\u0432\u043A\u0430\u0445"
-  }))), React.createElement("div", {
+  }, a.name)))), React.createElement("div", {
     className: UI.mono ? 'mt-3' : '',
     style: UI.mono ? {
       borderTop: '1px solid rgba(255,255,255,.07)'
@@ -14081,7 +13945,7 @@ function MainApp({
   const toastTimer = useRef(null);
   SFX.on = !!data.settings.sound;
   SFX.vib = !!data.settings.haptics;
-  const mono = data.settings.ui === 'mono';
+  const mono = true;
   UI.mono = mono;
   SFX.soft = mono;
   const wide = useWide();
@@ -14392,7 +14256,7 @@ function MainApp({
   }, [pageBg]);
   const askRetro = useCallback(async y => {
     const ans = await ask({
-      title: 'Протокол: пропуск',
+      title: 'Пропущенный день',
       code: 'RETRO.CHECK // MISSED DAY',
       text: `Не подведены итоги за вчерашний день (${fmtDay(y)}). Провести оценку сейчас?`,
       ok: 'Оценить',

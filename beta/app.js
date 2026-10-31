@@ -1,4 +1,4 @@
-/* CJ_BUILD BETA-20261101-000703 */
+/* CJ_BUILD BETA-20261101-002143 */
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
 const {
   useState,
@@ -2225,18 +2225,19 @@ body.cj-dragging,body.cj-dragging *{cursor:grabbing !important;}
 .ptb{position:absolute;inset:0;display:flex;flex-direction:column;overflow-y:auto;overscroll-behavior:contain;padding:70px 16px 20px;background:radial-gradient(ellipse 90% 60% at 50% 0,rgba(var(--main-rgb),.2),transparent 70%),linear-gradient(rgba(var(--alt-rgb),.05) 1px,transparent 1px) 0 0/100% 34px,linear-gradient(90deg,rgba(var(--alt-rgb),.05) 1px,transparent 1px) 0 0/34px 100%,#08070C;}
 .ptb-g{display:grid;grid-template-columns:repeat(auto-fill,var(--w));justify-content:center;align-content:center;gap:clamp(12px,calc(var(--w) * .1),24px);flex:1 0 auto;padding:16px 0 8px;}
 .tc-t{position:relative;transform:translateY(var(--y)) rotate(var(--a));transition:transform .24s cubic-bezier(.2,.8,.3,1);filter:drop-shadow(0 8px 14px rgba(0,0,0,.65));animation:deal .34s cubic-bezier(.2,.8,.3,1) backwards;animation-delay:calc(var(--n) * 26ms);}
-.tc-t.lit{z-index:5;transform:translateY(-5px) scale(1.04);}
-@media (hover:hover){.tc-t:hover{z-index:5;transform:translateY(-6px) scale(1.05);}}
-.tc-t:active{transform:scale(.97);}
+.tc-t{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;}
+.tc-t.lit{z-index:5;transform:translateY(-6px) scale(1.05);}
+.tc-t.lift{z-index:9;transition:none;transform:translateY(var(--lift,0)) scale(1.08);}
+@media (hover:hover){.tc-t:hover{z-index:5;transform:translateY(-6px) scale(1.05);}.tc-t:active{transform:scale(.97);}}
 @keyframes deal{from{opacity:0;transform:translateY(-26px) rotate(calc(var(--a) * -2)) scale(1.14);}}
 .many .tc-t{filter:none;content-visibility:auto;contain-intrinsic-size:auto var(--w) calc(var(--w) * 1.4);}
-.many .tc{transform:none;}
-.many .tc-glare::after{display:none;}
-.many .tc-sheen{animation:none;}
+.many .tc-t:not(.lit):not(:hover) .tc-glare::after{display:none;}
 /* коллекционная карточка на столе: тёмная, фото почти без цвета, тонкая голографическая рамка. Размеры внутри в cqw */
-.tc{position:relative;display:block;width:100%;aspect-ratio:5/7;padding:0;container-type:inline-size;background:none;text-align:left;color:#fff;transform:perspective(620px) rotateY(calc(var(--tx,0) * 9deg)) rotateX(calc(var(--ty,0) * -9deg));}
+.tc{position:relative;display:block;width:100%;aspect-ratio:5/7;padding:0;container-type:inline-size;background:none;text-align:left;color:#fff;transition:transform .24s ease-out;}
+.tc-t.lit .tc{transition:none;transform:perspective(620px) rotateY(calc(var(--tx,0) * 9deg)) rotateX(calc(var(--ty,0) * -9deg));}
+@media (hover:hover){.tc-t:hover .tc{transition:none;transform:perspective(620px) rotateY(calc(var(--tx,0) * 9deg)) rotateX(calc(var(--ty,0) * -9deg));}}
 .tc-in{position:absolute;inset:0;display:block;overflow:hidden;border-radius:5cqw;background:#0C0C0E;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);}
-.tc-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 22%;filter:grayscale(1) contrast(1.08) brightness(.9);transition:filter .3s;}
+.tc-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 22%;filter:grayscale(1) contrast(1.08) brightness(.9);transition:filter .3s;pointer-events:none;}
 .tc-ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Oswald',sans-serif;font-weight:700;font-size:64cqw;line-height:1;color:transparent;-webkit-text-stroke:1px rgba(255,255,255,.1);background:radial-gradient(ellipse 90% 70% at 50% 36%,#2E2F34,#0C0C0E 76%);}
 .tc-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.74) 0,rgba(0,0,0,.28) 30%,transparent 46%,transparent 62%,rgba(0,0,0,.84) 100%);}
 .tc-sheen{position:absolute;inset:0;pointer-events:none;background:linear-gradient(115deg,transparent 36%,rgba(255,255,255,.1) 46%,rgba(170,200,255,.12) 52%,transparent 63%) 100% 0/260% 100% no-repeat;transition:background-position .7s ease;}
@@ -2258,10 +2259,11 @@ body.cj-dragging,body.cj-dragging *{cursor:grabbing !important;}
 .tc-t.lit .tc-img{filter:grayscale(.2) brightness(.98);}
 .tc-t.lit .tc-foil{opacity:1;}
 .tc-t.lit .tc-glare::after{opacity:.17;}
-@media (hover:hover){.tc-t:hover .tc-sheen{background-position:0 0;}.tc-t:hover .tc-img{filter:grayscale(.2) brightness(.98);}.tc-t:hover .tc-foil{opacity:1;}.tc-t:hover .tc-glare::after{opacity:.17;}}
-/* на телефоне блик сам иногда пробегает по карточкам: наведения там нет */
-@media (hover:none) and (prefers-reduced-motion:no-preference){.tc-sheen{animation:tcsweep 9s ease-in-out infinite;animation-delay:calc(var(--n) * .42s + 1.2s);}}
-@keyframes tcsweep{0%,84%{background-position:100% 0;}100%{background-position:0 0;}}
+.tc-t.lit .tc-in{box-shadow:inset 0 0 0 1px rgba(255,255,255,.16),0 0 24px -3px var(--tcl);}
+@media (hover:hover){.tc-t:hover .tc-sheen{background-position:0 0;}.tc-t:hover .tc-img{filter:grayscale(.2) brightness(.98);}.tc-t:hover .tc-foil{opacity:1;}.tc-t:hover .tc-glare::after{opacity:.17;}.tc-t:hover .tc-in{box-shadow:inset 0 0 0 1px rgba(255,255,255,.16),0 0 24px -3px var(--tcl);}}
+/* на телефоне нет движения мыши: пока карточка в руках, блик пробегает по ней снова и снова */
+@media (hover:none) and (prefers-reduced-motion:no-preference){.tc-t.lit .tc-sheen{animation:tcsweep 3.4s ease-in-out infinite;}}
+@keyframes tcsweep{0%,30%{background-position:100% 0;}100%{background-position:0 0;}}
 .crop-stage{position:relative;flex:1;min-height:0;overflow:hidden;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none;}
 .crop-stage:active{cursor:grabbing;}
 .crop-img{position:absolute;left:50%;top:50%;max-width:none;pointer-events:none;}
@@ -7960,12 +7962,17 @@ const touchOnly = () => {
     return false;
   }
 };
-function useShine(ref) {
+const HOLD_MS = 240,
+  OPEN_PX = 70;
+function useCardFocus(ref, onOpen) {
+  const open = useRef(onOpen);
+  open.current = onOpen;
   useEffect(() => {
     const el = ref.current;
     if (!el) return undefined;
+    let calm = false;
     try {
-      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return undefined;
+      calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     } catch (e) {}
     const cur = {
         x: 0,
@@ -7975,24 +7982,51 @@ function useShine(ref) {
         x: 0,
         y: 0
       };
-    let raf = 0,
+    let tile = null,
+      raf = 0,
       rest = null,
-      sway = 0,
-      tile = null;
+      g = null,
+      hovered = null,
+      finger = false;
+    const unset = t => {
+      t.style.removeProperty('--tx');
+      t.style.removeProperty('--ty');
+    };
     const frame = () => {
       raf = 0;
-      const y = aim.y + sway;
-      cur.x += (aim.x - cur.x) * 0.16;
-      cur.y += (y - cur.y) * 0.16;
-      el.style.setProperty('--tx', cur.x.toFixed(3));
-      el.style.setProperty('--ty', cur.y.toFixed(3));
-      if (Math.abs(aim.x - cur.x) + Math.abs(y - cur.y) > 0.004) raf = requestAnimationFrame(frame);
+      if (tile && !tile.isConnected) {
+        tile = null;
+        g = null;
+      }
+      if (!tile) return;
+      const s = performance.now() / 1000,
+        x = aim.x + (calm || finger ? 0 : Math.sin(s * 1.3) * 0.2),
+        y = aim.y + (calm || finger ? 0 : Math.cos(s * 0.9) * 0.14);
+      cur.x += (x - cur.x) * 0.14;
+      cur.y += (y - cur.y) * 0.14;
+      tile.style.setProperty('--tx', cur.x.toFixed(3));
+      tile.style.setProperty('--ty', cur.y.toFixed(3));
+      raf = requestAnimationFrame(frame);
     };
-    const wake = () => {
+    const pick = t => {
+      if (t === tile) return;
+      if (tile) {
+        tile.classList.remove('lit');
+        unset(tile);
+      }
+      tile = t;
+      rest = null;
+      cur.x = 0;
+      cur.y = 0;
+      aim.x = 0;
+      aim.y = 0;
+      if (!t) return;
+      t.classList.add('lit');
+      sfx('tab');
       if (!raf) raf = requestAnimationFrame(frame);
     };
     const tilt = e => {
-      if (e.gamma == null || e.beta == null) return;
+      if (!tile || finger || e.gamma == null || e.beta == null) return;
       if (!rest) rest = {
         g: e.gamma,
         b: e.beta
@@ -8001,70 +8035,142 @@ function useShine(ref) {
       rest.b += (e.beta - rest.b) * 0.012;
       aim.x = clamp((e.gamma - rest.g) / 16, -1, 1);
       aim.y = clamp((e.beta - rest.b) / 16, -1, 1);
-      wake();
     };
-    const scroll = () => {
-      sway = Math.sin(el.scrollTop / 130) * 0.5;
-      wake();
+    const lift = (t, dy) => {
+      if (dy == null) {
+        t.classList.remove('lift');
+        t.style.removeProperty('--lift');
+        return;
+      }
+      t.classList.add('lift');
+      t.style.setProperty('--lift', `${dy}px`);
+    };
+    const start = e => {
+      if (g) {
+        clearTimeout(g.timer);
+        if (g.up) lift(g.t, null);
+        g = null;
+      }
+      if (e.touches.length !== 1 || e.target.closest('button:not(.tc)')) return;
+      const p = e.touches[0],
+        t = e.target.closest('.tc-t');
+      g = {
+        t,
+        x: p.clientX,
+        y: p.clientY,
+        at: e.timeStamp,
+        had: !!t && t === tile,
+        held: false,
+        up: false,
+        timer: 0
+      };
+      if (t && !g.had) g.timer = setTimeout(() => {
+        if (g && g.t === t) {
+          g.held = true;
+          pick(t);
+        }
+      }, HOLD_MS);
+    };
+    const move = e => {
+      if (!g) return;
+      const p = e.touches[0],
+        dx = p.clientX - g.x,
+        dy = p.clientY - g.y,
+        far = Math.hypot(dx, dy) > 8;
+      if (!g.t || !g.held && !g.had) {
+        if (far) {
+          clearTimeout(g.timer);
+          g = null;
+        }
+        return;
+      }
+      if (!g.up && dy < -6 && Math.abs(dy) > Math.abs(dx)) g.up = true;
+      if (!g.up && !g.held) {
+        if (far) g = null;
+        return;
+      }
+      if (e.cancelable) e.preventDefault();
+      if (g.held) {
+        const r = g.t.getBoundingClientRect();
+        finger = true;
+        aim.x = clamp((p.clientX - r.left) / r.width * 2 - 1, -1, 1);
+        aim.y = clamp((p.clientY - r.top) / r.height * 2 - 1, -1, 1);
+      }
+      if (g.up) lift(g.t, Math.min(0, dy));
+    };
+    const end = e => {
+      if (!g) return;
+      const q = g,
+        dy = e.changedTouches[0] ? e.changedTouches[0].clientY - q.y : 0,
+        ms = Math.max(1, e.timeStamp - q.at);
+      const dx = e.changedTouches[0] ? e.changedTouches[0].clientX - q.x : 0;
+      g = null;
+      finger = false;
+      clearTimeout(q.timer);
+      if (q.up && (dy < -OPEN_PX || dy < -24 && dy / ms < -0.6)) {
+        open.current(Number(q.t.dataset.i), q.t.querySelector('.tc'));
+        return;
+      }
+      if (q.up) lift(q.t, null);
+      if (q.held) {
+        if (!q.had) pick(null);
+        return;
+      }
+      if (q.up || Math.hypot(dx, dy) > 8) return;
+      pick(q.t && q.t !== tile ? q.t : null);
+    };
+    const cancel = () => {
+      if (!g) return;
+      clearTimeout(g.timer);
+      if (g.up) lift(g.t, null);
+      if (g.held && !g.had) pick(null);
+      g = null;
+      finger = false;
+    };
+    const noMenu = e => {
+      if (e.target.closest('.tc-t')) e.preventDefault();
     };
     const drop = () => {
-      if (tile) {
-        tile.style.removeProperty('--tx');
-        tile.style.removeProperty('--ty');
-        tile = null;
+      if (hovered) {
+        unset(hovered);
+        hovered = null;
       }
     };
     const mouse = e => {
       if (e.pointerType !== 'mouse') return;
       const t = e.target.closest('.tc-t');
-      if (t !== tile) drop();
+      if (t !== hovered) drop();
       if (!t) return;
       const r = t.getBoundingClientRect();
-      tile = t;
+      hovered = t;
       t.style.setProperty('--tx', ((e.clientX - r.left) / r.width * 2 - 1).toFixed(3));
       t.style.setProperty('--ty', ((e.clientY - r.top) / r.height * 2 - 1).toFixed(3));
     };
     window.addEventListener('deviceorientation', tilt);
-    el.addEventListener('scroll', scroll, {
+    el.addEventListener('touchstart', start, {
       passive: true
     });
+    el.addEventListener('touchmove', move, {
+      passive: false
+    });
+    el.addEventListener('touchend', end);
+    el.addEventListener('touchcancel', cancel);
+    el.addEventListener('contextmenu', noMenu);
     el.addEventListener('pointermove', mouse);
     el.addEventListener('pointerleave', drop);
     return () => {
       cancelAnimationFrame(raf);
+      if (g) clearTimeout(g.timer);
       window.removeEventListener('deviceorientation', tilt);
-      el.removeEventListener('scroll', scroll);
+      el.removeEventListener('touchstart', start);
+      el.removeEventListener('touchmove', move);
+      el.removeEventListener('touchend', end);
+      el.removeEventListener('touchcancel', cancel);
+      el.removeEventListener('contextmenu', noMenu);
       el.removeEventListener('pointermove', mouse);
       el.removeEventListener('pointerleave', drop);
     };
   }, [ref]);
-}
-function useSpotlight(ref, key) {
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || !touchOnly()) return undefined;
-    const tiles = [...el.querySelectorAll('.tc-t')];
-    if (!tiles.length) return undefined;
-    if (el.scrollHeight > el.clientHeight + 4) {
-      const io = new IntersectionObserver(es => es.forEach(x => x.target.classList.toggle('lit', x.isIntersecting)), {
-        root: el,
-        rootMargin: '-49% 0px -49% 0px'
-      });
-      tiles.forEach(t => io.observe(t));
-      return () => io.disconnect();
-    }
-    let i = 0;
-    const step = () => {
-      tiles.forEach((t, n) => t.classList.toggle('lit', n === i));
-      i = (i + 1) % tiles.length;
-    };
-    const start = setTimeout(step, 700),
-      id = setInterval(step, 3400);
-    return () => {
-      clearTimeout(start);
-      clearInterval(id);
-    };
-  }, [ref, key]);
 }
 function PersonaTable({
   list,
@@ -8072,9 +8178,11 @@ function PersonaTable({
   weeks,
   onOpen,
   onDeck,
-  onNew
+  onNew,
+  onOrder
 }) {
   const box = useRef(null);
+  const touch = touchOnly();
   const [pick, setPick] = useState('');
   const heroes = useMemo(() => {
     const m = new Map();
@@ -8093,16 +8201,7 @@ function PersonaTable({
   }) => !hero || traitHero(t, pr) === hero);
   const many = shown.length > 24,
     w = tableCard(shown.length);
-  useShine(box);
-  useSpotlight(box, `${hero}/${shown.length}`);
-  const tap = (i, el) => {
-    if (!touchOnly()) {
-      onOpen(i, el);
-      return;
-    }
-    el.parentElement.classList.add('lit');
-    setTimeout(() => onOpen(i, el), 170);
-  };
+  useCardFocus(box, onOpen);
   return React.createElement("div", {
     ref: box,
     className: "ptb noscb"
@@ -8117,9 +8216,13 @@ function PersonaTable({
     style: {
       color: '#8E8E93'
     }
-  }, list.length, " ", plural(list.length, 'КАРТОЧКА', 'КАРТОЧКИ', 'КАРТОЧЕК'), " \xB7 \u041B\u0418\u041D\u0418\u042F \u0417\u0410 ", TRAIT_DAYS, " \u0414\u041D\u0415\u0419")), React.createElement("div", {
+  }, list.length, " ", plural(list.length, 'КАРТОЧКА', 'КАРТОЧКИ', 'КАРТОЧЕК'), UI.wide ? ` · ЛИНИЯ ЗА ${TRAIT_DAYS} ДНЕЙ` : '')), React.createElement("div", {
     className: "flex items-center gap-2 shrink-0"
-  }, React.createElement(Btn, {
+  }, list.length > 1 && React.createElement(IconBtn, {
+    icon: ArrowUpDown,
+    title: "\u041F\u043E\u0440\u044F\u0434\u043E\u043A \u043A\u0430\u0440\u0442\u043E\u0447\u0435\u043A",
+    onClick: onOrder
+  }), React.createElement(Btn, {
     small: true,
     variant: "dark",
     icon: Layers,
@@ -8129,7 +8232,9 @@ function PersonaTable({
     icon: Plus,
     snd: "open",
     onClick: onNew
-  }, "\u041D\u043E\u0432\u0430\u044F"))), heroes.length > 1 && list.length > 6 && React.createElement("div", {
+  }, "\u041D\u043E\u0432\u0430\u044F"))), touch && React.createElement("div", {
+    className: "text-[12px] text-white/45 mt-2"
+  }, "\u041D\u0430\u0436\u043C\u0438 \u0438\u043B\u0438 \u0437\u0430\u0436\u043C\u0438 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0443 \u0438 \u0441\u043C\u0430\u0445\u043D\u0438 \u0435\u0451 \u0432\u0432\u0435\u0440\u0445, \u0447\u0442\u043E\u0431\u044B \u043E\u0442\u043A\u0440\u044B\u0442\u044C"), heroes.length > 1 && list.length > 6 && React.createElement("div", {
     className: "flex gap-2 overflow-x-auto noscb mt-3 shrink-0"
   }, [['', list.length], ...heroes].map(([h, c]) => React.createElement("button", {
     key: h || 'all',
@@ -8156,6 +8261,7 @@ function PersonaTable({
     const h = idSeed(t.id);
     return React.createElement("div", {
       key: t.id,
+      "data-i": i,
       className: "tc-t",
       style: {
         '--a': `${h % 7 - 3}deg`,
@@ -8169,7 +8275,7 @@ function PersonaTable({
       hero: traitHero(t, pr),
       week: weeks[t.id],
       thumb: shown.length > 12,
-      onClick: e => tap(i, e.currentTarget)
+      onClick: touch ? undefined : e => onOpen(i, e.currentTarget)
     }));
   })));
 }
@@ -8191,6 +8297,7 @@ function PersonaFeed() {
     }
   });
   const [zoom, setZoom] = useState('');
+  const [order, setOrder] = useState(null);
   const root = useRef(null);
   const pr = data.persona,
     list = pr.traits;
@@ -8258,7 +8365,8 @@ function PersonaFeed() {
       setZoom('');
       showTable(false);
     },
-    onNew: () => setEdit(blank())
+    onNew: () => setEdit(blank()),
+    onOrder: () => setOrder(list)
   }) : list.length ? React.createElement("div", _extends({
     ref: deck.box,
     className: `pg ${zoom ? 'pg-in' : ''}`,
@@ -8311,6 +8419,16 @@ function PersonaFeed() {
     }
   }, React.createElement(Plus, {
     size: 22
+  })), list.length > 1 && React.createElement("button", {
+    type: "button",
+    "aria-label": "\u041F\u043E\u0440\u044F\u0434\u043E\u043A \u043A\u0430\u0440\u0442\u043E\u0447\u0435\u043A",
+    className: "mono-rail",
+    onClick: () => {
+      sfx('open');
+      setOrder(list);
+    }
+  }, React.createElement(ArrowUpDown, {
+    size: 19
   })), React.createElement("button", {
     type: "button",
     "aria-label": "\u0423\u0434\u0430\u043B\u0438\u0442\u044C",
@@ -8358,7 +8476,36 @@ function PersonaFeed() {
       setJump(id);
     },
     onClose: () => setEdit(null)
-  }));
+  }), order && React.createElement(ReorderModal, {
+    title: "\u041F\u043E\u0440\u044F\u0434\u043E\u043A \u043A\u0430\u0440\u0442\u043E\u0447\u0435\u043A",
+    list: order,
+    setList: setOrder,
+    onClose: () => setOrder(null),
+    onSave: () => {
+      const id = (list[page] || {}).id;
+      up('persona', p => ({
+        ...p,
+        traits: byOrder(p.traits, order)
+      }));
+      sfx('save');
+      setOrder(null);
+      setJump(id);
+    },
+    row: t => React.createElement(React.Fragment, null, React.createElement("span", {
+      className: "w-1.5 h-9 shrink-0 rounded-[3px]",
+      style: {
+        background: t.color || '#fff'
+      }
+    }), React.createElement("span", {
+      className: "min-w-0"
+    }, React.createElement("span", {
+      className: "block text-[15px] font-semibold truncate"
+    }, t.name), React.createElement("span", {
+      className: "block text-[12px] text-white/45 truncate"
+    }, traitHero(t, pr))))
+  }, React.createElement("div", {
+    className: "text-[12px] text-white/45 f-read mb-2"
+  }, "\u0412 \u044D\u0442\u043E\u043C \u043F\u043E\u0440\u044F\u0434\u043A\u0435 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0438 \u043B\u0435\u0436\u0430\u0442 \u043D\u0430 \u0441\u0442\u043E\u043B\u0435 \u0438 \u0438\u0434\u0443\u0442 \u0432 \u043B\u0435\u043D\u0442\u0435.")));
 }
 function StatsScreen({
   openRate

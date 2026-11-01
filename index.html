@@ -8,14 +8,14 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="CyberJournal">
-<title>CyberJournal 2077</title>
+<meta name="apple-mobile-web-app-title" content="MyJournal">
+<title>MyJournal</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link id="cj-fonts" rel="stylesheet" href="fonts/fonts.css"><!-- локальные шрифты, работают офлайн -->
 <script>
-  window.CJ_BUILD = '20261101-025033';
+  window.CJ_BUILD = '20261101-025914';
   /* загрузочный экран сразу в цвете акцента из настроек, приложение запоминает его при каждом запуске */
   try { var acc = localStorage.getItem('cyberjournal2077.accent'); if (acc) document.documentElement.style.setProperty('--boot', acc); } catch (e) { /* нет доступа */ }
 </script>
@@ -37,11 +37,11 @@
 </style>
 </head>
 <body>
-<div id="root"><div id="boot"><b>CyberJournal</b><i></i></div></div>
+<div id="root"><div id="boot"><b>MyJournal</b><i></i></div></div>
 <script>
   window.addEventListener('error', function (e) {
     var b = document.getElementById('boot');
-    if (b) b.innerHTML = '<b>CyberJournal</b><pre>Не удалось запустить приложение\n' + (e.message || e) + '</pre>';
+    if (b) b.innerHTML = '<b>MyJournal</b><pre>Не удалось запустить приложение\n' + (e.message || e) + '</pre>';
   });
 </script>
 <script defer src="app.js"></script>
@@ -55,6 +55,6 @@
     window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
   }
 </script>
-<!-- build 20261101-025033 -->
+<!-- build 20261101-025914 -->
 </body>
 </html>
